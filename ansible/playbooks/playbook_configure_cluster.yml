@@ -1,0 +1,7 @@
+# playbook_configure_cluster.yml
+- name: 2. Instalar y Configurar k3s y GitOps
+  hosts: k3s_nodes
+  tasks:
+    - name: Instalar k3s
+      # ...
+    - name: Desplegar Traefik Ingress y FluxCD

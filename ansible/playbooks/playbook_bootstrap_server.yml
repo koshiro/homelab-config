@@ -1,0 +1,9 @@
+# playbook_bootstrap_server.yml
+- name: 1. Configurar Host Proxmox y Crear VMs/LXCs
+  hosts: proxmox
+  tasks:
+    # ... tareas para actualizar, instalar Docker, configurar ZFS ...
+    - name: Crear VM para k3s-node-1
+      # ...
+    - name: Crear LXC para Traefik
+      # ...

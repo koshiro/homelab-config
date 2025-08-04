@@ -1,0 +1,65 @@
+# docker-compose.yml (Plantilla Base v1.0)
+version: '3.8'
+
+services:
+  # --- SERVICIOS DE LA VM DE DESARROLLO (dev-server) ---
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      # ... otras variables de Gitea del archivo .env
+    volumes:
+      - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.tu-dominio.com`)"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+
+  # --- SERVICIOS DE LA VM DE MEDIOS/IA (gpu-server) ---
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+      # Habilitar el passthrough de la GPU NVIDIA
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./plex/config:/config
+      - /mnt/pool_medios:/media # Punto de montaje desde TrueNAS
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex.rule=Host(`plex.tu-dominio.com`)"
+      - "traefik.http.services.plex.loadbalancer.server.port=32400"
+
+  # --- SERVICIOS DE LA VM DE GESTIÓN DE MEDIOS (media-services) ---
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./sonarr/config:/config
+      - /mnt/pool_medios:/media
+      - /mnt/pool_descargas:/downloads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.tu-dominio.com`)"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+
+# ... (Se añadirían Radarr, Bazarr, etc. de la misma manera)
