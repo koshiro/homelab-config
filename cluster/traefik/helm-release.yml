@@ -1,0 +1,39 @@
+# /cluster/traefik/helm-release.yml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: traefik
+      version: "25.0.0" # Usar una versión específica por estabilidad
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: traefik
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Configuración del Ingress Controller
+    deployment:
+      kind: Deployment
+      replicas: 2 # Alta disponibilidad
+    
+    # Exponer el servicio de Traefik
+    service:
+      spec:
+        type: LoadBalancer # Para que sea accesible internamente
+
+    # Habilitar el dashboard de forma segura
+    ingressRoute:
+      dashboard:
+        enabled: true
+        # La ruta para el dashboard se definirá en un manifiesto Ingress separado
+        # para seguir las mejores prácticas de GitOps.

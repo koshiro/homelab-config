@@ -1,9 +1,8 @@
 # /cluster/cloudflared/kustomization.yml
-# Este archivo definirá los recursos de Kubernetes para el túnel de Cloudflare.
-# Principalmente, el deployment y el secret con el token.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # - namespace.yml
-  # - secret.yml
-  # - deployment.yml
+  - namespace.yml
+  - helm-repository.yml
+  - helm-release.yml
+  - secret.sops.yml

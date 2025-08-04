@@ -1,0 +1,9 @@
+# /cluster/cloudflared/helm-repository.yml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: cloudflare
+  namespace: cloudflared
+spec:
+  interval: 30m
+  url: https://cloudflare.github.io/helm-charts

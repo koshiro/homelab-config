@@ -1,0 +1,14 @@
+# /cluster/kustomization.yml
+# Este es el plano maestro para todo el clúster.
+# FluxCD leerá este archivo para desplegar todo lo demás.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - flux-system
+  - traefik
+  - cloudflared
+  # --- APPS ---
+  # - gitea
+  # - plex
+  # - sonarr
+  # ... etc
