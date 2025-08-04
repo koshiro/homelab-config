@@ -1,0 +1,15 @@
+# /cluster/gitea/pvc.yml
+# Solicita almacenamiento persistente para los datos de Gitea.
+# Prerrequisito: Un StorageClass llamado 'nfs-csi' debe existir en el clúster.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-data-pvc
+  namespace: gitea
+spec:
+  accessModes:
+    - ReadWriteOnce # Adecuado para una única instancia de Gitea
+  resources:
+    requests:
+      storage: 10Gi # Un tamaño inicial razonable
+  storageClassName: nfs-csi

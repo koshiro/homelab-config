@@ -9,7 +9,7 @@ resources:
   - traefik
   - cloudflared
   # --- APPS ---
-  # - gitea
+  - gitea
   # - plex
   # - sonarr
   # ... etc

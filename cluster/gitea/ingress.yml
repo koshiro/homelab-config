@@ -1,0 +1,28 @@
+# /cluster/gitea/ingress.yml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitea
+  namespace: gitea
+  annotations:
+    # Anotación para que Traefik use el resolvedor de certificados de Let's Encrypt
+    cert-manager.io/cluster-issuer: "letsencrypt-production"
+    # Anotación para forzar la redirección a HTTPS
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  rules:
+    - host: \${GITEA_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitea
+                port:
+                  number: 3000
+  tls:
+    - hosts:
+        - \${GITEA_DOMAIN}
+      secretName: gitea-tls # Traefik/Cert-Manager crearán y gestionarán este secreto

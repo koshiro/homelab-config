@@ -1,0 +1,5 @@
+# /cluster/gitea/namespace.yml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitea
