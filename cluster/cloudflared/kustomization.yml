@@ -6,3 +6,19 @@ resources:
   - helm-repository.yml
   - helm-release.yml
   - secret.sops.yml
+
+# Configuración para que FluxCD sustituya las variables
+patches:
+  - patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: not-used
+      spec:
+        postBuild:
+          substituteFrom:
+            - kind: ConfigMap
+              name: cluster-vars
+    target:
+      kind: Kustomization
+      name: cloudflared

@@ -24,4 +24,4 @@ spec:
     branch: main
   secretRef:
     name: flux-system # Este secreto contendrá las credenciales del repositorio
-  url: ssh://git@gitea.tu-dominio.com/user/homelab-config.git # URL se actualizará a la correcta
+  url: ${GITEA_REPO_URL} # Variable desde cluster-vars

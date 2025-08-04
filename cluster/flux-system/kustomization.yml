@@ -3,3 +3,19 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - gotk-sync.yml
+
+# Configuración para que FluxCD sustituya las variables
+patches:
+  - patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: not-used
+      spec:
+        postBuild:
+          substituteFrom:
+            - kind: ConfigMap
+              name: cluster-vars
+    target:
+      kind: Kustomization
+      name: flux-system
