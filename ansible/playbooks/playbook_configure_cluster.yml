@@ -1,7 +1,12 @@
 # playbook_configure_cluster.yml
-- name: 2. Instalar y Configurar k3s y GitOps
+- name: 2. Instalar k3s y Arrancar GitOps con FluxCD
   hosts: k3s_nodes
   tasks:
-    - name: Instalar k3s
+    - name: Instalar k3s en el clúster
       # ...
-    - name: Desplegar Traefik Ingress y FluxCD
+    - name: Obtener el kubeconfig del clúster
+      # ...
+    - name: Arrancar FluxCD para que se sincronice con este repositorio
+      # Esta tarea aplicará los manifiestos del directorio /cluster
+      # lo que desplegará Traefik, Cloudflared y las demás apps.
+      # ...

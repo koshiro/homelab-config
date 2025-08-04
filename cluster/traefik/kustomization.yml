@@ -1,0 +1,8 @@
+# /cluster/traefik/kustomization.yml
+# Este archivo definirá los recursos de Kubernetes para Traefik.
+# Por ejemplo, el namespace, el deployment, el service, etc.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # - namespace.yml
+  # - helm-release.yml
