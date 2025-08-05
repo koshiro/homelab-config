@@ -9,8 +9,14 @@ spec:
     app: gitea
   ports:
     - name: http
-      port: 3000
+      protocol: TCP
+      port: 80
       targetPort: 3000
+    - name: ssh
+      protocol: TCP
+      port: 22
+      targetPort: 22
+
     - name: ssh
       port: 22
       targetPort: 22

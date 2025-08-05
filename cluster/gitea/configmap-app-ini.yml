@@ -1,0 +1,21 @@
+# cluster/gitea/configmap-app-ini.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-app-ini
+  namespace: gitea
+data:
+  app.ini: |
+    [server]
+    ROOT_URL = https://gitea.homelab.local
+    SSH_DOMAIN = gitea.homelab.local
+    SSH_PORT = 22
+
+    [database]
+    DB_TYPE = sqlite3
+
+    [repository]
+    ROOT = /data/gitea/repositories
+
+    [container]
+    ENABLED = true

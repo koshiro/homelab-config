@@ -1,0 +1,129 @@
+# ansible/playbooks/playbook_setup_gitea_ecosystem.yml
+- name: Configurar el Ecosistema de Gitea y GitOps
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - ../vars/homelab_vars.yml
+
+  tasks:
+    - name: Esperar a que la API de Gitea esté disponible
+      uri:
+        url: "http://gitea.homelab.local/api/v1/version"
+        status_code: 200
+      register: gitea_api_status
+      until: gitea_api_status.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Crear token de administrador de Gitea
+      uri:
+        url: "http://gitea.homelab.local/api/v1/users/admin/tokens"
+        method: POST
+        user: "{{ gitea_admin_user }}"
+        password: "{{ gitea_admin_password }}"
+        body:
+          name: ansible-bootstrap-token
+        body_format: json
+        status_code: 201
+      register: gitea_admin_token
+
+    - name: Crear repositorio homelab-config
+      uri:
+        url: "http://gitea.homelab.local/api/v1/org/homelab/repos"
+        method: POST
+        headers:
+          Authorization: "token {{ gitea_admin_token.json.sha1 }}"
+        body:
+          name: homelab-config
+          private: yes
+        body_format: json
+        status_code: 201
+
+    - name: Crear repositorio tattoo-app
+      uri:
+        url: "http://gitea.homelab.local/api/v1/org/homelab/repos"
+        method: POST
+        headers:
+          Authorization: "token {{ gitea_admin_token.json.sha1 }}"
+        body:
+          name: tattoo-app
+          private: yes
+        body_format: json
+        status_code: 201
+
+    - name: Poblar repositorio homelab-config
+      git:
+        repo: "http://gitea.homelab.local/homelab/homelab-config.git"
+        dest: /tmp/homelab-config
+        clone: yes
+        update: yes
+
+    - name: Copiar manifiestos al repositorio
+      copy:
+        src: "../../cluster/"
+        dest: /tmp/homelab-config/
+
+    - name: Hacer commit y push de los manifiestos
+      git_commit:
+        repo: /tmp/homelab-config
+        msg: "Initial cluster state"
+        push: yes
+
+    - name: Crear secreto para FluxCD
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: flux-git-credentials
+            namespace: flux-system
+          stringData:
+            username: "{{ gitea_admin_user }}"
+            password: "{{ gitea_admin_password }}"
+
+    - name: Apuntar FluxCD al repositorio de Gitea
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: source.toolkit.fluxcd.io/v1beta2
+          kind: GitRepository
+          metadata:
+            name: flux-system
+            namespace: flux-system
+          spec:
+            interval: 1m0s
+            ref:
+              branch: main
+            secretRef:
+              name: flux-git-credentials
+            url: http://gitea.gitea.svc.cluster.local/homelab/homelab-config.git
+
+    - name: Obtener token de registro del runner
+      uri:
+        url: "http://gitea.homelab.local/api/v1/repos/homelab/tattoo-app/actions/runners/registration-token"
+        method: GET
+        headers:
+          Authorization: "token {{ gitea_admin_token.json.sha1 }}"
+      register: gitea_runner_token
+
+    - name: Crear secreto para el runner de Gitea
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: gitea-runner-secret
+            namespace: gitea
+          stringData:
+            token: "{{ gitea_runner_token.json.token }}"
+
+    - name: Revocar token de administrador de Gitea
+      uri:
+        url: "http://gitea.homelab.local/api/v1/users/admin/tokens/{{ gitea_admin_token.json.id }}"
+        method: DELETE
+        user: "{{ gitea_admin_user }}"
+        password: "{{ gitea_admin_password }}"
+        status_code: 204

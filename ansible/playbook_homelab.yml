@@ -1,0 +1,33 @@
+# ansible/playbook_homelab.yml
+# Playbook principal para el bootstrap completo del Homelab
+
+- name: 0. Bootstrap del Servidor Proxmox
+  import_playbook: playbooks/playbook_bootstrap_server.yml
+
+- name: 1. Crear Máquinas Virtuales
+  import_playbook: playbooks/playbook_create_vms.yml
+
+- name: 2. Esperar a que las VMs estén listas
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Esperar por la conexión SSH
+      wait_for_connection:
+        delay: 10
+        timeout: 300
+
+- name: 3. Configurar TrueNAS
+  import_playbook: playbooks/playbook_configure_truenas.yml
+
+- name: 4. Configurar el Clúster de Kubernetes
+  import_playbook: playbooks/playbook_configure_cluster.yml
+
+- name: 5. Desplegar aplicaciones base (Gitea, Traefik, etc.)
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Aplicar manifiestos base
+      command: "kubectl apply -k ../cluster"
+
+- name: 6. Configurar el Ecosistema de Gitea y GitOps
+  import_playbook: playbooks/playbook_setup_gitea_ecosystem.yml

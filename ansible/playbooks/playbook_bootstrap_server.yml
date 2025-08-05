@@ -1,8 +1,15 @@
-# playbook_bootstrap_server.yml
-- name: 1. Configurar Host Proxmox y Crear VMs para k3s
-  hosts: proxmox
+# ansible/playbooks/playbook_bootstrap_server.yml
+- name: Bootstrap del Servidor Proxmox
+  hosts: proxmox_host
+  gather_facts: yes
+
   tasks:
-    # Tareas para configurar el host (ZFS, etc.)
-    # ...
-    - name: Crear las 3 VMs para el clúster de k3s
-      # ...
+    - name: Actualizar repositorios APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar paquetes base
+      apt:
+        name: ["qemu-guest-agent", "git", "vim"]
+        state: present

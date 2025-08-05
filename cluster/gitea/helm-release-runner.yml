@@ -1,0 +1,20 @@
+# cluster/gitea/helm-release-runner.yml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: gitea-runner
+  namespace: gitea
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: gitea-runner
+      version: "0.1.0"
+      sourceRef:
+        kind: HelmRepository
+        name: gitea-charts
+        namespace: flux-system
+  values:
+    gitea:
+      instanceUrl: http://gitea.gitea.svc.cluster.local:80
+      tokenSecret: gitea-runner-secret

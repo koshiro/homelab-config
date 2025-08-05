@@ -1,0 +1,32 @@
+# ansible/playbooks/playbook_create_vms.yml
+- name: Crear Máquinas Virtuales en Proxmox
+  hosts: proxmox_host
+  vars_files:
+    - ../vars/homelab_vars.yml
+
+  tasks:
+    - name: Crear VMs
+      proxmox_kvm:
+        node: "{{ ansible_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        state: present
+        cores: "{{ item.cores }}"
+        memory: "{{ item.memory }}"
+        net:
+          net0: "virtio,bridge=vmbr0,ip={{ item.ip }}/24,gw={{ network_gateway }}"
+        scsi:
+          scsi0: "{{ item.storage_pool }}:{{ item.disk_size }}"
+        # Añadir passthrough de GPU si está definido
+        args: "{{ item.passthrough_gpu | default('') | regex_replace('^(.*)$', '-hostpci0 \1') }}"
+      loop: "{{ vms }}"
+
+    # El passthrough de discos es más complejo y a menudo requiere
+    # configuración manual o scripts más avanzados. Este es un ejemplo simplificado.
+    - name: Adjuntar discos en Passthrough a TrueNAS (Ejemplo)
+      command: "qm set {{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).vmid }} --scsi1 {{ item }}"
+      loop: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks }}"
+      when: (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks is defined

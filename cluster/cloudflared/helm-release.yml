@@ -1,4 +1,3 @@
-# /cluster/cloudflared/helm-release.yml
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
@@ -14,11 +13,14 @@ spec:
         kind: HelmRepository
         name: cloudflare
         namespace: cloudflared
+  valuesFrom:
+    - kind: Secret
+      name: cluster-secrets
+      valuesKey: CLOUDFLARE_API_TOKEN
+      targetPath: cloudflare.apiToken
   values:
     cloudflare:
-      # Referencia al secreto que contiene el token
-      secretName: cloudflare-tunnel-token
-      # El túnel reenviará el tráfico al servicio de Traefik
+      tunnelName: "homelab-tunnel"
       service:
         name: traefik
         namespace: traefik

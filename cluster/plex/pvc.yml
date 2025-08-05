@@ -1,0 +1,14 @@
+# /cluster/plex/pvc.yml
+# Solicita almacenamiento persistente para la configuración de Plex.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config-pvc
+  namespace: plex
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi # Plex puede generar muchos metadatos
+  storageClassName: nfs-csi

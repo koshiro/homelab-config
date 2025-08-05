@@ -1,0 +1,46 @@
+# ansible/playbooks/playbook_configure_truenas.yml
+- name: Configurar TrueNAS
+  hosts: truenas_vm
+  gather_facts: no
+  vars_files:
+    - ../vars/truenas_vars.yml
+
+  tasks:
+    - name: Esperar a que la API de TrueNAS esté disponible
+      uri:
+        url: "http://{{ ansible_host }}/api/v2.0/system/info"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: 200
+      register: truenas_api_status
+      until: truenas_api_status.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Crear Datasets en TrueNAS
+      community.general.truenas_dataset:
+        name: "{{ item.name }}"
+        pool: "{{ truenas_data_pool }}"
+        state: present
+        truenas_host: "{{ ansible_host }}"
+        api_key: "{{ truenas_api_key }}"
+      loop: "{{ truenas_datasets }}"
+
+    - name: Crear Recursos Compartidos NFS en TrueNAS
+      community.general.truenas_nfs:
+        path: "{{ item.path }}"
+        comment: "{{ item.comment }}"
+        networks: "{{ item.networks }}"
+        state: present
+        truenas_host: "{{ ansible_host }}"
+        api_key: "{{ truenas_api_key }}"
+      loop: "{{ truenas_nfs_shares }}"
+
+    - name: Habilitar el servicio NFS
+      community.general.truenas_service:
+        name: nfs
+        state: started
+        enabled: yes
+        truenas_host: "{{ ansible_host }}"
+        api_key: "{{ truenas_api_key }}"

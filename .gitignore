@@ -1,5 +1,8 @@
-# Environments
+# Ficheros de variables de Ansible
+ansible/vars/homelab_vars.yml
+
+# Ficheros de entorno
 .env
 
-# Documentation Archives
-docs/archive/
+# Ficheros de SO
+.DS_Store

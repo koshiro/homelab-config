@@ -1,4 +1,3 @@
-# /cluster/traefik/helm-release.yml
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
@@ -21,19 +20,18 @@ spec:
     remediation:
       retries: 3
   values:
-    # Configuración del Ingress Controller
     deployment:
       kind: Deployment
-      replicas: 2 # Alta disponibilidad
-    
-    # Exponer el servicio de Traefik
+      replicas: 2
     service:
       spec:
-        type: LoadBalancer # Para que sea accesible internamente
-
-    # Habilitar el dashboard de forma segura
+        type: LoadBalancer
     ingressRoute:
       dashboard:
         enabled: true
-        # La ruta para el dashboard se definirá en un manifiesto Ingress separado
-        # para seguir las mejores prácticas de GitOps.
+    ports:
+      ssh:
+        port: 2222
+        expose: true
+        exposedPort: 22
+        protocol: TCP

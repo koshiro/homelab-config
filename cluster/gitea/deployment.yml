@@ -1,4 +1,3 @@
-# /cluster/gitea/deployment.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,29 +15,41 @@ spec:
     spec:
       containers:
         - name: gitea
-          image: gitea/gitea:1.22.0 # Usar una versión específica por estabilidad
+          image: gitea/gitea:1.22.0
           ports:
             - containerPort: 3000
               name: http
             - containerPort: 22
               name: ssh
-          env:
-            - name: USER_UID
-              value: "1000"
-            - name: USER_GID
-              value: "1000"
-            - name: GITEA__database__DB_TYPE
-              value: "sqlite3" # Simple y eficaz para empezar
-            - name: GITEA__server__ROOT_URL
-              value: "https://\${GITEA_DOMAIN}"
-            - name: GITEA__server__SSH_DOMAIN
-              value: "\${GITEA_DOMAIN}"
-            - name: GITEA__server__SSH_PORT
-              value: "22"
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: config
+              mountPath: /etc/gitea/app.ini
+              subPath: app.ini
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/version
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/version
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: gitea-data-pvc
+        - name: config
+          configMap:
+            name: gitea-app-ini

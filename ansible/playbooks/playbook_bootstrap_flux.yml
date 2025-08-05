@@ -1,0 +1,16 @@
+# ansible/playbooks/playbook_bootstrap_flux.yml
+- name: Bootstrap de FluxCD en el clúster k3s
+  hosts: k3s_nodes[0] # Ejecutar solo en el primer nodo
+  vars_files:
+    - ../vars/homelab_vars.yml
+
+  tasks:
+    - name: Instalar FluxCD
+      command: |
+        flux bootstrap git \
+          --url={{ gitops_repo_url }} \
+          --branch={{ gitops_repo_branch }} \
+          --path=./cluster \
+          --personal
+      environment:
+        GITHUB_TOKEN: "{{ github_token }}" # Necesitarás exportar esta variable de entorno
