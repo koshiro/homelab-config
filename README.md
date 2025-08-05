@@ -1,4 +1,4 @@
-# Homelab v3: Ecosistema de Desarrollo Autodesplegable
+# Homelab: Ecosistema de Desarrollo Autodesplegable
 
 ![Estado](https://img.shields.io/badge/Estado-Listo%20para%20Despliegue-brightgreen)
 ![Orquestación](https://img.shields.io/badge/Orquestación-Kubernetes%20(k3s)-blue)
@@ -52,13 +52,52 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         ```bash
         cp ansible/vars/homelab_vars.yml.example ansible/vars/homelab_vars.yml
         ```
-    *   **Edita `ansible/vars/homelab_vars.yml`** y rellena todos los valores.
+    *   **Edita `ansible/vars/homelab_vars.yml`** y rellena todos los valores. Este es el único fichero que necesitas modificar.
 
 3.  **Ejecutar el Playbook Principal:**
     Este es un proceso complejo que orquesta la creación de todo el ecosistema. Tardará varios minutos.
     ```bash
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
     ```
+
+    **¿Qué hace este playbook?**
+
+    El `playbook_homelab.yml` es el orquestador maestro. Ejecuta una secuencia de playbooks más pequeños, cada uno con una responsabilidad específica, para construir tu homelab desde cero:
+
+    *   **0. Bootstrap del Servidor Proxmox (`playbook_bootstrap_server.yml`):**
+        *   **Propósito:** Prepara el sistema operativo base de tu servidor Proxmox.
+        *   **Qué hace:** Actualiza los paquetes del sistema, instala herramientas esenciales como `git` y `vim`, y asegura que el host esté listo para la virtualización.
+
+    *   **1. Crear Máquinas Virtuales (`playbook_create_vms.yml`):**
+        *   **Propósito:** Provisiona las máquinas virtuales que formarán tu clúster de Kubernetes y tu instancia de TrueNAS.
+        *   **Qué hace:** Se conecta a la API de Proxmox y crea las VMs (`truenas-core`, `k3s-node-1`, `k3s-node-2`, `k3s-node-3`) con los recursos (CPU, RAM, disco) y configuraciones de red especificados en `homelab_vars.yml`. También configura el passthrough de GPU y discos si aplica.
+
+    *   **2. Esperar a que las VMs estén listas:**
+        *   **Propósito:** Asegura que las VMs recién creadas estén arrancadas y accesibles vía SSH antes de intentar configurarlas.
+        *   **Qué hace:** Pausa la ejecución del playbook hasta que pueda establecer una conexión SSH con cada una de las VMs.
+
+    *   **3. Configurar TrueNAS (`playbook_configure_truenas.yml`):**
+        *   **Propósito:** Configura el almacenamiento centralizado de tu homelab.
+        *   **Qué hace:** Se conecta a la API de TrueNAS (dentro de la VM `truenas-core`) y crea los pools de ZFS, los datasets y los recursos compartidos NFS que serán utilizados por las aplicaciones de Kubernetes. También habilita el servicio NFS.
+
+    *   **4. Configurar el Clúster de Kubernetes (`playbook_configure_cluster.yml`):**
+        *   **Propósito:** Instala y configura el clúster de Kubernetes (k3s).
+        *   **Qué hace:** Instala k3s en el primer nodo como maestro y luego une los nodos restantes como trabajadores, formando un clúster funcional.
+
+    *   **5. Desplegar aplicaciones base (Gitea, Traefik, etc.):**
+        *   **Propósito:** Despliega los componentes esenciales de la infraestructura de Kubernetes que son necesarios para el ecosistema de desarrollo.
+        *   **Qué hace:** Aplica los manifiestos de Kubernetes del directorio `cluster/` (incluyendo Gitea, Traefik, Cloudflared, y el NFS CSI Driver) directamente al clúster. Esto asegura que Gitea esté operativo para el siguiente paso.
+
+    *   **6. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
+        *   **Propósito:** Establece la conexión entre Ansible, Gitea y FluxCD para crear el ecosistema de desarrollo autogestionado.
+        *   **Qué hace:**
+            *   Espera a que la API de Gitea esté completamente disponible.
+            *   Crea un token de administrador temporal en Gitea.
+            *   Crea los repositorios `homelab-config` y `tattoo-app` en Gitea.
+            *   Clona el repositorio `homelab-config` desde Gitea, copia los manifiestos locales del directorio `cluster/` a él, y hace un `commit` y `push` inicial.
+            *   Configura FluxCD para que apunte a este nuevo repositorio `homelab-config` en Gitea, estableciendo el ciclo de GitOps.
+            *   Obtiene el token de registro del Gitea Actions Runner y lo configura en Kubernetes.
+            *   **Revoca el token de administrador de Gitea** para mantener la seguridad.
 
 4.  **¡Sistema Autónomo!**
     Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo. FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea, y el Gitea Actions Runner está listo para construir y desplegar tus aplicaciones.
