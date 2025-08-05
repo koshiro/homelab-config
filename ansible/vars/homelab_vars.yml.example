@@ -10,7 +10,8 @@ proxmox_api_token_secret: "tu_token_secret"
 
 # Conexión a TrueNAS
 truenas_host: "192.168.1.20"
-truenas_api_key: "tu_api_key"
+truenas_initial_root_password: "tu_contraseña_root_inicial_truenas"
+truenas_api_key: "GENERADO_AUTOMATICAMENTE"
 
 # Configuración de Red
 network_gateway: "192.168.1.1"

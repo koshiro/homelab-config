@@ -76,19 +76,23 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         *   **Propósito:** Asegura que las VMs recién creadas estén arrancadas y accesibles vía SSH antes de intentar configurarlas.
         *   **Qué hace:** Pausa la ejecución del playbook hasta que pueda establecer una conexión SSH con cada una de las VMs.
 
-    *   **3. Configurar TrueNAS (`playbook_configure_truenas.yml`):**
-        *   **Propósito:** Configura el almacenamiento centralizado de tu homelab.
-        *   **Qué hace:** Se conecta a la API de TrueNAS (dentro de la VM `truenas-core`) y crea los pools de ZFS, los datasets y los recursos compartidos NFS que serán utilizados por las aplicaciones de Kubernetes. También habilita el servicio NFS.
+    *   **3. Configuración Inicial de TrueNAS y Generación de API Key (`playbook_initial_truenas_setup.yml`):**
+        *   **Propósito:** Automatiza la configuración inicial de TrueNAS y obtiene la API Key necesaria para futuras operaciones.
+        *   **Qué hace:** Se conecta a la VM de TrueNAS (usando las credenciales iniciales de `root`), crea un usuario dedicado para Ansible, genera una API Key para ese usuario, y **actualiza automáticamente el fichero `ansible/vars/homelab_vars.yml` en tu máquina local** con esta API Key. También elimina la contraseña de `root` del fichero de variables por seguridad.
 
-    *   **4. Configurar el Clúster de Kubernetes (`playbook_configure_cluster.yml`):**
+    *   **4. Configurar TrueNAS (Datasets y NFS Shares) (`playbook_configure_truenas.yml`):**
+        *   **Propósito:** Configura el almacenamiento centralizado de tu homelab utilizando la API Key generada en el paso anterior.
+        *   **Qué hace:** Se conecta a la API de TrueNAS y crea los pools de ZFS, los datasets y los recursos compartidos NFS que serán utilizados por las aplicaciones de Kubernetes. También habilita el servicio NFS.
+
+    *   **5. Configurar el Clúster de Kubernetes (`playbook_configure_cluster.yml`):**
         *   **Propósito:** Instala y configura el clúster de Kubernetes (k3s).
         *   **Qué hace:** Instala k3s en el primer nodo como maestro y luego une los nodos restantes como trabajadores, formando un clúster funcional.
 
-    *   **5. Desplegar aplicaciones base (Gitea, Traefik, etc.):**
+    *   **6. Desplegar aplicaciones base (Gitea, Traefik, etc.):**
         *   **Propósito:** Despliega los componentes esenciales de la infraestructura de Kubernetes que son necesarios para el ecosistema de desarrollo.
         *   **Qué hace:** Aplica los manifiestos de Kubernetes del directorio `cluster/` (incluyendo Gitea, Traefik, Cloudflared, y el NFS CSI Driver) directamente al clúster. Esto asegura que Gitea esté operativo para el siguiente paso.
 
-    *   **6. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
+    *   **7. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
         *   **Propósito:** Establece la conexión entre Ansible, Gitea y FluxCD para crear el ecosistema de desarrollo autogestionado.
         *   **Qué hace:**
             *   Espera a que la API de Gitea esté completamente disponible.

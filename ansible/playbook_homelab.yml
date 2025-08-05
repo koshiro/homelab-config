@@ -16,18 +16,21 @@
         delay: 10
         timeout: 300
 
-- name: 3. Configurar TrueNAS
+- name: 3. Configuración Inicial de TrueNAS y Generación de API Key
+  import_playbook: playbooks/playbook_initial_truenas_setup.yml
+
+- name: 4. Configurar TrueNAS (Datasets y NFS Shares)
   import_playbook: playbooks/playbook_configure_truenas.yml
 
-- name: 4. Configurar el Clúster de Kubernetes
+- name: 5. Configurar el Clúster de Kubernetes
   import_playbook: playbooks/playbook_configure_cluster.yml
 
-- name: 5. Desplegar aplicaciones base (Gitea, Traefik, etc.)
+- name: 6. Desplegar aplicaciones base (Gitea, Traefik, etc.)
   hosts: localhost
   connection: local
   tasks:
     - name: Aplicar manifiestos base
       command: "kubectl apply -k ../cluster"
 
-- name: 6. Configurar el Ecosistema de Gitea y GitOps
+- name: 7. Configurar el Ecosistema de Gitea y GitOps
   import_playbook: playbooks/playbook_setup_gitea_ecosystem.yml

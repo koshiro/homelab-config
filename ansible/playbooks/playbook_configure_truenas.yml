@@ -3,7 +3,7 @@
   hosts: truenas_vm
   gather_facts: no
   vars_files:
-    - ../vars/truenas_vars.yml
+    - ../vars/homelab_vars.yml
 
   tasks:
     - name: Esperar a que la API de TrueNAS esté disponible
@@ -29,13 +29,14 @@
 
     - name: Crear Recursos Compartidos NFS en TrueNAS
       community.general.truenas_nfs:
-        path: "{{ item.path }}"
-        comment: "{{ item.comment }}"
-        networks: "{{ item.networks }}"
+        path: "/mnt/{{ truenas_data_pool }}/{{ item.name }}"
+        comment: "{{ item.description }}"
+        networks:
+          - "{{ network_cidr }}"
         state: present
         truenas_host: "{{ ansible_host }}"
         api_key: "{{ truenas_api_key }}"
-      loop: "{{ truenas_nfs_shares }}"
+      loop: "{{ truenas_datasets }}"
 
     - name: Habilitar el servicio NFS
       community.general.truenas_service:
