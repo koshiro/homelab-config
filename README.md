@@ -36,7 +36,6 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 *   Ansible instalado en tu máquina local (`pip install ansible`).
 *   Las colecciones de Ansible necesarias (`ansible-galaxy collection install community.general community.proxmox kubernetes.core`).
 *   Un token de API de Proxmox.
-*   Un token de API de TrueNAS.
 *   Credenciales de administrador para Gitea (se usarán para el bootstrap).
 
 ### Pasos de Configuración
@@ -54,7 +53,11 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         ```
     *   **Edita `ansible/vars/homelab_vars.yml`** y rellena todos los valores. Este es el único fichero que necesitas modificar.
 
-3.  **Ejecutar el Playbook Principal:**
+3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
+    *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
+    *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `nvme-vms`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
+
+4.  **Ejecutar el Playbook Principal:**
     Este es un proceso complejo que orquesta la creación de todo el ecosistema. Tardará varios minutos.
     ```bash
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
@@ -70,7 +73,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
     *   **1. Crear Máquinas Virtuales (`playbook_create_vms.yml`):**
         *   **Propósito:** Provisiona las máquinas virtuales que formarán tu clúster de Kubernetes y tu instancia de TrueNAS.
-        *   **Qué hace:** Se conecta a la API de Proxmox y crea las VMs (`truenas-core`, `k3s-node-1`, `k3s-node-2`, `k3s-node-3`) con los recursos (CPU, RAM, disco) y configuraciones de red especificados en `homelab_vars.yml`. También configura el passthrough de GPU y discos si aplica.
+        *   **Qué hace:** Se conecta a la API de Proxmox y crea las VMs (`truenas-core`, `k3s-node-1`, `k3s-node-2`, `k3s-node-3`) con los recursos (CPU, RAM, disco) y configuraciones de red especificados en `homelab_vars.yml`. Los discos virtuales de estas VMs se crearán en el pool ZFS `nvme-vms` que configuraste manualmente.
 
     *   **2. Esperar a que las VMs estén listas:**
         *   **Propósito:** Asegura que las VMs recién creadas estén arrancadas y accesibles vía SSH antes de intentar configurarlas.
