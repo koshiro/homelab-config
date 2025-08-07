@@ -73,14 +73,16 @@
           - curl
         state: present
 
-    - name: Añadir la clave GPG de Tailscale
-      ansible.builtin.apt_key:
+    - name: Descargar clave GPG de Tailscale
+      ansible.builtin.get_url:
         url: https://pkgs.tailscale.com/stable/debian/trixie.gpg
-        state: present
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: '0644'
+        force: yes
 
     - name: Añadir el repositorio de Tailscale
       ansible.builtin.apt_repository:
-        repo: deb https://pkgs.tailscale.com/stable/debian trixie main
+        repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian trixie main"
         state: present
         filename: tailscale
 
