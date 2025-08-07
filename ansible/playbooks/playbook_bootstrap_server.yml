@@ -84,6 +84,10 @@
         name: tailscale
         state: present
 
+    - name: Recargar systemd para reconocer el nuevo servicio Tailscale
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
     - name: Habilitar y iniciar el servicio Tailscale
       ansible.builtin.systemd:
         name: tailscale
