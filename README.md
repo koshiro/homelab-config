@@ -57,7 +57,16 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
 3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
     *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
-    *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `nvme-vms`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
+    *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `Pool 1: Sistema/VMs`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
+        Para crear el pool ZFS en Proxmox:
+        1.  Accede a la interfaz web de Proxmox (usualmente `https://<IP_PROXMOX>:8006`).
+        2.  En el panel izquierdo, selecciona tu nodo Proxmox.
+        3.  Ve a la sección **Disks > ZFS**.
+        4.  Haz clic en **Create: ZFS**.
+        5.  En el campo **Name**, introduce `Pool 1: Sistema/VMs` (o el nombre que hayas elegido y que coincida con `storage_pool` en `homelab_vars.yml`).
+        6.  Selecciona tu NVMe de 512GB en la lista de **Disks**.
+        7.  Elige el **RAID Level** apropiado (por ejemplo, `Single Disk` si solo tienes un NVMe, o `RAID1` si ya tienes dos NVMe y quieres un espejo).
+        8.  Haz clic en **Create**.
 
 4.  **Ejecutar el Playbook Principal:**
     Este es un proceso complejo que orquesta la creación de todo el ecosistema. Tardará varios minutos.
