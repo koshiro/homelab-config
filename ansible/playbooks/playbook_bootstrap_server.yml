@@ -4,15 +4,21 @@
   gather_facts: yes
 
   tasks:
-    - name: Eliminar archivo de repositorio pve-enterprise
+    - name: Eliminar repositorios enterprise (formato .list)
       ansible.builtin.file:
-        path: /etc/apt/sources.list.d/pve-enterprise.list
+        path: "{{ item }}"
         state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.list
+        - /etc/apt/sources.list.d/ceph.list
 
-    - name: Eliminar archivo de repositorio ceph.list
+    - name: Eliminar repositorios enterprise (formato .sources)
       ansible.builtin.file:
-        path: /etc/apt/sources.list.d/ceph.list
+        path: "{{ item }}"
         state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+        - /etc/apt/sources.list.d/ceph.sources
 
     - name: Configurar sources.list para Debian 13 (Trixie)
       ansible.builtin.copy:
@@ -88,9 +94,23 @@
       ansible.builtin.systemd:
         daemon_reload: yes
 
-    - name: Habilitar y iniciar el servicio Tailscale
+    - name: Esperar un momento para que systemd reconozca el servicio
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Verificar que el servicio Tailscale existe
+      ansible.builtin.command: systemctl status tailscaled
+      register: tailscale_service_check
+      failed_when: false
+      changed_when: false
+
+    - name: Mostrar estado del servicio Tailscale para debug
+      ansible.builtin.debug:
+        var: tailscale_service_check
+
+    - name: Habilitar y iniciar el servicio Tailscale (tailscaled)
       ansible.builtin.systemd:
-        name: tailscale
+        name: tailscaled
         state: started
         enabled: yes
 
