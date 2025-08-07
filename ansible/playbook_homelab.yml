@@ -96,9 +96,9 @@
             no-autoupdate: true
             ingress:
             - hostname: {{ cf_domain }}
-              service: https://192.168.1.131:31280
+              service: https://192.168.1.131:32634
             - hostname: \"*.{{ cf_domain }}\"
-              service: https://192.168.1.131:31280
+              service: https://192.168.1.131:32634
            - service: http_status:404
         EOF &&
         
@@ -282,7 +282,7 @@
           🔧 CONFIGURACIÓN TRAEFIK:
           - IngressRoute configurado para HTTPS
           - Entrypoint: websecure
-          - Puerto interno: 192.168.1.131:31280
+          - Puerto interno: 192.168.1.131:32634
           
           📊 ESTADO DEL TÚNEL:
           {{ tunnel_status.stdout_lines | join('\n          ') }}

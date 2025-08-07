@@ -350,11 +350,11 @@ El archivo `tunnel_config.json` está configurado correctamente para usar HTTPS:
     "ingress": [
       {
         "hostname": "traefik.danielriquelme.cl",
-        "service": "https://192.168.1.131:31280"
+        "service": "https://192.168.1.131:32634"
       },
       {
         "hostname": "gitea.danielriquelme.cl", 
-        "service": "https://192.168.1.131:31280"
+        "service": "https://192.168.1.131:32634"
       }
     ]
   }
@@ -417,14 +417,14 @@ Traefik está configurado con:
    ```
    Subdomain: traefik
    Domain: danielriquelme.cl
-   Service: https://192.168.1.131:31280
+   Service: https://192.168.1.131:32634
    ```
 
    **Para otros servicios:**
    ```
    Subdomain: gitea
    Domain: danielriquelme.cl
-   Service: https://192.168.1.131:31280
+   Service: https://192.168.1.131:32634
    ```
 
    **⚠️ CONFIGURACIÓN CORRECTA:**

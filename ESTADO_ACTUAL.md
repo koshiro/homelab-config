@@ -4,7 +4,7 @@
 
 ### **1. Traefik Dashboard - FUNCIONANDO LOCALMENTE**
 - ✅ **Estado**: Dashboard accesible localmente
-- ✅ **URL local**: `https://192.168.1.131:31280`
+- ✅ **URL local**: `https://192.168.1.131:32634`
 - ✅ **IngressRoute**: Configurado correctamente para HTTPS
 - ✅ **Entrypoint**: `websecure` funcionando
 - ✅ **Puerto**: 31280 (NodePort HTTPS)
@@ -13,7 +13,7 @@
 - ✅ **Estado**: Túnel funcionando
 - ✅ **Pods**: 2 replicas corriendo
 - ✅ **Configuración**: Actualizada para usar HTTPS
-- ✅ **Puerto interno**: `https://192.168.1.131:31280`
+- ✅ **Puerto interno**: `https://192.168.1.131:32634`
 
 ## ❌ **PROBLEMAS PENDIENTES**
 
@@ -30,19 +30,19 @@
    ```
    Subdomain: traefik
    Domain: danielriquelme.cl
-   Service: https://192.168.1.131:31280
+   Service: https://192.168.1.131:32634
    ```
 
    ```
    Subdomain: gitea
    Domain: danielriquelme.cl
-   Service: https://192.168.1.131:31280
+   Service: https://192.168.1.131:32634
    ```
 
    ```
    Subdomain: sonarr
    Domain: danielriquelme.cl
-   Service: https://192.168.1.131:31280
+   Service: https://192.168.1.131:32634
    ```
 
    (Repetir para todos los servicios)
@@ -94,7 +94,7 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provis
 ### **Verificar Traefik**
 ```bash
 # Local
-curl -k -H "Host: traefik.danielriquelme.cl" https://192.168.1.131:31280/ -v
+curl -k -H "Host: traefik.danielriquelme.cl" https://192.168.1.131:32634/ -v
 
 # Desde internet (después de configurar Public Hostnames)
 curl -k https://traefik.danielriquelme.cl/ -v
