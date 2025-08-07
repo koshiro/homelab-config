@@ -4,16 +4,6 @@
   gather_facts: yes
 
   tasks:
-    - name: Actualizar repositorios APT
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-
-    - name: Instalar paquetes base
-      apt:
-        name: ["qemu-guest-agent", "git", "vim"]
-        state: present
-
     - name: Configurar sources.list para Debian 13 (Trixie)
       ansible.builtin.copy:
         dest: /etc/apt/sources.list
@@ -62,6 +52,16 @@
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/no-nag-script
         content: 'DPkg::Post-Invoke { "if [ -s /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ] && ! grep -q -F ''NoMoreNagging'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; then echo ''Removing subscription nag from UI...''; sed -i ''/data.status/{s/!//;s/active/NoMoreNagging/}'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; fi" };'
+
+    - name: Actualizar repositorios APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar paquetes base
+      apt:
+        name: ["qemu-guest-agent", "git", "vim"]
+        state: present
 
     - name: Actualizar y Dist-Upgrade Proxmox VE
       ansible.builtin.apt:
