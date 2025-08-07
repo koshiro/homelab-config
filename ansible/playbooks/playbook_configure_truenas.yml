@@ -8,40 +8,56 @@
   tasks:
     - name: Esperar a que la API de TrueNAS esté disponible
       uri:
-        url: "http://{{ ansible_host }}/api/v2.0/system/info"
+        url: "https://{{ ansible_host }}/api/v2.0/system/info"
         method: GET
         headers:
           Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
         status_code: 200
       register: truenas_api_status
       until: truenas_api_status.status == 200
       retries: 30
       delay: 10
 
-    - name: Crear Datasets en TrueNAS
-      community.general.truenas_dataset:
-        name: "{{ item.name }}"
-        pool: "{{ truenas_data_pool }}"
-        state: present
-        truenas_host: "{{ ansible_host }}"
-        api_key: "{{ truenas_api_key }}"
+    - name: Crear Datasets en TrueNAS usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/pool/dataset"
+        method: POST
+        body_format: json
+        body:
+          name: "{{ truenas_data_pool }}/{{ item.name }}"
+          type: "FILESYSTEM"
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
+        status_code: 200
       loop: "{{ truenas_datasets }}"
 
-    - name: Crear Recursos Compartidos NFS en TrueNAS
-      community.general.truenas_nfs:
-        path: "/mnt/{{ truenas_data_pool }}/{{ item.name }}"
-        comment: "{{ item.description }}"
-        networks:
-          - "{{ network_cidr }}"
-        state: present
-        truenas_host: "{{ ansible_host }}"
-        api_key: "{{ truenas_api_key }}"
+    - name: Crear Recursos Compartidos NFS en TrueNAS usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/sharing/nfs"
+        method: POST
+        body_format: json
+        body:
+          paths: 
+            - "/mnt/{{ truenas_data_pool }}/{{ item.name }}"
+          comment: "{{ item.description }}"
+          networks:
+            - "{{ network_cidr }}"
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
+        status_code: 200
       loop: "{{ truenas_datasets }}"
 
-    - name: Habilitar el servicio NFS
-      community.general.truenas_service:
-        name: nfs
-        state: started
-        enabled: yes
-        truenas_host: "{{ ansible_host }}"
-        api_key: "{{ truenas_api_key }}"
+    - name: Habilitar el servicio NFS usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/service/id/nfs"
+        method: PUT
+        body_format: json
+        body:
+          enable: true
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
+        status_code: 200

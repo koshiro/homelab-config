@@ -8,13 +8,15 @@
   import_playbook: playbooks/playbook_create_vms.yml
 
 - name: 2. Esperar a que las VMs estén listas
-  hosts: all
+  hosts: truenas_vm:k3s_nodes
   gather_facts: no
+  vars_files:
+    - vars/homelab_vars.yml
   tasks:
-    - name: Esperar por la conexión SSH
+    - name: Esperar por la conexión SSH a las VMs recién creadas
       wait_for_connection:
-        delay: 10
-        timeout: 300
+        delay: 30
+        timeout: 600
 
 - name: 3. Configuración Inicial de TrueNAS y Generación de API Key
   import_playbook: playbooks/playbook_initial_truenas_setup.yml

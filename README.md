@@ -32,11 +32,24 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
 ### Prerrequisitos
 
-*   Un servidor con Proxmox VE instalado.
-*   Ansible instalado en tu máquina local (`pip install ansible`).
-*   Las colecciones de Ansible necesarias (`ansible-galaxy collection install community.general community.proxmox kubernetes.core`).
-*   Un token de API de Proxmox.
-*   Credenciales de administrador para Gitea (se usarán para el bootstrap).
+**En tu máquina local:**
+*   Ansible instalado (`pip install ansible`).
+*   Las colecciones de Ansible necesarias:
+    ```bash
+    ansible-galaxy collection install community.general community.proxmox kubernetes.core
+    ```
+*   Claves SSH configuradas (se generarán en el paso 4 si no las tienes).
+
+**En tu servidor Proxmox:**
+*   Proxmox VE instalado y funcionando.
+*   Acceso de red desde tu máquina local.
+*   Un token de API de Proxmox (se explica cómo obtenerlo más abajo).
+*   Pool ZFS para VMs configurado (se explica en el paso 3).
+
+**Plantillas de VM (requeridas):**
+*   ⚠️ **IMPORTANTE:** Necesitas plantillas de VM para TrueNAS y Ubuntu/Debian en Proxmox antes de ejecutar el playbook.
+*   Las plantillas deben tener cloud-init configurado para acceso SSH automático.
+*   Ver la sección "Preparar Plantillas de VM" más abajo para instrucciones detalladas.
 
 ### Pasos de Configuración
 
@@ -68,7 +81,41 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         7.  Elige el **RAID Level** apropiado (por ejemplo, `Single Disk` si solo tienes un NVMe, o `RAID1` si ya tienes dos NVMe y quieres un espejo).
         8.  Haz clic en **Create**.
 
-4.  **Ejecutar el Playbook Principal:**
+4.  **Configurar Acceso SSH a Proxmox:**
+    El playbook necesita conectarse a Proxmox via SSH como usuario `root`. Configura el acceso SSH desde tu máquina local:
+    
+    ```bash
+    # Generar clave SSH si no tienes una
+    ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa
+    
+    # Copiar la clave pública a Proxmox
+    ssh-copy-id root@<IP_PROXMOX>
+    
+    # Verificar que funciona
+    ssh root@<IP_PROXMOX>
+    ```
+    
+    **⚠️ Importante:** Solo necesitas configurar SSH para Proxmox en este paso. Las VMs (TrueNAS, k3s nodes) se crearán y configurarán automáticamente durante el despliegue.
+
+5.  **Configurar el Archivo de Inventario:**
+    El archivo `ansible/inventory` define cómo Ansible se conecta a tus servidores. 
+    
+    *   **Edita `ansible/inventory`** y actualiza las direcciones IP para que coincidan con tu red:
+        ```ini
+        [proxmox_host]
+        proxmox ansible_host=TU_IP_DE_PROXMOX
+        
+        [truenas_vm]
+        truenas ansible_host=TU_IP_PARA_TRUENAS
+        
+        [k3s_nodes]
+        k3s-node-1 ansible_host=TU_IP_PARA_NODE1
+        k3s-node-2 ansible_host=TU_IP_PARA_NODE2
+        k3s-node-3 ansible_host=TU_IP_PARA_NODE3
+        ```
+    *   **Importante:** Las IPs de las VMs deben estar en el mismo rango de red que Proxmox y ser direcciones libres que no estén en uso.
+
+6.  **Ejecutar el Playbook Principal:**
     Este es un proceso complejo que orquesta la creación de todo el ecosistema. Tardará varios minutos.
     ```bash
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
@@ -117,5 +164,56 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
             *   Obtiene el token de registro del Gitea Actions Runner y lo configura en Kubernetes.
             *   **Revoca el token de administrador de Gitea** para mantener la seguridad.
 
-4.  **¡Sistema Autónomo!**
+7.  **¡Sistema Autónomo!**
     Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo. FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea, y el Gitea Actions Runner está listo para construir y desplegar tus aplicaciones.
+
+## 🔧 Preparar Plantillas de VM (Paso Crítico)
+
+**ANTES** de ejecutar el playbook, debes crear plantillas de VM en Proxmox. Sin estas plantillas, el playbook fallará al intentar crear las VMs.
+
+### Crear Plantilla de Ubuntu para Kubernetes
+
+1. **Descargar imagen cloud Ubuntu:**
+   ```bash
+   # En Proxmox, descargar imagen cloud
+   wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+   ```
+
+2. **Crear VM plantilla:**
+   ```bash
+   # Crear VM (usa ID 9000 para plantillas)
+   qm create 9000 --memory 2048 --core 2 --name ubuntu-cloud --net0 virtio,bridge=vmbr0
+   
+   # Importar disco
+   qm importdisk 9000 jammy-server-cloudimg-amd64.img local-lvm
+   
+   # Configurar disco
+   qm set 9000 --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-9000-disk-0
+   qm set 9000 --ide2 local-lvm:cloudinit
+   qm set 9000 --boot c --bootdisk scsi0
+   qm set 9000 --serial0 socket --vga serial0
+   
+   # Convertir a plantilla
+   qm template 9000
+   ```
+
+### Configurar Plantilla de TrueNAS
+
+1. **Descargar TrueNAS SCALE ISO** desde el sitio oficial
+2. **Crear VM manualmente** en Proxmox con la ISO
+3. **Instalar TrueNAS** con configuración básica
+4. **Configurar usuario root** con contraseña conocida
+5. **Convertir a plantilla** una vez configurado
+
+### Actualizar Playbook para Usar Plantillas
+
+Edita `ansible/vars/homelab_vars.yml` y añade los IDs de plantilla:
+
+```yaml
+# IDs de plantillas de VM en Proxmox
+vm_templates:
+  ubuntu: 9000      # ID de tu plantilla Ubuntu
+  truenas: 9001     # ID de tu plantilla TrueNAS
+```
+
+⚠️ **Sin estas plantillas, el playbook fallará.** Este es el paso más importante que faltaba en la documentación original.

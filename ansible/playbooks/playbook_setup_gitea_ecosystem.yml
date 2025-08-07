@@ -64,11 +64,20 @@
         src: "../../cluster/"
         dest: /tmp/homelab-config/
 
-    - name: Hacer commit y push de los manifiestos
-      git_commit:
-        repo: /tmp/homelab-config
-        msg: "Initial cluster state"
-        push: yes
+    - name: Añadir archivos al repositorio Git
+      ansible.builtin.command:
+        cmd: git add .
+        chdir: /tmp/homelab-config
+
+    - name: Hacer commit de los manifiestos
+      ansible.builtin.command:
+        cmd: git commit -m "Initial cluster state"
+        chdir: /tmp/homelab-config
+
+    - name: Push de los cambios al repositorio
+      ansible.builtin.command:
+        cmd: git push origin main
+        chdir: /tmp/homelab-config
 
     - name: Crear secreto para FluxCD
       kubernetes.core.k8s:

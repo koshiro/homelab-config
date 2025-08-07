@@ -17,15 +17,19 @@ truenas_api_key: "GENERADO_AUTOMATICAMENTE"
 network_gateway: "192.168.1.1"
 network_cidr: "192.168.1.0/24"
 
+# Plantillas de VM en Proxmox (debes crearlas antes de ejecutar el playbook)
+vm_templates:
+  ubuntu: "ubuntu-cloud"      # Nombre de tu plantilla Ubuntu
+  truenas: "truenas-template" # Nombre de tu plantilla TrueNAS
+
 # Definición de las Máquinas Virtuales
 vms:
   - name: truenas-core
     vmid: 100
+    template: "{{ vm_templates.truenas }}"
     ip: "{{ truenas_host }}"
     cores: 2
     memory: 8192 # 8GB
-    disk_size: "32G"
-    storage_pool: "nvme-vms"
     # Passthrough de los discos de datos. Reemplaza con los IDs de tus discos.
     passthrough_disks:
       - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_870_QVO_2TB_S5SSNF0R40..."
@@ -33,29 +37,26 @@ vms:
 
   - name: k3s-node-1
     vmid: 101
+    template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.31"
     cores: 4
     memory: 16384 # 16GB
-    disk_size: "50G"
-    storage_pool: "nvme-vms"
     # Passthrough de la GPU. Reemplaza con el ID de tu GPU.
     passthrough_gpu: "01:00"
 
   - name: k3s-node-2
     vmid: 102
+    template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.32"
     cores: 4
     memory: 16384 # 16GB
-    disk_size: "50G"
-    storage_pool: "nvme-vms"
 
   - name: k3s-node-3
     vmid: 103
+    template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.33"
     cores: 4
     memory: 16384 # 16GB
-    disk_size: "50G"
-    storage_pool: "nvme-vms"
 
 # Configuración de TrueNAS
 truenas_data_pool: "Pool 4: Medios" # Nombre del pool de ZFS para datos

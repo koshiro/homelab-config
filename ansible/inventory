@@ -1,11 +1,31 @@
 # Reemplaza las IPs con las direcciones reales de tus nodos.
+# NOTA: Solo el [proxmox_host] debe estar disponible inicialmente.
+# Las VMs se crearán y configurarán automáticamente durante el despliegue.
+
 [proxmox_host]
-proxmox ansible_host=192.168.1.10
+proxmox ansible_host=192.168.1.100
 
+# Las siguientes secciones se usarán DESPUÉS de crear las VMs
 [truenas_vm]
-truenas ansible_host=192.168.1.20
+truenas ansible_host=192.168.1.200
 
-[k3s_nodes]
-k3s-node-1 ansible_host=192.168.1.31
-k3s-node-2 ansible_host=192.168.1.32
-k3s-node-3 ansible_host=192.168.1.33
+[k3s_nodes] 
+k3s-node-1 ansible_host=192.168.1.131
+k3s-node-2 ansible_host=192.168.1.132
+k3s-node-3 ansible_host=192.168.1.133
+
+# Variables globales para todos los hosts
+[all:vars]
+ansible_user=root
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+# Variables específicas para Proxmox (con claves SSH ya configuradas)
+[proxmox_host:vars]
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+# Variables para VMs (se configurarán claves SSH durante el despliegue)
+[truenas_vm:vars]
+# La contraseña inicial se tomará de homelab_vars.yml
+
+[k3s_nodes:vars]
+# Las claves SSH se configurarán automáticamente durante el despliegue

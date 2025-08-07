@@ -11,34 +11,53 @@
         delay: 30
         timeout: 600
 
-    - name: Instalar la colección TrueNAS (si no está ya)
-      ansible.builtin.pip:
-        name: "freenas-api-client"
-        state: present
+    - name: Crear usuario de Ansible en TrueNAS usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/user"
+        method: POST
+        body_format: json
+        body:
+          username: "ansible"
+          password: "{{ truenas_initial_root_password }}"
+          full_name: "Ansible Automation User"
+          email: "ansible@homelab.local"
+          group_create: true
+        headers:
+          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+        validate_certs: false
+        status_code: 200
+      register: ansible_user_result
 
-    - name: Crear usuario de Ansible en TrueNAS
-      community.general.truenas_user:
-        username: "ansible"
-        password: "{{ truenas_initial_root_password }}" # Usamos la contraseña root para crear el usuario
-        full_name: "Ansible Automation User"
-        email: "ansible@homelab.local"
-        state: present
-        truenas_host: "{{ ansible_host }}"
-        api_key: "{{ truenas_initial_root_password }}" # Temporalmente usamos la contraseña root como API key
+    - name: Generar API Key para el usuario Ansible usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/user/{{ ansible_user_result.json.id }}/get_user_obj"
+        method: GET
+        headers:
+          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+        validate_certs: false
+        status_code: 200
+      register: user_obj_result
 
-    - name: Generar API Key para el usuario Ansible
-      community.general.truenas_api_key:
-        username: "ansible"
-        state: present
-        truenas_host: "{{ ansible_host }}"
-        api_key: "{{ truenas_initial_root_password }}" # Temporalmente usamos la contraseña root como API key
+    - name: Crear API Key usando API REST
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2.0/auth/api_key"
+        method: POST
+        body_format: json
+        body:
+          name: "ansible-automation-key"
+          username: "ansible"
+        headers:
+          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+        validate_certs: false
+        status_code: 200
       register: truenas_generated_api_key
 
     - name: Actualizar homelab_vars.yml con la API Key de TrueNAS
       ansible.builtin.lineinfile:
         path: "{{ playbook_dir }}/../vars/homelab_vars.yml"
         regexp: "^truenas_api_key: .*"
-        line: "truenas_api_key: \"{{ truenas_generated_api_key.api_key }}\"\n        state: present
+        line: "truenas_api_key: \"{{ truenas_generated_api_key.json.key }}\""
+        state: present
       delegate_to: localhost
       run_once: yes
 
