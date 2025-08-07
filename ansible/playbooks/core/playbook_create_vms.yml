@@ -2,7 +2,7 @@
 - name: Crear Máquinas Virtuales en Proxmox
   hosts: proxmox_host
   vars_files:
-    - ../vars/homelab_vars.yml
+    - ../../vars/homelab_vars.yml
 
   tasks:
     - name: Copiar clave SSH pública al servidor Proxmox
@@ -43,7 +43,31 @@
         --cores {{ item.cores }}
         --memory {{ item.memory }}
         --net0 virtio,bridge=vmbr0
+        {% if item.name == 'truenas-core' %}--boot c --bootdisk ide0{% endif %}
       loop: "{{ vms }}"
+
+    - name: Mover discos principales de VMs al storage NVMe de alta velocidad
+      ansible.builtin.command: >
+        qm move-disk {{ item.vmid }} 
+        {{ 'ide0' if item.name == 'truenas-core' else 'scsi0' }}
+        {{ proxmox_storage }} --delete
+      loop: "{{ vms }}"
+      register: move_disk_results
+      failed_when: 
+        - move_disk_results.rc != 0
+        - "'does not exist' not in move_disk_results.stderr"
+      ignore_errors: true
+
+    - name: Mover discos cloud-init al storage NVMe (solo VMs Ubuntu)
+      ansible.builtin.command: >
+        qm move-disk {{ item.vmid }} ide2 {{ proxmox_storage }} --delete
+      loop: "{{ vms }}"
+      when: item.name != 'truenas-core'
+      register: move_cloudinit_results  
+      failed_when: 
+        - move_cloudinit_results.rc != 0
+        - "'does not exist' not in move_cloudinit_results.stderr"
+      ignore_errors: true
 
     - name: Configurar cloud-init para acceso SSH (solo Ubuntu/Kubernetes nodes)
       ansible.builtin.command: >
@@ -66,9 +90,10 @@
       register: start_results
       failed_when: start_results.rc != 0 and "already running" not in start_results.stderr
 
-    # El passthrough de discos es más complejo y a menudo requiere
-    # configuración manual o scripts más avanzados. Este es un ejemplo simplificado.
-    - name: Adjuntar discos en Passthrough a TrueNAS (Ejemplo)
-      command: "qm set {{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).vmid }} --scsi1 {{ item }}"
+    # Configurar discos en passthrough para TrueNAS en interfaces SCSI secuenciales
+    - name: Adjuntar discos en Passthrough a TrueNAS
+      command: "qm set {{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).vmid }} --scsi{{ ansible_loop.index }} {{ item }}"
       loop: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks }}"
+      loop_control:
+        extended: true
       when: (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks is defined

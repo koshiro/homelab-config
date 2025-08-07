@@ -1,71 +1,91 @@
-# ansible/playbooks/playbook_initial_truenas_setup.yml
+# ansible/playbooks/core/playbook_initial_truenas_setup.yml
 - name: Configuración Inicial de TrueNAS y Generación de API Key
-  hosts: truenas_vm
+  hosts: localhost
+  connection: local
   gather_facts: no
   vars_files:
-    - ../vars/homelab_vars.yml
+    - ../../vars/homelab_vars.yml
 
   tasks:
-    - name: Esperar a que TrueNAS esté completamente arrancado y SSH disponible
-      wait_for_connection:
-        delay: 30
-        timeout: 600
+    - name: Esperar a que TrueNAS Web UI esté disponible
+      ansible.builtin.uri:
+        url: "https://192.168.1.19/api/v2.0/system/info"
+        method: GET
+        validate_certs: false
+        status_code: [200, 401]  # 401 es OK, significa que necesita auth
+      register: truenas_api_check
+      until: truenas_api_check.status in [200, 401]
+      retries: 30
+      delay: 10
 
     - name: Crear usuario de Ansible en TrueNAS usando API REST
       ansible.builtin.uri:
-        url: "https://{{ ansible_host }}/api/v2.0/user"
+        url: "https://192.168.1.19/api/v2.0/user"
         method: POST
         body_format: json
         body:
           username: "ansible"
           password: "{{ truenas_initial_root_password }}"
           full_name: "Ansible Automation User"
-          email: "ansible@homelab.local"
+          email: "ansible@example.com"
           group_create: true
         headers:
-          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+          Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: 200
+        status_code: [200, 422]  # 422 = usuario ya existe
       register: ansible_user_result
+      failed_when: 
+        - ansible_user_result.status == 422
+        - "'already exists' not in ansible_user_result.json['user_create.username'][0].message"
 
-    - name: Generar API Key para el usuario Ansible usando API REST
+    - name: Obtener información del usuario ansible si ya existe
       ansible.builtin.uri:
-        url: "https://{{ ansible_host }}/api/v2.0/user/{{ ansible_user_result.json.id }}/get_user_obj"
+        url: "https://192.168.1.19/api/v2.0/user?username=ansible"
         method: GET
         headers:
-          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+          Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
         status_code: 200
-      register: user_obj_result
+      register: existing_user_result
+      when: ansible_user_result.status == 422
 
     - name: Crear API Key usando API REST
       ansible.builtin.uri:
-        url: "https://{{ ansible_host }}/api/v2.0/auth/api_key"
+        url: "https://192.168.1.19/api/v2.0/auth/api_key"
         method: POST
         body_format: json
         body:
           name: "ansible-automation-key"
-          username: "ansible"
+          username: "truenas_admin"
         headers:
-          Authorization: "Basic {{ ('root:' + truenas_initial_root_password) | b64encode }}"
+          Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: 200
+        status_code: [200, 422]  # 422 si la API key ya existe
       register: truenas_generated_api_key
+      failed_when: 
+        - truenas_generated_api_key.status == 422
+        - "'already exists' not in (truenas_generated_api_key.content | default(''))"
 
     - name: Actualizar homelab_vars.yml con la API Key de TrueNAS
       ansible.builtin.lineinfile:
-        path: "{{ playbook_dir }}/../vars/homelab_vars.yml"
+        path: "{{ playbook_dir }}/../../vars/homelab_vars.yml"
         regexp: "^truenas_api_key: .*"
         line: "truenas_api_key: \"{{ truenas_generated_api_key.json.key }}\""
         state: present
       delegate_to: localhost
       run_once: yes
+      when: 
+        - truenas_generated_api_key.status == 200
+        - truenas_generated_api_key.json.key is defined
 
     - name: Eliminar la contraseña root inicial de homelab_vars.yml (seguridad)
       ansible.builtin.lineinfile:
-        path: "{{ playbook_dir }}/../vars/homelab_vars.yml"
+        path: "{{ playbook_dir }}/../../vars/homelab_vars.yml"
         regexp: "^truenas_initial_root_password: .*"
         line: "# truenas_initial_root_password: \"REMOVIDA_POR_SEGURIDAD\""
         state: present
       delegate_to: localhost
       run_once: yes
+      when: 
+        - truenas_generated_api_key.status == 200
+        - truenas_generated_api_key.json.key is defined

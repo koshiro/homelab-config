@@ -282,6 +282,108 @@ ansible all -i ansible/inventory -m ping
 4. **Configurar usuario root** con contraseña conocida
 5. **Convertir a plantilla** una vez configurado
 
+## 🗄️ **Configuración Inicial de TrueNAS (PASO CRÍTICO)**
+
+**⚠️ IMPORTANTE:** Después de que las VMs se creen automáticamente, **DEBES configurar manualmente** el pool de almacenamiento en TrueNAS antes de continuar con el playbook.
+
+### **Paso 1: Acceso Inicial a TrueNAS**
+
+1. **Accede a la interfaz web**: `https://192.168.1.19` (IP obtenida por DHCP)
+   - **Usuario**: `truenas_admin` 
+   - **Contraseña**: `Constantinopl4` (según `homelab_vars.yml`)
+
+2. **Cambiar contraseña por seguridad** (recomendado tras setup inicial)
+
+### **Paso 2: Crear Pool ZFS para Datos**
+
+**🚨 CRÍTICO:** El playbook **fallará** si no existe el pool `Pool 4: Medios`
+
+#### **Verificar Discos Disponibles:**
+En TrueNAS → **Storage** → **Disks**, deberías ver:
+- ✅ **WDC_WD20EURS** (2TB) - Disco 1
+- ✅ **WDC_WD30EZRX** (3TB) - Disco 2  
+- ✅ **WDC_WDS120G2G0A** (120GB SSD) - Disco 3
+
+#### **Crear el Pool:**
+
+1. **Ve a**: **Storage** → **Pools** → **Create Pool**
+
+2. **Configuración del Pool:**
+   ```
+   Nombre: Pool 4: Medios
+   Layout: Mirror (RECOMENDADO para protección de datos)
+   
+   Configuración sugerida:
+   - Mirror: WDC_WD20EURS + WDC_WD30EZRX (datos principales)  
+   - Hot Spare: WDC_WDS120G2G0A (SSD como caché/spare)
+   ```
+
+3. **Layouts Alternativos según tus necesidades:**
+
+   **🔒 MÁXIMA SEGURIDAD (Mirror):**
+   ```yaml
+   Layout: Mirror
+   Discos: WDC_WD20EURS + WDC_WD30EZRX
+   Capacidad: ~2TB (limitado por el disco menor)
+   Protección: 1 disco puede fallar
+   ```
+
+   **📈 MÁXIMO ESPACIO (RAIDZ1):**  
+   ```yaml
+   Layout: RAIDZ1 (si tienes 3+ discos similares)
+   Discos: Los 3 discos
+   Capacidad: ~4TB (espacio combinado menos paridad)
+   Protección: 1 disco puede fallar
+   ```
+
+   **⚡ RENDIMIENTO + SEGURIDAD (Striped Mirror):**
+   ```yaml
+   Layout: Striped Mirror (para discos similares)
+   Configuración: 2 espejos en paralelo
+   ```
+
+4. **Confirmar Creación**: Click **Create Pool**
+
+### **Paso 3: Verificar Pool Creado**
+
+Ejecutar **antes** de continuar con el playbook:
+
+```bash
+# Verificar que el pool existe
+curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
+
+# Debería mostrar: [{"name": "Pool 4: Medios", ...}]
+```
+
+### **Paso 4: Continuar con Ansible**
+
+Una vez creado el pool, **continúa** con el playbook:
+
+```bash
+# Configurar TrueNAS (datasets y NFS)
+ansible-playbook -i ansible/inventory ansible/playbooks/core/playbook_configure_truenas.yml
+
+# O continuar con el pipeline completo
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
+```
+
+### **Troubleshooting TrueNAS Pool**
+
+**Error: "Parent dataset does not exist"**
+```bash
+# Verificar pools disponibles
+curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
+
+# Si no hay pools, crear manualmente desde la interfaz web
+# Luego verificar el nombre exacto y actualizar homelab_vars.yml
+```
+
+**Pool con nombre diferente:**
+```yaml
+# En ansible/vars/homelab_vars.yml, actualizar:
+truenas_data_pool: "NOMBRE_REAL_DEL_POOL"
+```
+
 ### Actualizar Playbook para Usar Plantillas
 
 Edita `ansible/vars/homelab_vars.yml` y añade los IDs de plantilla:
