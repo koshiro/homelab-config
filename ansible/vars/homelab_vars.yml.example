@@ -42,7 +42,7 @@ vms:
     cores: 4
     memory: 16384 # 16GB
     # Passthrough de la GPU. Reemplaza con el ID de tu GPU.
-    passthrough_gpu: "01:00"
+    passthrough_gpu: "01:00.0"
 
   - name: k3s-node-2
     vmid: 102
