@@ -1,12 +1,58 @@
 # ansible/playbooks/core/playbook_configure_truenas.yml
+---
 - name: Configurar TrueNAS
-  hosts: localhost
-  connection: local
-  gather_facts: no
+  hosts: truenas_vm
+  become: true
   vars_files:
-    - ../../vars/homelab_vars.yml
+    - ../vars/homelab_vars.yml
 
   tasks:
+    - name: Esperar a que TrueNAS Web UI esté disponible
+      uri:
+        url: "https://{{ truenas_host }}/api/v2.0/"
+        method: GET
+        user: "{{ truenas_admin_user }}"
+        password: "{{ truenas_initial_root_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+      register: truenas_api_check
+      retries: 30
+      delay: 10
+      until: truenas_api_check is succeeded
+
+    - name: Configurar permisos NFS para staging
+      uri:
+        url: "https://{{ truenas_host }}/api/v2.0/sharing/nfs/id/3"
+        method: PUT
+        user: "{{ truenas_admin_user }}"
+        password: "{{ truenas_initial_root_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+        body_format: json
+        body: |
+          {
+            "maproot_user": "root",
+            "maproot_group": "wheel"
+          }
+        status_code: 200
+      register: nfs_config_result
+
+    - name: Verificar configuración NFS
+      uri:
+        url: "https://{{ truenas_host }}/api/v2.0/sharing/nfs"
+        method: GET
+        user: "{{ truenas_admin_user }}"
+        password: "{{ truenas_initial_root_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+      register: nfs_shares
+
+    - name: Mostrar configuración NFS actualizada
+      debug:
+        msg: "NFS shares configurados: {{ nfs_shares.json }}"
+
     - name: Esperar a que la API de TrueNAS esté disponible
       uri:
         url: "https://192.168.1.19/api/v2.0/system/info"
@@ -31,8 +77,12 @@
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: 200
+        status_code: [200, 422]  # 200 = creado, 422 = ya existe
       loop: "{{ truenas_datasets }}"
+      register: dataset_results
+      failed_when: 
+        - dataset_results.status == 422
+        - "'already exists' not in dataset_results.json['pool_dataset_create.name'][0].message"
 
     - name: Crear Recursos Compartidos NFS en TrueNAS usando API REST
       ansible.builtin.uri:
@@ -40,16 +90,19 @@
         method: POST
         body_format: json
         body:
-          paths: 
-            - "/mnt/{{ truenas_data_pool }}/{{ item.name }}"
+          path: "/mnt/{{ truenas_data_pool }}/{{ item.name }}"
           comment: "{{ item.description }}"
           networks:
             - "{{ network_cidr }}"
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: 200
+        status_code: [200, 422]  # 200 = creado, 422 = ya existe
       loop: "{{ truenas_datasets }}"
+      register: nfs_results
+      failed_when: 
+        - nfs_results.status == 422
+        - "'already exists' not in (nfs_results.content | default(''))"
 
     - name: Habilitar el servicio NFS usando API REST
       ansible.builtin.uri:

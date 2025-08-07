@@ -62,7 +62,7 @@ vms:
     memory: 4096 # 4GB (ajustado para servidores con RAM limitada)
 
 # Configuración de TrueNAS
-truenas_data_pool: "Pool 4: Medios" # Nombre del pool de ZFS para datos
+truenas_data_pool: "homelab-storage" # Nombre del pool de ZFS para datos (NO usar espacios ni dos puntos)
 truenas_datasets:
   - { name: "media", description: "Librería principal de Plex" }
   - { name: "downloads", description: "Directorio de descargas" }

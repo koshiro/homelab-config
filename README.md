@@ -68,7 +68,24 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         ```
     *   **Edita `ansible/vars/homelab_vars.yml`** y rellena los valores iniciales. Este es el único fichero que necesitas modificar manualmente al principio. Ten en cuenta que algunos valores, como la `truenas_api_key`, serán actualizados automáticamente por Ansible durante la ejecución del playbook.
 
-3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
+3.  **Configurar Credenciales de Cloudflare (.env):**
+    *   Copia el archivo de ejemplo:
+        ```bash
+        cp .env.example .env
+        ```
+    *   **Edita `.env`** y configura las credenciales de Cloudflare:
+        ```bash
+        # Dominio principal
+        DOMAIN_NAME=tudominio.com
+        
+        # Credenciales de Cloudflare  
+        CF_API_EMAIL=tu_email@ejemplo.com
+        CF_API_KEY=tu_api_key_de_cloudflare
+        CLOUDFLARE_TUNNEL_TOKEN=tu_tunnel_token_base64
+        ```
+    *   **⚠️ Importante:** El túnel de Cloudflare se configura **automáticamente** durante el despliegue usando estas credenciales.
+
+4.  **Instalación de Proxmox y Configuración de Almacenamiento:**
     *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
     *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `nvme-vms`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
         Para crear el pool ZFS en Proxmox:
@@ -81,7 +98,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         7.  Elige el **RAID Level** apropiado (por ejemplo, `Single Disk` si solo tienes un NVMe, o `RAID1` si ya tienes dos NVMe y quieres un espejo).
         8.  Haz clic en **Create**.
 
-4.  **Configurar Acceso SSH a Proxmox:**
+5.  **Configurar Acceso SSH a Proxmox:**
     El playbook necesita conectarse a Proxmox via SSH como usuario `root`. Configura el acceso SSH desde tu máquina local:
     
     ```bash
@@ -97,7 +114,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
     
     **⚠️ Importante:** Solo necesitas configurar SSH para Proxmox en este paso. Las VMs (TrueNAS, k3s nodes) se crearán y configurarán automáticamente durante el despliegue.
 
-5.  **Configurar el Archivo de Inventario:**
+6.  **Configurar el Archivo de Inventario:**
     El archivo `ansible/inventory` define cómo Ansible se conecta a tus servidores. 
     
     *   **Edita `ansible/inventory`** y actualiza las direcciones IP para que coincidan con tu red:
@@ -115,16 +132,17 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         ```
     *   **Importante:** Las IPs de las VMs deben estar en el mismo rango de red que Proxmox y ser direcciones libres que no estén en uso.
 
-6.  **Ejecutar el Playbook Principal:**
+7.  **Ejecutar el Playbook Principal:**
     Este es un proceso complejo que orquesta la creación de todo el ecosistema. Tardará varios minutos.
     ```bash
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
     ```
 
-    **🚨 IMPORTANTE - Requisitos de Espacio en Disco:**
-    - **Mínimo absoluto**: 10GB por nodo k3s
-    - **Recomendado**: 20GB+ por nodo para producción
-    - Las VMs con menos de 8GB de espacio libre **FALLARÁN** durante la instalación de k3s
+    **🚨 IMPORTANTE - Especificaciones Automáticas de VMs:**
+    - **k3s nodes**: 30GB de disco cada uno (automático)
+    - **TrueNAS**: 32GB de disco + discos passthrough (automático) 
+    - **RAM**: 4GB por nodo k3s, 2GB para TrueNAS
+    - Todos los discos se crean automáticamente en el storage NVMe configurado
 
     **¿Qué hace este playbook?**
 
@@ -156,7 +174,16 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
             - Configura clúster multi-nodo con validación completa
             - Incluye verificación de estado final del clúster
 
-    *   **5. Desplegar aplicaciones base y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
+    *   **5. Configurar Túnel de Cloudflare (integrado en `playbook_homelab.yml`):**
+        *   **Propósito:** Configura automáticamente el túnel de Cloudflare desde el archivo `.env`.
+        *   **Qué hace:**
+            - Lee credenciales del archivo `.env`
+            - Decodifica el token del túnel automáticamente
+            - Despliega pods de `cloudflared` en k3s
+            - Configura ingress para `*.tu-dominio.com`
+            - Establece conexión segura sin port forwarding
+
+    *   **6. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
         *   **Propósito:** Despliega infraestructura esencial y establece el ecosistema GitOps completo.
         *   **Qué hace:** 
             - Espera que Gitea esté disponible
@@ -184,25 +211,58 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
     # Solo configurar TrueNAS
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
+
+    # Solo configurar Cloudflare Tunnel
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags cloudflare
+
+    # Solo configurar GitOps
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags gitops
     ```
 
-7.  **¡Sistema Autónomo!**
-    Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo. FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea, y el Gitea Actions Runner está listo para construir y desplegar tus aplicaciones.
+8.  **¡Sistema Autónomo!**
+    Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo:
+    
+    - ✅ **Cloudflare Tunnel**: Tu dominio es accesible desde internet sin port forwarding
+    - ✅ **GitOps**: FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea  
+    - ✅ **CI/CD**: Gitea Actions Runner está listo para construir y desplegar tus aplicaciones
+    - ✅ **Almacenamiento**: TrueNAS proporciona storage NFS centralizado
+    - ✅ **Alta Disponibilidad**: k3s multi-nodo con balanceador de carga integrado
 
 ## 🚨 **Troubleshooting y Comandos Útiles**
 
-### **Problema: Espacio Insuficiente en Disco**
+### **Problema: Espacio Insuficiente en Disco (RARO - VMs tienen 30GB)**
 ```bash
 # Verificar espacio en los nodos
 ansible k3s_nodes -i ansible/inventory -m shell -a "df -h /"
 
-# Redimensionar discos VMs (requiere apagar VMs)
-ansible-playbook -i ansible/inventory ansible/playbooks/utils/playbook_resize_vm_disks.yml
+# Si realmente necesitas más espacio, editar homelab_vars.yml:
+# disk_size: 51200  # 50GB en lugar de 30GB
+# Luego recrear VMs con el tamaño nuevo
 
-# Limpiar espacio manualmente en un nodo
-ssh k3s-node-1
+# Limpiar espacio manualmente en un nodo (temporal)
+ssh ubuntu@k3s-node-1
 sudo apt clean && sudo apt autoremove -y
 sudo journalctl --vacuum-time=3d
+```
+
+### **Problema: VMs k3s No Accesibles via SSH**
+```bash
+# Verificar que las VMs están corriendo
+ssh root@<IP_PROXMOX> "qm list"
+
+# Probar ping a las VMs
+ping -c 2 192.168.1.131
+ping -c 2 192.168.1.132
+ping -c 2 192.168.1.133
+
+# Verificar configuración cloud-init de la plantilla
+ssh root@<IP_PROXMOX> "qm config 9000 | grep -E '(ciuser|cipassword|sshkeys)'"
+
+# Si falta configuración cloud-init, actualizar plantilla:
+ssh root@<IP_PROXMOX> "qm set 9000 --ciuser ubuntu --cipassword ubuntu --sshkeys ~/.ssh/id_rsa.pub"
+
+# Recrear VMs con plantilla corregida
+ansible-playbook -i ansible/inventory ansible/playbooks/core/playbook_create_vms.yml
 ```
 
 ### **Problema: k3s Falló Durante Instalación**
@@ -227,26 +287,228 @@ ssh k3s-node-1 "sudo journalctl -u k3s -f"
 ```
 
 ### **URLs de Acceso Post-Instalación**
-- **Gitea**: http://gitea.homelab.local
-- **TrueNAS**: https://192.168.1.200
-- **Traefik Dashboard**: http://traefik.homelab.local
+
+**🌐 URLs PÚBLICAS (Acceso desde Internet):**
+- **Gitea**: https://gitea.tu-dominio.com
+- **Traefik Dashboard**: https://traefik.tu-dominio.com  
+- **Sonarr**: https://sonarr.tu-dominio.com
+- **Radarr**: https://radarr.tu-dominio.com
+- **Prowlarr**: https://prowlarr.tu-dominio.com
+- **Overseerr**: https://overseerr.tu-dominio.com
+- **Plex**: https://plex.tu-dominio.com
+- **Dominio Principal**: https://tu-dominio.com
+
+**⚠️ NOTA:** Los puertos de Traefik pueden cambiar después de reinstalaciones. Verificar con:
+```bash
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
+```
+
+**🏠 URLs LOCALES (Solo desde la red local):**
+- **TrueNAS**: https://192.168.1.19
 - **Proxmox**: https://192.168.1.100:8006
+
+**✅ CONFIGURACIÓN DNS AUTOMÁTICA:**
+- Todos los registros DNS se crean automáticamente en Cloudflare
+- El túnel se configura automáticamente usando tu `.env`
+- **NO necesitas port forwarding en el router** - Todo pasa por Cloudflare
+- Acceso seguro via HTTPS con certificados de Cloudflare
+
+**📡 CONFIGURACIÓN DEL ROUTER:**
+- **Puerto 80**: NO necesitas abrirlo (Cloudflare Tunnel maneja todo)
+- **Puerto 443**: NO necesitas abrirlo (Cloudflare Tunnel maneja todo)
+- **Puerto 22**: Solo si quieres SSH externo (opcional)
+- Tu IP pública puede ser dinámica - no importa con Cloudflare Tunnel
+
+### **Verificar DNS y Túnel de Cloudflare**
+```bash
+# Verificar que los DNS se propagaron
+nslookup gitea.tu-dominio.com
+nslookup traefik.tu-dominio.com
+
+# Verificar estado del túnel en k3s
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n cloudflared -o wide"
+
+# Ver logs del túnel
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n cloudflared -l app=cloudflared --tail=20"
+
+# Verificar registros DNS en Cloudflare (desde local)
+curl -X GET "https://api.cloudflare.com/client/v4/zones/TU_ZONE_ID/dns_records" \
+     -H "Authorization: Bearer TU_CF_API_KEY" \
+     -H "Content-Type: application/json"
+```
+
+### **Configuración Correcta de Traefik con Cloudflare Tunnel**
+
+**✅ CONFIGURACIÓN ACTUALIZADA:**
+
+#### **1. Configuración del Túnel de Cloudflare**
+El archivo `tunnel_config.json` está configurado correctamente para usar HTTPS:
+
+```json
+{
+  "config": {
+    "ingress": [
+      {
+        "hostname": "traefik.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "gitea.danielriquelme.cl", 
+        "service": "https://192.168.1.131:31280"
+      }
+    ]
+  }
+}
+```
+
+#### **2. Configuración de Ingress con Anotaciones Correctas**
+Los ingress ahora incluyen las anotaciones necesarias para Cloudflare Tunnel:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitea
+  namespace: gitea
+  annotations:
+    # Configuración para Cloudflare Tunnel
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Configuración de seguridad
+    traefik.ingress.kubernetes.io/headers-frame-deny: "true"
+    traefik.ingress.kubernetes.io/headers-browser-xss-filter: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - gitea.danielriquelme.cl
+    secretName: gitea-tls
+  rules:
+  - host: gitea.danielriquelme.cl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gitea
+            port:
+              number: 3000
+```
+
+#### **3. Configuración de Traefik Optimizada**
+Traefik está configurado con:
+- ✅ Entrypoints `web` (80) y `websecure` (443)
+- ✅ Redirección automática HTTP → HTTPS
+- ✅ Certificados automáticos con Let's Encrypt
+- ✅ Headers de seguridad
+- ✅ Rate limiting
+
+#### **4. Configuración Manual en Cloudflare Zero Trust**
+
+**⚠️ IMPORTANTE:** Después del despliegue automático, debes configurar manualmente los Public Hostnames en Cloudflare Zero Trust:
+
+1. **Accede a Cloudflare Zero Trust Dashboard**
+2. **Ve a Access → Tunnels**
+3. **Selecciona tu túnel**
+4. **Configura los Public Hostnames:**
+
+   **Para Traefik Dashboard:**
+   ```
+   Subdomain: traefik
+   Domain: danielriquelme.cl
+   Service: https://192.168.1.131:31280
+   ```
+
+   **Para otros servicios:**
+   ```
+   Subdomain: gitea
+   Domain: danielriquelme.cl
+   Service: https://192.168.1.131:31280
+   ```
+
+   **⚠️ CONFIGURACIÓN CORRECTA:**
+   - **Protocolo:** HTTPS (NO HTTP)
+   - **Puerto:** 31280 (verificar con el script de verificación)
+   - **IP:** 192.168.1.131 (nodo k3s)
+
+#### **5. Script de Verificación Automática**
+Usa el script actualizado para verificar la configuración:
+
+```bash
+./scripts/verify-traefik.sh
+```
+
+Este script verifica:
+- ✅ Conectividad SSH
+- ✅ Estado de k3s
+- ✅ Pods de Traefik
+- ✅ Puerto HTTPS correcto
+- ✅ Estado del túnel de Cloudflare
+- ✅ Configuración del túnel
+- ✅ Resolución DNS
+- ✅ Conectividad HTTPS local
+- ✅ Certificados SSL
+
+### **Troubleshooting de Aplicaciones**
+
+**Problema: 404/502 en aplicaciones (Gitea, etc.)**
+
+**Solución:**
+```bash
+# 1. Verificar que Traefik esté funcionando
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n kube-system | grep traefik"
+
+# 2. Verificar los puertos actuales
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
+
+# 3. Verificar estado de la aplicación
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n gitea"
+
+# 4. Verificar logs de la aplicación
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n gitea -l app=gitea --tail=20"
+
+# 5. Verificar configuración del Ingress
+ssh ubuntu@192.168.1.131 "sudo k3s kubectl get ingress -n gitea -o yaml"
+```
+
+**✅ CONFIGURACIÓN CORRECTA:**
+- **Traefik:** Instalado por defecto en K3s
+- **Puertos:** HTTP (32055), HTTPS (32634) - verificar con `kubectl get service traefik -n kube-system`
+- **Health Checks:** Usar `/api/healthz` para Gitea (no `/api/v1/version`)
+
+**⚠️ IMPORTANTE:** 
+- Los puertos pueden cambiar después de reinstalaciones
+- Gitea necesita configuración inicial en modo instalación
+- Verificar health checks en deployments
 
 ### **Comandos de Mantenimiento**
 ```bash
 # Actualizar solo TrueNAS
 ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
 
+# Reconfigurar solo Cloudflare
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags cloudflare
+
 # Recrear solo las VMs
 ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provision
 
 # Verificar conectividad de todas las VMs
 ansible all -i ansible/inventory -m ping
+
+# Verificar configuración de Traefik
+./scripts/verify-traefik.sh
+
+# Reinstalar Traefik (si hay problemas)
+ssh ubuntu@192.168.1.131 "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm uninstall traefik -n kube-system"
+ssh ubuntu@192.168.1.131 "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm install traefik traefik/traefik --namespace kube-system --set api.dashboard=true --set api.insecure=false"
 ```
 
 ## 🔧 Preparar Plantillas de VM (Paso Crítico)
 
 **ANTES** de ejecutar el playbook, debes crear plantillas de VM en Proxmox. Sin estas plantillas, el playbook fallará al intentar crear las VMs.
+
+**🚨 AVISO IMPORTANTE:** Si previamente creaste plantillas siguiendo versiones anteriores de este README que **NO incluían configuración de cloud-init**, las plantillas **NO FUNCIONARÁN** y necesitas recrearlas o actualizarlas según las instrucciones corregidas a continuación.
 
 ### Crear Plantilla de Ubuntu para Kubernetes
 
@@ -261,17 +523,74 @@ ansible all -i ansible/inventory -m ping
    # Crear VM (usa ID 9000 para plantillas)
    qm create 9000 --memory 2048 --core 2 --name ubuntu-cloud --net0 virtio,bridge=vmbr0
    
-   # Importar disco
-   qm importdisk 9000 jammy-server-cloudimg-amd64.img local-lvm
+   # Importar disco al storage NVMe (recomendado para rendimiento)
+   qm importdisk 9000 jammy-server-cloudimg-amd64.img nvme
    
    # Configurar disco
-   qm set 9000 --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-9000-disk-0
-   qm set 9000 --ide2 local-lvm:cloudinit
+   qm set 9000 --scsihw virtio-scsi-pci --scsi0 nvme:vm-9000-disk-0
+   qm set 9000 --ide2 nvme:cloudinit
    qm set 9000 --boot c --bootdisk scsi0
    qm set 9000 --serial0 socket --vga serial0
    
+   # 🚨 CRÍTICO: Configurar cloud-init (SIN ESTO SSH NO FUNCIONARÁ)
+   qm set 9000 --ciuser ubuntu
+   qm set 9000 --cipassword ubuntu  # Contraseña temporal para acceso inicial
+   qm set 9000 --sshkeys ~/.ssh/id_rsa.pub  # Tu clave SSH pública
+   
    # Convertir a plantilla
    qm template 9000
+   ```
+
+   **⚠️ IMPORTANTE - Pasos Adicionales para Cloud-Init:**
+   
+   Si no tienes una clave SSH, genérala primero:
+   ```bash
+   # Generar clave SSH si no existe
+   ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa
+   
+   # Verificar que existe la clave pública
+   cat ~/.ssh/id_rsa.pub
+   ```
+
+   **🚨 CRÍTICO - Copiar tu clave SSH a Proxmox:**
+   ```bash
+   # Copiar tu clave SSH pública local a Proxmox
+   scp ~/.ssh/id_rsa.pub root@<IP_PROXMOX>:/tmp/my_public_key.pub
+   
+   # En Proxmox, configurar la plantilla con TU clave (no la de Proxmox)
+   ssh root@<IP_PROXMOX> "qm set 9000 --sshkeys /tmp/my_public_key.pub"
+   ```
+   
+   **⚠️ ERROR COMÚN:** Si usas `--sshkeys ~/.ssh/id_rsa.pub` directamente en Proxmox, estarás usando la clave SSH del servidor Proxmox, no la tuya local. Esto hará que SSH falle desde tu máquina.
+
+3. **Verificar que la plantilla funciona correctamente:**
+   ```bash
+   # Crear VM de prueba desde la plantilla
+   qm clone 9000 999 --name test-ubuntu --full
+   
+   # Configurar IP temporal para prueba
+   qm set 999 --ipconfig0 ip=192.168.1.199/24,gw=192.168.1.1
+   
+   # Iniciar VM de prueba
+   qm start 999
+   
+   # Esperar 60 segundos y probar SSH
+   sleep 60
+   ssh ubuntu@192.168.1.199 "hostname && uptime"
+   
+   # Si funciona, eliminar VM de prueba
+   qm stop 999 && qm destroy 999 --purge
+   ```
+
+   **🚨 Si la prueba falla:**
+   ```bash
+   # Verificar configuración de la plantilla
+   qm config 9000 | grep -E "(ciuser|cipassword|sshkeys)"
+   
+   # Debería mostrar:
+   # ciuser: ubuntu
+   # cipassword: **********
+   # sshkeys: ssh-rsa AAAA... (tu clave pública)
    ```
 
 ### Configurar Plantilla de TrueNAS
@@ -296,7 +615,7 @@ ansible all -i ansible/inventory -m ping
 
 ### **Paso 2: Crear Pool ZFS para Datos**
 
-**🚨 CRÍTICO:** El playbook **fallará** si no existe el pool `Pool 4: Medios`
+**🚨 CRÍTICO:** El playbook **fallará** si no existe el pool `homelab-storage`
 
 #### **Verificar Discos Disponibles:**
 En TrueNAS → **Storage** → **Disks**, deberías ver:
@@ -310,8 +629,14 @@ En TrueNAS → **Storage** → **Disks**, deberías ver:
 
 2. **Configuración del Pool:**
    ```
-   Nombre: Pool 4: Medios
+   Nombre: homelab-storage
    Layout: Mirror (RECOMENDADO para protección de datos)
+   
+   ⚠️ IMPORTANTE: Los nombres ZFS NO pueden contener:
+   - Espacios en blanco
+   - Dos puntos (:)
+   - Caracteres especiales
+   Usa guiones (-) o guiones bajos (_)
    
    Configuración sugerida:
    - Mirror: WDC_WD20EURS + WDC_WD30EZRX (datos principales)  
@@ -349,10 +674,10 @@ En TrueNAS → **Storage** → **Disks**, deberías ver:
 Ejecutar **antes** de continuar con el playbook:
 
 ```bash
-# Verificar que el pool existe
-curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
-
-# Debería mostrar: [{"name": "Pool 4: Medios", ...}]
+ # Verificar que el pool existe
+ curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
+ 
+ # Debería mostrar: [{"name": "homelab-storage", ...}]
 ```
 
 ### **Paso 4: Continuar con Ansible**
@@ -382,6 +707,16 @@ curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
 ```yaml
 # En ansible/vars/homelab_vars.yml, actualizar:
 truenas_data_pool: "NOMBRE_REAL_DEL_POOL"
+
+# Ejemplos de nombres válidos:
+truenas_data_pool: "homelab-storage"  # RECOMENDADO
+truenas_data_pool: "media-pool" 
+truenas_data_pool: "data_storage"
+truenas_data_pool: "tank"            # Nombre ZFS clásico
+
+# ❌ INVÁLIDOS (causarán errores):
+# truenas_data_pool: "Pool 4: Medios"  # Contiene espacios y dos puntos
+# truenas_data_pool: "media pool"      # Contiene espacios
 ```
 
 ### Actualizar Playbook para Usar Plantillas

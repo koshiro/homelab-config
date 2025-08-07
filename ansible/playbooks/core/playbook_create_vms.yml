@@ -8,8 +8,8 @@
     - name: Copiar clave SSH pública al servidor Proxmox
       ansible.builtin.copy:
         src: ~/.ssh/id_rsa.pub
-        dest: ~/.ssh/authorized_keys
-        mode: '0600'
+        dest: /tmp/my_public_key.pub
+        mode: '0644'
 
     - name: Verificar que las plantillas existan
       ansible.builtin.command: "qm list"
@@ -36,6 +36,19 @@
         extended: true
       register: clone_results
       failed_when: clone_results.rc != 0 and "already exists" not in clone_results.stderr
+
+    - name: Redimensionar discos principales a tamaños adecuados
+      ansible.builtin.command: >
+        qm resize {{ item.vmid }}
+        {{ 'ide0' if item.name == 'truenas-core' else 'scsi0' }}
+        {{ item.disk_size }}M
+      loop: "{{ vms }}"
+      when: item.disk_size is defined
+      register: resize_results
+      failed_when: 
+        - resize_results.rc != 0
+        - "'same or smaller than current size' not in resize_results.stderr"
+      ignore_errors: true
 
     - name: Configurar especificaciones de hardware de las VMs
       ansible.builtin.command: >
@@ -72,10 +85,10 @@
     - name: Configurar cloud-init para acceso SSH (solo Ubuntu/Kubernetes nodes)
       ansible.builtin.command: >
         qm set {{ item.vmid }}
-        --ciuser root
-        --cipassword "{{ item.initial_password | default(truenas_initial_root_password) }}"
+        --ciuser ubuntu
+        --cipassword "{{ item.initial_password | default('ubuntu') }}"
         --ipconfig0 "ip={{ item.ip }}/24,gw={{ network_gateway }}"
-        --sshkeys ~/.ssh/authorized_keys
+        --sshkeys /tmp/my_public_key.pub
       loop: "{{ vms }}"
       when: "'k3s' in item.name"
 

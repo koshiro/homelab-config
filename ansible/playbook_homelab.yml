@@ -34,29 +34,261 @@
   import_playbook: playbooks/core/playbook_configure_cluster.yml
   tags: [k3s, cluster]
 
-- name: 6. Desplegar aplicaciones base (Gitea, Traefik, etc.)
-  hosts: k3s_nodes[0]
+- name: 6. Configurar Túnel de Cloudflare (desde .env)
+  hosts: localhost
+  connection: local
   gather_facts: false
   vars_files:
     - vars/homelab_vars.yml
-  tags: [apps, base]
+  tags: [cloudflare, tunnel]
   tasks:
-    - name: Esperar a que kubectl esté completamente funcional
-      ansible.builtin.shell: "/usr/local/bin/k3s kubectl get nodes"
-      retries: 10
-      delay: 15
-      until: kubectl_check.rc == 0
-      register: kubectl_check
+    - name: Leer archivo .env
+      ansible.builtin.slurp:
+        src: .env
+      register: env_content
 
-    - name: Aplicar manifiestos base del clúster
-      ansible.builtin.command: "/usr/local/bin/k3s kubectl apply -k ../cluster"
-      register: manifest_apply
+    - name: Extraer variables de Cloudflare del .env
+      ansible.builtin.set_fact:
+        cf_domain: "{{ (env_content.content | b64decode).split('\n') | select('match', '^DOMAIN_NAME=') | first | regex_replace('^DOMAIN_NAME=(.*)$', '\\1') }}"
+        cf_email: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CF_API_EMAIL=') | first | regex_replace('^CF_API_EMAIL=(.*)$', '\\1') }}"
+        cf_api_key: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CF_API_KEY=') | first | regex_replace('^CF_API_KEY=(.*)$', '\\1') }}"
+        cf_tunnel_token: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CLOUDFLARE_TUNNEL_TOKEN=') | first | regex_replace('^CLOUDFLARE_TUNNEL_TOKEN=(.*)$', '\\1') }}"
+
+    - name: Decodificar token del túnel
+      ansible.builtin.set_fact:
+        tunnel_data: "{{ cf_tunnel_token | b64decode | from_json }}"
+
+    - name: Configurar Cloudflare Tunnel en k3s
+      ansible.builtin.shell: |
+        ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.131 "
+        # Crear namespace
+        sudo k3s kubectl create namespace cloudflared --dry-run=client -o yaml | sudo k3s kubectl apply -f - &&
+        
+        # Crear secret de credenciales
+        cat <<EOF | sudo k3s kubectl apply -f -
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: cloudflare-tunnel-credentials
+          namespace: cloudflared
+        type: Opaque
+        stringData:
+          credentials.json: |
+            {
+              \"AccountTag\": \"{{ tunnel_data.a }}\",
+              \"TunnelID\": \"{{ tunnel_data.t }}\",
+              \"TunnelSecret\": \"{{ tunnel_data.s }}\"
+            }
+        EOF &&
+        
+        # Crear ConfigMap de configuración del túnel
+        cat <<EOF | sudo k3s kubectl apply -f -
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: cloudflared-config
+          namespace: cloudflared
+        data:
+          config.yaml: |
+            tunnel: {{ tunnel_data.t }}
+            credentials-file: /etc/cloudflared/creds/credentials.json
+            metrics: 0.0.0.0:2000
+            no-autoupdate: true
+            ingress:
+            - hostname: {{ cf_domain }}
+              service: https://192.168.1.131:31280
+            - hostname: \"*.{{ cf_domain }}\"
+              service: https://192.168.1.131:31280
+           - service: http_status:404
+        EOF &&
+        
+        # Crear deployment de cloudflared
+        cat <<EOF | sudo k3s kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: cloudflared
+          namespace: cloudflared
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: cloudflared
+          template:
+            metadata:
+              labels:
+                app: cloudflared
+            spec:
+              containers:
+              - name: cloudflared
+                image: cloudflare/cloudflared:latest
+                args:
+                - tunnel
+                - --config
+                - /etc/cloudflared/config/config.yaml
+                - run
+                livenessProbe:
+                  httpGet:
+                    path: /ready
+                    port: 2000
+                  failureThreshold: 1
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                volumeMounts:
+                - name: config
+                  mountPath: /etc/cloudflared/config
+                  readOnly: true
+                - name: creds
+                  mountPath: /etc/cloudflared/creds
+                  readOnly: true
+              volumes:
+              - name: creds
+                secret:
+                  secretName: cloudflare-tunnel-credentials
+              - name: config
+                configMap:
+                  name: cloudflared-config
+                  items:
+                  - key: config.yaml
+                    path: config.yaml
+        EOF"
+      register: cloudflare_setup_result
+
+    - name: Obtener información del túnel desde Cloudflare API
+      ansible.builtin.uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ tunnel_data.a }}/cfd_tunnel/{{ tunnel_data.t }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cf_api_key }}"
+          Content-Type: "application/json"
+        status_code: 200
+      register: tunnel_info
       retries: 3
-      delay: 30
+      delay: 5
 
-    - name: Mostrar resultado de aplicación de manifiestos
+    - name: Extraer hostname del túnel
+      ansible.builtin.set_fact:
+        tunnel_hostname: "{{ tunnel_data.t }}.cfargotunnel.com"
+
+    - name: Definir servicios a exponer públicamente
+      ansible.builtin.set_fact:
+        public_services:
+          - { subdomain: "gitea", description: "Gitea Git Repository" }
+          - { subdomain: "traefik", description: "Traefik Dashboard" }
+          - { subdomain: "sonarr", description: "Sonarr TV Shows" }
+          - { subdomain: "radarr", description: "Radarr Movies" }
+          - { subdomain: "prowlarr", description: "Prowlarr Indexer" }
+          - { subdomain: "overseerr", description: "Overseerr Media Request" }
+          - { subdomain: "plex", description: "Plex Media Server" }
+
+    - name: Obtener Zone ID del dominio en Cloudflare
+      ansible.builtin.uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ cf_domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cf_api_key }}"
+          Content-Type: "application/json"
+        status_code: 200
+      register: zone_info
+
+    - name: Extraer Zone ID
+      ansible.builtin.set_fact:
+        cf_zone_id: "{{ zone_info.json.result[0].id }}"
+
+    - name: Crear registros DNS CNAME para servicios públicos
+      ansible.builtin.uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cf_zone_id }}/dns_records"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cf_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          type: "CNAME"
+          name: "{{ item.subdomain }}.{{ cf_domain }}"
+          content: "{{ tunnel_hostname }}"
+          ttl: 1
+          comment: "{{ item.description }} - Auto-created by homelab"
+        status_code: [200, 400]  # 400 si el registro ya existe
+      loop: "{{ public_services }}"
+      register: dns_results
+      failed_when: 
+        - dns_results.status == 400
+        - "'already exists' not in (dns_results.json.errors[0].message | default(''))"
+
+    - name: Crear registro CNAME para dominio principal
+      ansible.builtin.uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cf_zone_id }}/dns_records"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cf_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          type: "CNAME"
+          name: "{{ cf_domain }}"
+          content: "{{ tunnel_hostname }}"
+          ttl: 1
+          comment: "Main domain - Auto-created by homelab"
+        status_code: [200, 400]
+      register: main_dns_result
+      failed_when: 
+        - main_dns_result.status == 400
+        - "'already exists' not in (main_dns_result.json.errors[0].message | default(''))"
+
+    - name: Configurar IngressRoute correcto para Traefik Dashboard
+      ansible.builtin.shell: |
+        ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.131 "
+        cat <<EOF | sudo k3s kubectl apply -f -
+        apiVersion: traefik.containo.us/v1alpha1
+        kind: IngressRoute
+        metadata:
+          name: traefik-dashboard
+          namespace: kube-system
+        spec:
+          entryPoints:
+            - websecure
+          routes:
+          - match: Host(\"traefik.{{ cf_domain }}\")
+            kind: Rule
+            services:
+            - name: api@internal
+              kind: TraefikService
+        EOF"
+      register: traefik_ingress_result
+
+    - name: Verificar estado del túnel Cloudflare
+      ansible.builtin.shell: |
+        ssh -o StrictHostKeyChecking=no ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n cloudflared"
+      register: tunnel_status
+      retries: 3
+      delay: 10
+
+    - name: Mostrar resumen de configuración DNS
       ansible.builtin.debug:
-        msg: "Manifiestos aplicados: {{ manifest_apply.stdout_lines }}"
+        msg: |
+          ✅ TÚNEL CLOUDFLARE Y DNS CONFIGURADOS
+          ===========================================
+          Dominio: {{ cf_domain }}
+          Tunnel ID: {{ tunnel_data.t }}
+          Tunnel Hostname: {{ tunnel_hostname }}
+          
+          🌐 URLs PÚBLICAS CONFIGURADAS:
+          {% for service in public_services %}
+          - https://{{ service.subdomain }}.{{ cf_domain }} ({{ service.description }})
+          {% endfor %}
+          - https://{{ cf_domain }} (Dominio principal)
+          
+          🔧 CONFIGURACIÓN TRAEFIK:
+          - IngressRoute configurado para HTTPS
+          - Entrypoint: websecure
+          - Puerto interno: 192.168.1.131:31280
+          
+          📊 ESTADO DEL TÚNEL:
+          {{ tunnel_status.stdout_lines | join('\n          ') }}
+          
+          ⚠️  IMPORTANTE: Configura manualmente los Public Hostnames en Cloudflare Zero Trust
+          ⚠️  Puede tomar 1-2 minutos para que los DNS se propaguen.
 
 - name: 7. Configurar el Ecosistema de Gitea y GitOps
   import_playbook: playbooks/core/playbook_setup_gitea_ecosystem.yml

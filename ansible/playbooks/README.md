@@ -52,7 +52,17 @@ Estos playbooks se ejecutan secuencialmente mediante `ansible/playbook_homelab.y
   - Configuración de kubectl
 - **Tags**: `k3s`, `cluster`
 
-### **6. Setup Gitea + GitOps (`playbook_setup_gitea_ecosystem.yml`)**
+### **6. Configurar Cloudflare Tunnel (integrado en pipeline principal)**
+- **Propósito**: Configuración automática del túnel de Cloudflare
+- **Acciones**:
+  - Lee credenciales del archivo `.env`
+  - Decodifica token del túnel
+  - Despliega `cloudflared` pods en k3s
+  - Configura ingress para dominio principal
+  - **Configura IngressRoute correcto para Traefik Dashboard (HTTPS)**
+- **Tags**: `cloudflare`, `tunnel`
+
+### **7. Setup Gitea + GitOps (`playbook_setup_gitea_ecosystem.yml`)**
 - **Propósito**: Establecer el ecosistema de desarrollo completo
 - **Acciones**: 
   - Configura Gitea (crear repos, tokens)
@@ -86,6 +96,12 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags k3s
 
 # Solo TrueNAS
 ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
+
+# Solo Cloudflare Tunnel
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags cloudflare
+
+# Solo GitOps
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags gitops
 ```
 
 ### **Utilidades Individuales**

@@ -7,8 +7,8 @@ metadata:
 data:
   app.ini: |
     [server]
-    ROOT_URL = https://gitea.homelab.local
-    SSH_DOMAIN = gitea.homelab.local
+    ROOT_URL = https://gitea.danielriquelme.cl
+    SSH_DOMAIN = gitea.danielriquelme.cl
     SSH_PORT = 22
 
     [database]

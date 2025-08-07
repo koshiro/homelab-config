@@ -1,0 +1,41 @@
+{
+  "config": {
+    "ingress": [
+      {
+        "hostname": "traefik.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "gitea.danielriquelme.cl", 
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "sonarr.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "radarr.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "prowlarr.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "overseerr.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "plex.danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "hostname": "danielriquelme.cl",
+        "service": "https://192.168.1.131:31280"
+      },
+      {
+        "service": "http_status:404"
+      }
+    ]
+  }
+}
