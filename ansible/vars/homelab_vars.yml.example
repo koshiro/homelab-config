@@ -25,7 +25,7 @@ vms:
     cores: 2
     memory: 8192 # 8GB
     disk_size: "32G"
-    storage_pool: "Pool 1: Sistema/VMs"
+    storage_pool: "nvme-vms"
     # Passthrough de los discos de datos. Reemplaza con los IDs de tus discos.
     passthrough_disks:
       - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_870_QVO_2TB_S5SSNF0R40..."
@@ -37,7 +37,7 @@ vms:
     cores: 4
     memory: 16384 # 16GB
     disk_size: "50G"
-    storage_pool: "Pool 1: Sistema/VMs"
+    storage_pool: "nvme-vms"
     # Passthrough de la GPU. Reemplaza con el ID de tu GPU.
     passthrough_gpu: "01:00"
 
@@ -47,7 +47,7 @@ vms:
     cores: 4
     memory: 16384 # 16GB
     disk_size: "50G"
-    storage_pool: "Pool 1: Sistema/VMs"
+    storage_pool: "nvme-vms"
 
   - name: k3s-node-3
     vmid: 103
@@ -55,7 +55,7 @@ vms:
     cores: 4
     memory: 16384 # 16GB
     disk_size: "50G"
-    storage_pool: "Pool 1: Sistema/VMs"
+    storage_pool: "nvme-vms"
 
 # Configuración de TrueNAS
 truenas_data_pool: "Pool 4: Medios" # Nombre del pool de ZFS para datos
