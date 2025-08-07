@@ -42,11 +42,10 @@
         filename: ceph
 
     - name: Añadir repositorio pvetest (deshabilitado)
-      ansible.builtin.apt_repository:
-        repo: "deb http://download.proxmox.com/debian/pve trixie pvetest"
-        state: present
-        enabled: no
-        filename: pvetest
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/pvetest.list
+        content: |
+          # deb http://download.proxmox.com/debian/pve trixie pvetest
 
     - name: Deshabilitar nag de suscripción
       ansible.builtin.copy:
