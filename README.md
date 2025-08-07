@@ -53,7 +53,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         ```bash
         cp ansible/vars/homelab_vars.yml.example ansible/vars/homelab_vars.yml
         ```
-    *   **Edita `ansible/vars/homelab_vars.yml`** y rellena todos los valores. Este es el único fichero que necesitas modificar.
+    *   **Edita `ansible/vars/homelab_vars.yml`** y rellena los valores iniciales. Este es el único fichero que necesitas modificar manualmente al principio. Ten en cuenta que algunos valores, como la `truenas_api_key`, serán actualizados automáticamente por Ansible durante la ejecución del playbook.
 
 3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
     *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
