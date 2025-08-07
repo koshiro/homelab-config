@@ -83,7 +83,6 @@
       ansible.builtin.apt:
         name: tailscale
         state: present
-        update_cache: yes
 
     - name: Habilitar y iniciar el servicio Tailscale
       ansible.builtin.systemd:
