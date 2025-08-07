@@ -40,11 +40,13 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
 ### Pasos de Configuración
 
-1.  **Clonar el Repositorio:**
+1.  **Clonar el Repositorio (en tu máquina local):**
+    Este paso se realiza en tu máquina local, desde donde ejecutarás los playbooks de Ansible. Si tu repositorio es privado, asegúrate de tener configuradas las credenciales de Git (por ejemplo, claves SSH o tokens de acceso personal) en tu máquina local.
     ```bash
     git clone https://github.com/tu_usuario/homelab-config.git
     cd homelab-config
     ```
+    *   **Nota:** Si ya te encuentras en el directorio `homelab-config` en tu máquina local, puedes omitir este paso.
 
 2.  **Configurar las Variables:**
     *   Copia el fichero de ejemplo:
@@ -55,6 +57,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
 3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
     *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
+        *   **Después de la instalación de Proxmox VE, ejecuta el script `post-pve-install-pve9.sh`** para configurar los repositorios y realizar actualizaciones iniciales.
     *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `nvme-vms`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
 
 4.  **Ejecutar el Playbook Principal:**
@@ -101,7 +104,7 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
             *   Espera a que la API de Gitea esté completamente disponible.
             *   Crea un token de administrador temporal en Gitea.
             *   Crea los repositorios `homelab-config` y `tattoo-app` en Gitea.
-            *   Clona el repositorio `homelab-config` desde Gitea, copia los manifiestos locales del directorio `cluster/` a él, y hace un `commit` y `push` inicial.
+            *   Clona el repositorio `homelab-config` desde Gitea (asegurando que la VM tenga acceso y credenciales si el repositorio es privado), copia los manifiestos locales del directorio `cluster/` a él, y hace un `commit` y `push` inicial.
             *   Configura FluxCD para que apunte a este nuevo repositorio `homelab-config` en Gitea, estableciendo el ciclo de GitOps.
             *   Obtiene el token de registro del Gitea Actions Runner y lo configura en Kubernetes.
             *   **Revoca el token de administrador de Gitea** para mantener la seguridad.

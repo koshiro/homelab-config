@@ -66,5 +66,5 @@ truenas_datasets:
   - { name: "config-backups", description: "Backups de configuración de aplicaciones" }
 
 # Configuración de GitOps
-gitops_repo_url: "https://github.com/tu_usuario/homelab-config.git"
+gitops_repo_url: "http://gitea.homelab.local/tu_usuario/homelab-config.git" # Cambia esto a la URL de tu repositorio homelab-config en tu instancia de Gitea autohospedada
 gitops_repo_branch: "main"

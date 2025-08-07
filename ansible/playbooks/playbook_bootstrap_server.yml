@@ -13,3 +13,33 @@
       apt:
         name: ["qemu-guest-agent", "git", "vim"]
         state: present
+
+    - name: Instalar dependencias para Tailscale
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - curl
+        state: present
+
+    - name: Añadir la clave GPG de Tailscale
+      ansible.builtin.apt_key:
+        url: https://pkgs.tailscale.com/stable/debian/trixie.gpg
+        state: present
+
+    - name: Añadir el repositorio de Tailscale
+      ansible.builtin.apt_repository:
+        repo: deb https://pkgs.tailscale.com/stable/debian trixie main
+        state: present
+        filename: tailscale
+
+    - name: Instalar Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: yes
+
+    - name: Habilitar y iniciar el servicio Tailscale
+      ansible.builtin.systemd:
+        name: tailscale
+        state: started
+        enabled: yes
