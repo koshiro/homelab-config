@@ -114,7 +114,64 @@
         state: started
         enabled: yes
 
+    # Configuración de GPU Passthrough
+    - name: Habilitar IOMMU en GRUB
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction vfio-pci.ids={{ gpu_vendor_device_id | default("") }}"'
+        backup: yes
+      register: grub_config_changed
+
+    - name: Actualizar GRUB
+      ansible.builtin.command: update-grub
+      when: grub_config_changed.changed
+
+    - name: Agregar módulos VFIO al sistema
+      ansible.builtin.lineinfile:
+        path: /etc/modules
+        line: "{{ item }}"
+        create: yes
+      loop:
+        - vfio
+        - vfio_iommu_type1
+        - vfio_pci
+        - vfio_virqfd
+      register: modules_config_changed
+
+    - name: Blacklist drivers NVIDIA
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/blacklist-nvidia.conf
+        content: |
+          blacklist nvidia
+          blacklist nvidia_drm
+          blacklist nvidia_modeset
+          blacklist nouveau
+        mode: '0644'
+      register: nvidia_blacklist_changed
+
+    - name: Configurar VFIO para capturar GPU específica
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/vfio.conf
+        content: |
+          options vfio-pci ids={{ gpu_vendor_device_id | default("10de:2484,10de:228b") }}
+          softdep nvidia pre: vfio-pci
+          softdep nvidia_drm pre: vfio-pci
+          softdep nvidia_modeset pre: vfio-pci
+          softdep nouveau pre: vfio-pci
+        mode: '0644'
+      register: vfio_config_changed
+      when: gpu_vendor_device_id is defined
+
+    - name: Actualizar initramfs
+      ansible.builtin.command: update-initramfs -u
+      when: modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed
+
+    - name: Verificar si necesita reinicio para GPU passthrough
+      ansible.builtin.set_fact:
+        gpu_reboot_required: "{{ grub_config_changed.changed or modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed }}"
+
     - name: Reiniciar Proxmox VE (si es necesario)
       ansible.builtin.reboot:
         reboot_timeout: 600 # Esperar hasta 10 minutos para el reinicio
-      when: ansible_reboot_required|default(false)
+      when: ansible_reboot_required|default(false) or gpu_reboot_required|default(false)

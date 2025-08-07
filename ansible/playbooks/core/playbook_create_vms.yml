@@ -1,0 +1,74 @@
+# ansible/playbooks/playbook_create_vms.yml
+- name: Crear Máquinas Virtuales en Proxmox
+  hosts: proxmox_host
+  vars_files:
+    - ../vars/homelab_vars.yml
+
+  tasks:
+    - name: Copiar clave SSH pública al servidor Proxmox
+      ansible.builtin.copy:
+        src: ~/.ssh/id_rsa.pub
+        dest: ~/.ssh/authorized_keys
+        mode: '0600'
+
+    - name: Verificar que las plantillas existan
+      ansible.builtin.command: "qm list"
+      register: vm_list_output
+      changed_when: false
+
+    - name: Mostrar VMs existentes para verificación
+      ansible.builtin.debug:
+        msg: "VMs actuales: {{ vm_list_output.stdout_lines }}"
+
+    - name: Obtener ID numérico de las plantillas
+      ansible.builtin.shell: "qm list | grep '{{ item.template }}' | awk '{print $1}'"
+      loop: "{{ vms }}"
+      register: template_ids
+      changed_when: false
+
+    - name: Crear VMs desde plantillas usando qm clone
+      ansible.builtin.command: >
+        qm clone {{ template_ids.results[ansible_loop.index0].stdout }} {{ item.vmid }} 
+        --name {{ item.name }}
+        --full
+      loop: "{{ vms }}"
+      loop_control:
+        extended: true
+      register: clone_results
+      failed_when: clone_results.rc != 0 and "already exists" not in clone_results.stderr
+
+    - name: Configurar especificaciones de hardware de las VMs
+      ansible.builtin.command: >
+        qm set {{ item.vmid }}
+        --cores {{ item.cores }}
+        --memory {{ item.memory }}
+        --net0 virtio,bridge=vmbr0
+      loop: "{{ vms }}"
+
+    - name: Configurar cloud-init para acceso SSH (solo Ubuntu/Kubernetes nodes)
+      ansible.builtin.command: >
+        qm set {{ item.vmid }}
+        --ciuser root
+        --cipassword "{{ item.initial_password | default(truenas_initial_root_password) }}"
+        --ipconfig0 "ip={{ item.ip }}/24,gw={{ network_gateway }}"
+        --sshkeys ~/.ssh/authorized_keys
+      loop: "{{ vms }}"
+      when: "'k3s' in item.name"
+
+    - name: Configurar passthrough de GPU (si está definido)
+      ansible.builtin.command: "qm set {{ item.vmid }} --hostpci0 {{ item.passthrough_gpu }}"
+      loop: "{{ vms }}"
+      when: item.passthrough_gpu is defined
+
+    - name: Iniciar VMs
+      ansible.builtin.command: "qm start {{ item.vmid }}"
+      loop: "{{ vms }}"
+      register: start_results
+      failed_when: start_results.rc != 0 and "already running" not in start_results.stderr
+
+    # El passthrough de discos es más complejo y a menudo requiere
+    # configuración manual o scripts más avanzados. Este es un ejemplo simplificado.
+    - name: Adjuntar discos en Passthrough a TrueNAS (Ejemplo)
+      command: "qm set {{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).vmid }} --scsi1 {{ item }}"
+      loop: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks }}"
+      when: (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks is defined

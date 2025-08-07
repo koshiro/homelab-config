@@ -121,51 +121,128 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
     ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
     ```
 
+    **🚨 IMPORTANTE - Requisitos de Espacio en Disco:**
+    - **Mínimo absoluto**: 10GB por nodo k3s
+    - **Recomendado**: 20GB+ por nodo para producción
+    - Las VMs con menos de 8GB de espacio libre **FALLARÁN** durante la instalación de k3s
+
     **¿Qué hace este playbook?**
 
-    El `playbook_homelab.yml` es el orquestador maestro. Ejecuta una secuencia de playbooks más pequeños, cada uno con una responsabilidad específica, para construir tu homelab desde cero:
+    El `playbook_homelab.yml` es el orquestador maestro organizado en una estructura limpia de playbooks especializados:
+
+    ## 📁 **Playbooks Core (ansible/playbooks/core/)**
 
     *   **0. Bootstrap del Servidor Proxmox (`playbook_bootstrap_server.yml`):**
         *   **Propósito:** Prepara el sistema operativo base de tu servidor Proxmox.
-        *   **Qué hace:** Actualiza los paquetes del sistema, instala herramientas esenciales como `git` y `vim`, y asegura que el host esté listo para la virtualización.
+        *   **Qué hace:** Actualiza los paquetes del sistema, configura repositorios, instala herramientas esenciales, configura GPU passthrough y Tailscale.
 
     *   **1. Crear Máquinas Virtuales (`playbook_create_vms.yml`):**
-        *   **Propósito:** Provisiona las máquinas virtuales que formarán tu clúster de Kubernetes y tu instancia de TrueNAS.
-        *   **Qué hace:** Se conecta a la API de Proxmox y crea las VMs (`truenas-core`, `k3s-node-1`, `k3s-node-2`, `k3s-node-3`) con los recursos (CPU, RAM, disco) y configuraciones de red especificados en `homelab_vars.yml`. Los discos virtuales de estas VMs se crearán en el pool ZFS `nvme-vms` que configuraste manualmente.
+        *   **Propósito:** Provisiona las máquinas virtuales con dimensionamiento adecuado.
+        *   **Qué hace:** Crea VMs con **discos de 10GB mínimo**, configura cloud-init, y establece la red. Los discos se crean en el pool ZFS configurado.
 
-    *   **2. Esperar a que las VMs estén listas:**
-        *   **Propósito:** Asegura que las VMs recién creadas estén arrancadas y accesibles vía SSH antes de intentar configurarlas.
-        *   **Qué hace:** Pausa la ejecución del playbook hasta que pueda establecer una conexión SSH con cada una de las VMs.
+    *   **2. Configuración Inicial de TrueNAS (`playbook_initial_truenas_setup.yml`):**
+        *   **Propósito:** Automatiza la configuración inicial de TrueNAS y genera API Keys.
+        *   **Qué hace:** Crea usuario `ansible`, genera API Key, actualiza automáticamente `homelab_vars.yml` con la API Key generada, y remueve contraseña inicial por seguridad.
 
-    *   **3. Configuración Inicial de TrueNAS y Generación de API Key (`playbook_initial_truenas_setup.yml`):**
-        *   **Propósito:** Automatiza la configuración inicial de TrueNAS y obtiene la API Key necesaria para futuras operaciones.
-        *   **Qué hace:** Se conecta a la VM de TrueNAS (usando las credenciales iniciales de `root`), crea un usuario dedicado para Ansible, genera una API Key para ese usuario, y **actualiza automáticamente el fichero `ansible/vars/homelab_vars.yml` en tu máquina local** con esta API Key. También elimina la contraseña de `root` del fichero de variables por seguridad.
+    *   **3. Configurar TrueNAS (`playbook_configure_truenas.yml`):**
+        *   **Propósito:** Configura el almacenamiento centralizado usando la API de TrueNAS.
+        *   **Qué hace:** Utiliza la API Key generada para crear datasets y recursos compartidos NFS. Habilita el servicio NFS.
 
-    *   **4. Configurar TrueNAS (Datasets y NFS Shares) (`playbook_configure_truenas.yml`):**
-        *   **Propósito:** Configura el almacenamiento centralizado de tu homelab utilizando la API Key generada en el paso anterior.
-        *   **Qué hace:** Se conecta a la API de TrueNAS y crea los pools de ZFS, los datasets y los recursos compartidos NFS que serán utilizados por las aplicaciones de Kubernetes. También habilita el servicio NFS.
+    *   **4. Configurar el Clúster de Kubernetes (`playbook_configure_cluster.yml`):**
+        *   **Propósito:** Instala k3s v1.31.11+k3s1 (LTS) con configuración robusta.
+        *   **Qué hace:** 
+            - Verifica espacio en disco y conectividad
+            - Instala k3s con reintentos automáticos
+            - Configura clúster multi-nodo con validación completa
+            - Incluye verificación de estado final del clúster
 
-    *   **5. Configurar el Clúster de Kubernetes (`playbook_configure_cluster.yml`):**
-        *   **Propósito:** Instala y configura el clúster de Kubernetes (k3s).
-        *   **Qué hace:** Instala k3s en el primer nodo como maestro y luego une los nodos restantes como trabajadores, formando un clúster funcional.
+    *   **5. Desplegar aplicaciones base y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
+        *   **Propósito:** Despliega infraestructura esencial y establece el ecosistema GitOps completo.
+        *   **Qué hace:** 
+            - Espera que Gitea esté disponible
+            - Crea token temporal y repositorios (`homelab-config`, `tattoo-app`)
+            - Configura FluxCD para GitOps automático
+            - Configura Gitea Actions Runner
+            - Revoca tokens temporales por seguridad
 
-    *   **6. Desplegar aplicaciones base (Gitea, Traefik, etc.):**
-        *   **Propósito:** Despliega los componentes esenciales de la infraestructura de Kubernetes que son necesarios para el ecosistema de desarrollo.
-        *   **Qué hace:** Aplica los manifiestos de Kubernetes del directorio `cluster/` (incluyendo Gitea, Traefik, Cloudflared, y el NFS CSI Driver) directamente al clúster. Esto asegura que Gitea esté operativo para el siguiente paso.
+    ## 🛠️ **Playbooks Utils (ansible/playbooks/utils/)**
 
-    *   **7. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
-        *   **Propósito:** Establece la conexión entre Ansible, Gitea y FluxCD para crear el ecosistema de desarrollo autogestionado.
-        *   **Qué hace:**
-            *   Espera a que la API de Gitea esté completamente disponible.
-            *   Crea un token de administrador temporal en Gitea.
-            *   Crea los repositorios `homelab-config` y `tattoo-app` en Gitea.
-            *   Clona el repositorio `homelab-config` desde Gitea (asegurando que la VM tenga acceso y credenciales si el repositorio es privado), copia los manifiestos locales del directorio `cluster/` a él, y hace un `commit` y `push` inicial.
-            *   Configura FluxCD para que apunte a este nuevo repositorio `homelab-config` en Gitea, estableciendo el ciclo de GitOps.
-            *   Obtiene el token de registro del Gitea Actions Runner y lo configura en Kubernetes.
-            *   **Revoca el token de administrador de Gitea** para mantener la seguridad.
+    *   **Redimensionar Discos VMs (`playbook_resize_vm_disks.yml`):**
+        *   **Propósito:** Utilitario para expandir discos de VMs existentes.
+        *   **Uso:** `ansible-playbook -i ansible/inventory ansible/playbooks/utils/playbook_resize_vm_disks.yml`
+
+    ## 🏷️ **Tags de Ansible Disponibles:**
+    ```bash
+    # Ejecutar solo bootstrap de Proxmox
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags bootstrap
+
+    # Solo crear y configurar VMs
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provision
+
+    # Solo configurar k3s
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags k3s
+
+    # Solo configurar TrueNAS
+    ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
+    ```
 
 7.  **¡Sistema Autónomo!**
     Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo. FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea, y el Gitea Actions Runner está listo para construir y desplegar tus aplicaciones.
+
+## 🚨 **Troubleshooting y Comandos Útiles**
+
+### **Problema: Espacio Insuficiente en Disco**
+```bash
+# Verificar espacio en los nodos
+ansible k3s_nodes -i ansible/inventory -m shell -a "df -h /"
+
+# Redimensionar discos VMs (requiere apagar VMs)
+ansible-playbook -i ansible/inventory ansible/playbooks/utils/playbook_resize_vm_disks.yml
+
+# Limpiar espacio manualmente en un nodo
+ssh k3s-node-1
+sudo apt clean && sudo apt autoremove -y
+sudo journalctl --vacuum-time=3d
+```
+
+### **Problema: k3s Falló Durante Instalación**
+```bash
+# Limpiar instalación fallida
+ansible k3s_nodes -i ansible/inventory -m shell -a "sudo /usr/local/bin/k3s-uninstall.sh || sudo /usr/local/bin/k3s-agent-uninstall.sh" || true
+
+# Reinstalar solo k3s
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags k3s
+```
+
+### **Verificar Estado del Sistema**
+```bash
+# Estado del clúster
+ssh k3s-node-1 "sudo k3s kubectl get nodes -o wide"
+
+# Estado de aplicaciones
+ssh k3s-node-1 "sudo k3s kubectl get all --all-namespaces"
+
+# Logs de k3s
+ssh k3s-node-1 "sudo journalctl -u k3s -f"
+```
+
+### **URLs de Acceso Post-Instalación**
+- **Gitea**: http://gitea.homelab.local
+- **TrueNAS**: https://192.168.1.200
+- **Traefik Dashboard**: http://traefik.homelab.local
+- **Proxmox**: https://192.168.1.100:8006
+
+### **Comandos de Mantenimiento**
+```bash
+# Actualizar solo TrueNAS
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
+
+# Recrear solo las VMs
+ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provision
+
+# Verificar conectividad de todas las VMs
+ansible all -i ansible/inventory -m ping
+```
 
 ## 🔧 Preparar Plantillas de VM (Paso Crítico)
 
@@ -214,6 +291,18 @@ Edita `ansible/vars/homelab_vars.yml` y añade los IDs de plantilla:
 vm_templates:
   ubuntu: 9000      # ID de tu plantilla Ubuntu
   truenas: 9001     # ID de tu plantilla TrueNAS
+
+# IMPORTANTE: Especificaciones mínimas de VMs
+vms:
+  - name: k3s-node-1
+    vmid: 102
+    cores: 4
+    memory: 4096  # 4GB RAM
+    disk: 20480   # 20GB disco (MÍNIMO para k3s)
+  # ... resto de nodos con especificaciones similares
 ```
 
-⚠️ **Sin estas plantillas, el playbook fallará.** Este es el paso más importante que faltaba en la documentación original.
+⚠️ **Requisitos Críticos:**
+- **Sin estas plantillas, el playbook fallará**
+- **Discos menores a 10GB causarán fallos en k3s**
+- **Recomendado: 20GB+ por nodo para producción estable**

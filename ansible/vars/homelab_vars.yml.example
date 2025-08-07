@@ -8,6 +8,9 @@ proxmox_user: "root@pam"
 proxmox_api_token_id: "tu_token_id"
 proxmox_api_token_secret: "tu_token_secret"
 
+# Configuración de GPU Passthrough (obtener IDs con: lspci -n -s XX:XX)
+gpu_vendor_device_id: "10de:2484,10de:228b"  # Ejemplo: NVIDIA RTX 3070 (VGA + Audio)
+
 # Conexión a TrueNAS
 truenas_host: "192.168.1.20"
 truenas_initial_root_password: "tu_contraseña_root_inicial_truenas"
@@ -29,7 +32,7 @@ vms:
     template: "{{ vm_templates.truenas }}"
     ip: "{{ truenas_host }}"
     cores: 2
-    memory: 8192 # 8GB
+    memory: 2048 # 2GB (ajustado para servidores con RAM limitada)
     # Passthrough de los discos de datos. Reemplaza con los IDs de tus discos.
     passthrough_disks:
       - "/dev/disk/by-id/scsi-SATA_Samsung_SSD_870_QVO_2TB_S5SSNF0R40..."
@@ -40,7 +43,7 @@ vms:
     template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.31"
     cores: 4
-    memory: 16384 # 16GB
+    memory: 4096 # 4GB (ajustado para servidores con RAM limitada)
     # Passthrough de la GPU. Reemplaza con el ID de tu GPU.
     passthrough_gpu: "01:00.0"
 
@@ -49,14 +52,14 @@ vms:
     template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.32"
     cores: 4
-    memory: 16384 # 16GB
+    memory: 4096 # 4GB (ajustado para servidores con RAM limitada)
 
   - name: k3s-node-3
     vmid: 103
     template: "{{ vm_templates.ubuntu }}"
     ip: "192.168.1.33"
     cores: 4
-    memory: 16384 # 16GB
+    memory: 4096 # 4GB (ajustado para servidores con RAM limitada)
 
 # Configuración de TrueNAS
 truenas_data_pool: "Pool 4: Medios" # Nombre del pool de ZFS para datos
