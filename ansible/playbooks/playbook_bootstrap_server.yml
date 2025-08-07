@@ -14,6 +14,60 @@
         name: ["qemu-guest-agent", "git", "vim"]
         state: present
 
+    - name: Configurar sources.list para Debian 13 (Trixie)
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list
+        content: |
+          deb http://deb.debian.org/debian trixie main contrib
+          deb http://deb.debian.org/debian trixie-updates main contrib
+          deb http://security.debian.org/debian-security trixie-security main contrib
+
+    - name: Deshabilitar advertencias de firmware non-free
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/no-trixie-firmware.conf
+        content: 'APT::Get::Update::SourceListWarnings::NonFreeFirmware "false";'
+
+    - name: Deshabilitar repositorio pve-enterprise
+      ansible.builtin.apt_repository:
+        repo: "deb https://enterprise.proxmox.com/debian/pve trixie pve-enterprise"
+        state: absent
+        filename: pve-enterprise
+
+    - name: Habilitar repositorio pve-no-subscription
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription"
+        state: present
+        filename: pve-no-subscription
+
+    - name: Deshabilitar repositorio Ceph Squid enterprise
+      ansible.builtin.apt_repository:
+        repo: "deb https://enterprise.proxmox.com/debian/ceph-squid trixie enterprise"
+        state: absent
+        filename: ceph
+
+    - name: Deshabilitar repositorio Ceph Squid no-subscription
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/ceph-squid trixie no-subscription"
+        state: absent
+        filename: ceph
+
+    - name: Añadir repositorio pvetest (deshabilitado)
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve trixie pvetest"
+        state: present
+        enabled: no
+        filename: pvetest
+
+    - name: Deshabilitar nag de suscripción
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/no-nag-script
+        content: 'DPkg::Post-Invoke { "if [ -s /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ] && ! grep -q -F ''NoMoreNagging'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; then echo ''Removing subscription nag from UI...''; sed -i ''/data.status/{s/!//;s/active/NoMoreNagging/}'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; fi" };'
+
+    - name: Actualizar y Dist-Upgrade Proxmox VE
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+
     - name: Instalar dependencias para Tailscale
       ansible.builtin.apt:
         name:
@@ -43,3 +97,8 @@
         name: tailscale
         state: started
         enabled: yes
+
+    - name: Reiniciar Proxmox VE (si es necesario)
+      ansible.builtin.reboot:
+        reboot_timeout: 600 # Esperar hasta 10 minutos para el reinicio
+      when: ansible_reboot_required|default(false)

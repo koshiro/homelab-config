@@ -57,7 +57,6 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
 
 3.  **Instalación de Proxmox y Configuración de Almacenamiento:**
     *   **Instala Proxmox VE** en tu servidor. Durante la instalación, configura el sistema operativo de Proxmox en un **ZFS RAID1 utilizando tus dos SSD SATA (240GB y 120GB)**. Esto proporcionará redundancia para el hipervisor.
-        *   **Después de la instalación de Proxmox VE, ejecuta el script `post-pve-install-pve9.sh`** para configurar los repositorios y realizar actualizaciones iniciales.
     *   Una vez instalado Proxmox, accede a su interfaz web y crea un **nuevo pool ZFS para las VMs utilizando tu NVMe de 512GB**. Nómbralo, por ejemplo, `nvme-vms`. Este pool será el destino de los discos virtuales de tus VMs de Kubernetes. Cuando recibas el segundo NVMe, podrás añadirlo a este pool para crear un espejo.
 
 4.  **Ejecutar el Playbook Principal:**
