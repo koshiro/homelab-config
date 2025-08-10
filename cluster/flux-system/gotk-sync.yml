@@ -27,4 +27,4 @@ spec:
     branch: main
   secretRef:
     name: flux-https-auth # Apuntar al nuevo secreto HTTPS
-  url: http://gitea.gitea.svc.cluster.local:3000/daniel/homelab-config.git # URL HTTP interna
+  url: http://gitea.gitea.svc.cluster.local/daniel/homelab-config.git # URL HTTP interna (puerto 80 por defecto)
