@@ -23,7 +23,7 @@ spec:
       targetPath: nfs.server
   values:
     nfs:
-      path: /mnt/homelab-ssd  # Ruta absoluta para el almacenamiento SSD
+      path: /mnt/homelab-storage  # Temporalmente usando el directorio que funciona
     storageClass:
       name: nfs-ssd
       defaultClass: false
