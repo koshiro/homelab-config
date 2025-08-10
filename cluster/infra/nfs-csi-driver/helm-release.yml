@@ -21,11 +21,9 @@ spec:
       name: cluster-settings
       valuesKey: TRUENAS_HOST
       targetPath: nfs.server
-    - kind: ConfigMap
-      name: cluster-settings
-      valuesKey: TRUENAS_MEDIA_POOL
-      targetPath: nfs.path
   values:
+    nfs:
+      path: /mnt/homelab-storage
     storageClass:
       name: nfs-csi
       defaultClass: false
