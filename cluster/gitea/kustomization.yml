@@ -3,20 +3,20 @@ kind: Kustomization
 namespace: gitea
 resources:
   - namespace.yml
-  - pvc.yml
-  - configmap-app-ini.yml
   - deployment.yml
   - service.yml
-  - postgres.yml
-  - pvc-nvme.yml
   - ingress.yml
   - ingress-tcp.yml
+  - pvc.yml
+  - pvc-nvme.yml
+  - postgres.yml
+  - configmap-app-ini.yml
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
   - networkpolicy-ssh.yml
-  # Runner deshabilitado para reflejar estado actual del clúster
-  # - helm-repository-runner.yml
-  # - helm-release-runner.yml
+  - networkpolicy-flux-ingress.yml
+  - helm-repository-runner.yml
+  - helm-release-runner.yml
 
 # Configuración para que FluxCD sustituya las variables
 patches:

@@ -1,6 +1,7 @@
 # ansible/playbooks/core/playbook_configure_cluster.yml
 - name: Configurar el Clúster de k3s - Versión Robusta y Probada
   hosts: k3s_nodes
+  become: yes
   gather_facts: yes
   serial: false
   vars:
@@ -23,6 +24,13 @@
       register: disk_space
       changed_when: false
       failed_when: (disk_space.stdout | int) < 4000000  # 4GB en KB
+
+    - name: Instalar dependencias base en todos los nodos (incl. cliente NFS)
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+        update_cache: yes
 
     # INSTALACIÓN DEL MAESTRO
     - name: MAESTRO - Descargar script de instalación
