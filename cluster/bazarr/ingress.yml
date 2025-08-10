@@ -4,10 +4,11 @@ metadata:
   name: bazarr-ingress
   namespace: bazarr
   annotations:
-    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
+  ingressClassName: traefik
   rules:
-  - host: bazarr.homelab.local
+  - host: bazarr.danielriquelme.cl
     http:
       paths:
       - path: /

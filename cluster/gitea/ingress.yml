@@ -4,9 +4,8 @@ metadata:
   name: gitea
   namespace: gitea
   annotations:
-    # Configuración para Cloudflare Tunnel
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Configuración para Cloudflare Tunnel vía HTTP
+    traefik.ingress.kubernetes.io/router.entrypoints: web
     # Configuración de seguridad
     traefik.ingress.kubernetes.io/headers-frame-deny: "true"
     traefik.ingress.kubernetes.io/headers-browser-xss-filter: "true"
@@ -17,10 +16,6 @@ metadata:
     traefik.ingress.kubernetes.io/rate-limit-burst: "200"
 spec:
   ingressClassName: traefik
-  tls:
-  - hosts:
-    - gitea.danielriquelme.cl
-    secretName: gitea-tls
   rules:
   - host: gitea.danielriquelme.cl
     http:
@@ -31,4 +26,4 @@ spec:
           service:
             name: gitea
             port:
-              number: 3000
+              number: 80

@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+  labels:
+    app: qbittorrent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      containers:
+      - name: qbittorrent
+        image: linuxserver/qbittorrent:latest
+        ports:
+        - containerPort: 8080
+          name: webui
+        - containerPort: 6881
+          name: bt-tcp
+          protocol: TCP
+        - containerPort: 6881
+          name: bt-udp
+          protocol: UDP
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Etc/UTC"
+        - name: WEBUI_PORT
+          value: "8080"
+        - name: QB_BITTORRENT_PORT
+          value: "6881"
+        - name: QB_WEBUI_PORT
+          value: "8080"
+        - name: QB_BITTORRENT_PORT
+          value: "6881"
+        - name: QB_WEBUI_USERNAME
+          value: "admin"
+        - name: QB_WEBUI_PASSWORD
+          value: "admin"
+        - name: QB_DHT_ENABLED
+          value: "true"
+        - name: QB_PEX_ENABLED
+          value: "true"
+        - name: QB_LSD_ENABLED
+          value: "true"
+        - name: QB_ENCRYPTION
+          value: "1"
+        - name: QB_MAX_CONNECTIONS
+          value: "500"
+        - name: QB_MAX_CONNECTIONS_PER_TORRENT
+          value: "100"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: downloads
+          mountPath: /downloads
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2048Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 15
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: qbittorrent-config
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: qbittorrent-downloads
+

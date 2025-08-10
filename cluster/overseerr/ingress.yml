@@ -4,10 +4,11 @@ metadata:
   name: overseerr-ingress
   namespace: overseerr
   annotations:
-    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
+  ingressClassName: traefik
   rules:
-  - host: overseerr.homelab.local
+  - host: overseerr.danielriquelme.cl
     http:
       paths:
       - path: /

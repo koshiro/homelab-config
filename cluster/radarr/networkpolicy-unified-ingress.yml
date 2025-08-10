@@ -1,0 +1,41 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-unified-ingress
+  namespace: radarr
+spec:
+  podSelector:
+    matchLabels:
+      app: radarr
+  policyTypes:
+  - Ingress
+  ingress:
+  # Permitir tráfico desde Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: traefik
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - protocol: TCP
+      port: 7878
+  # Permitir tráfico desde Overseerr y Bazarr
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: overseerr
+    - namespaceSelector:
+        matchLabels:
+          name: bazarr
+    ports:
+    - protocol: TCP
+      port: 7878

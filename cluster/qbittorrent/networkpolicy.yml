@@ -1,0 +1,170 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: qbittorrent
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-ingress
+  namespace: qbittorrent
+spec:
+  podSelector:
+    matchLabels:
+      app: qbittorrent
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-arr-services
+  namespace: qbittorrent
+spec:
+  podSelector:
+    matchLabels:
+      app: qbittorrent
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: sonarr
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: radarr
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: prowlarr
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: overseerr
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-peer-ingress
+  namespace: qbittorrent
+spec:
+  podSelector:
+    matchLabels:
+      app: qbittorrent
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 6881
+    - protocol: UDP
+      port: 6881
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-egress
+  namespace: qbittorrent
+spec:
+  podSelector:
+    matchLabels:
+      app: qbittorrent
+  policyTypes:
+  - Egress
+  egress:
+  - {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-http-https-egress
+  namespace: qbittorrent
+spec:
+  podSelector:
+    matchLabels:
+      app: qbittorrent
+  policyTypes:
+  - Egress
+  egress:
+  # DNS a CoreDNS
+  - to:
+    - ipBlock:
+        cidr: 10.43.0.10/32
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # HTTP/HTTPS
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+  # BitTorrent
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 6881
+    - protocol: UDP
+      port: 6881
+  # Puertos adicionales
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 8082
+    - protocol: TCP
+      port: 8083
+    - protocol: TCP
+      port: 8084
+    - protocol: TCP
+      port: 8085
+    - protocol: TCP
+      port: 8086
+    - protocol: TCP
+      port: 8087
+    - protocol: TCP
+      port: 8088
+    - protocol: TCP
+      port: 8089
+    - protocol: TCP
+      port: 8090

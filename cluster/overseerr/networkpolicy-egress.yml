@@ -1,0 +1,55 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-overseerr-egress
+  namespace: overseerr
+spec:
+  podSelector:
+    matchLabels:
+      app: overseerr
+  policyTypes:
+  - Egress
+  egress:
+  # DNS (temporalmente permitir a cualquier destino)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # HTTP/HTTPS
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+  # Acceso a Sonarr
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: sonarr
+    ports:
+    - protocol: TCP
+      port: 8989
+  # Acceso a Radarr
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: radarr
+    ports:
+    - protocol: TCP
+      port: 7878
+  # Acceso a Plex
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: plex
+    ports:
+    - protocol: TCP
+      port: 32400

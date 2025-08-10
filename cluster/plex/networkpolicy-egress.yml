@@ -1,0 +1,42 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-plex-egress
+  namespace: plex
+spec:
+  podSelector:
+    matchLabels:
+      app: plex
+  policyTypes:
+  - Egress
+  egress:
+  # DNS a cualquier servidor DNS
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # HTTP/HTTPS a internet (incluyendo plex.tv)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+  # Permitir comunicación con otros servicios en cluster
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 32400
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8989
+    - protocol: TCP
+      port: 7878

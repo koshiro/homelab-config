@@ -39,15 +39,15 @@ spec:
               memory: 1024Mi
           readinessProbe:
             httpGet:
-              path: /api/v1/status
+              path: /
               port: 5055
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/v1/status
+              path: /
               port: 5055
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
       volumes:
         - name: config

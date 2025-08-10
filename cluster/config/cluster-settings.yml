@@ -12,6 +12,8 @@ data:
   # TrueNAS
   TRUENAS_HOST: "{{ truenas_host }}"
   TRUENAS_DATA_POOL: "{{ truenas_data_pool }}"
+  TRUENAS_MEDIA_POOL: "{{ truenas_media_pool | default(truenas_data_pool) }}"
+  TRUENAS_DOWNLOADS_POOL: "{{ truenas_downloads_pool | default(truenas_data_pool) }}"
 
   # GitOps
   GITOPS_REPO_URL: "{{ gitops_repo_url }}"

@@ -15,6 +15,32 @@ spec:
       labels:
         app: transmission
     spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: init-config-rpc-auth
+          image: alpine:3.20
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if [ -f /config/settings.json ]; then
+                # habilitar auth y establecer credenciales
+                sed -i -E 's/"rpc-authentication-required"\s*:\s*(true|false)/"rpc-authentication-required": true/' /config/settings.json || true
+                U=$(cat /secrets/username)
+                P=$(cat /secrets/password)
+                sed -i -E "s/\"rpc-username\"\s*:\s*\".*\"/\"rpc-username\": \"${U}\"/" /config/settings.json || true
+                sed -i -E "s/\"rpc-password\"\s*:\s*\".*\"/\"rpc-password\": \"${P}\"/" /config/settings.json || true
+              fi
+              # asegurar permisos para usuario/grupo 1000
+              chown -R 1000:1000 /config || true
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: transmission-auth-secret
+              mountPath: /secrets
+              readOnly: true
       containers:
         - name: transmission
           image: linuxserver/transmission
@@ -27,9 +53,23 @@ spec:
               value: "1000"
             - name: TZ
               value: "Etc/UTC"
+            - name: TRANSMISSION_RPC_AUTHENTICATION_REQUIRED
+              value: "true"
+            - name: TRANSMISSION_RPC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-auth
+                  key: username
+            - name: TRANSMISSION_RPC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: transmission-auth
+                  key: password
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: downloads
+              mountPath: /downloads
           resources:
             requests:
               cpu: 100m
@@ -51,3 +91,9 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: transmission-config
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: transmission-auth-secret
+          secret:
+            secretName: transmission-auth

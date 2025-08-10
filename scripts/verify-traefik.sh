@@ -60,11 +60,11 @@ fi
 
 # 4. Verificar puertos de Traefik
 echo "4. Verificando puertos de Traefik..."
-TRAEFIK_SERVICE=$(ssh ubuntu@$K3S_NODE "sudo k3s kubectl get service traefik -n kube-system -o jsonpath='{.spec.ports[?(@.name==\"websecure\")].nodePort}'")
-if [ ! -z "$TRAEFIK_SERVICE" ]; then
-    print_status "Puerto HTTPS de Traefik: $TRAEFIK_SERVICE"
+TRAEFIK_HTTP=$(ssh ubuntu@$K3S_NODE "sudo k3s kubectl get service traefik -n kube-system -o jsonpath='{.spec.ports[?(@.name==\"web\")].nodePort}'")
+if [ ! -z "$TRAEFIK_HTTP" ]; then
+    print_status "Puerto HTTP de Traefik: $TRAEFIK_HTTP"
 else
-    print_error "No se pudo obtener el puerto HTTPS de Traefik"
+    print_error "No se pudo obtener el puerto HTTP de Traefik"
     exit 1
 fi
 
@@ -77,13 +77,13 @@ else
     print_warning "No se encontraron pods de Cloudflare Tunnel corriendo"
 fi
 
-# 6. Verificar configuración del túnel
-echo "6. Verificando configuración del túnel..."
-TUNNEL_CONFIG=$(ssh ubuntu@$K3S_NODE "sudo k3s kubectl get configmap cloudflared-config -n cloudflared -o jsonpath='{.data.config\.yaml}'" 2>/dev/null)
-if echo "$TUNNEL_CONFIG" | grep -q "https://$K3S_NODE:$TRAEFIK_SERVICE"; then
-    print_status "Configuración del túnel correcta"
+# 6. Verificar configuración del túnel (remota)
+echo "6. Verificando configuración remota del túnel..."
+CF_LOGS=$(ssh ubuntu@$K3S_NODE "sudo k3s kubectl logs -n cloudflared -l app=cloudflared --tail=50" 2>/dev/null || true)
+if echo "$CF_LOGS" | grep -q "Updated to new configuration"; then
+    print_status "cloudflared cargó la configuración remota"
 else
-    print_warning "Configuración del túnel puede necesitar actualización"
+    print_warning "No se observó actualización de configuración en logs de cloudflared"
 fi
 
 # 7. Verificar DNS
@@ -96,40 +96,31 @@ for subdomain in traefik gitea sonarr radarr; do
     fi
 done
 
-# 8. Verificar conectividad HTTPS
-echo "8. Verificando conectividad HTTPS..."
-if curl -s -k "https://$K3S_NODE:$TRAEFIK_SERVICE" >/dev/null 2>&1; then
-    print_status "Traefik responde en HTTPS localmente"
-else
-    print_error "Traefik no responde en HTTPS localmente"
-fi
+# 8. Verificar conectividad externa via Cloudflare
+echo "8. Verificando conectividad externa via Cloudflare..."
+for host in gitea.$DOMAIN traefik.$DOMAIN; do
+  code=$(curl -sS -o /dev/null -w "%{http_code}" https://$host || true)
+  echo "$host -> $code"
+done
 
-# 9. Verificar certificados
-echo "9. Verificando certificados..."
-CERT_INFO=$(ssh ubuntu@$K3S_NODE "echo | openssl s_client -connect localhost:$TRAEFIK_SERVICE -servername $DOMAIN 2>/dev/null | openssl x509 -noout -dates" 2>/dev/null)
-if [ ! -z "$CERT_INFO" ]; then
-    print_status "Certificados SSL configurados"
-else
-    print_warning "Certificados SSL no encontrados"
-fi
+# 9. Recordatorio sobre certificados
+echo "9. Certificados TLS"
+print_status "TLS se termina en Cloudflare; no se requiere cert interno en Traefik para este flujo"
 
 # 10. Mostrar resumen
 echo ""
 echo "📊 RESUMEN DE VERIFICACIÓN"
 echo "=========================="
 echo "✅ k3s: Funcionando"
-echo "✅ Traefik: Puerto $TRAEFIK_SERVICE"
+echo "✅ Traefik: Puerto $TRAEFIK_HTTP"
 echo "✅ Cloudflare Tunnel: $CLOUDFLARED_PODS pods"
 echo "✅ Conectividad local: OK"
 echo ""
 echo "🌐 URLs de acceso:"
 echo "   - Traefik Dashboard: https://traefik.$DOMAIN"
 echo "   - Gitea: https://gitea.$DOMAIN"
-echo "   - Local: https://$K3S_NODE:$TRAEFIK_SERVICE"
 echo ""
-echo "⚠️  IMPORTANTE: Configura manualmente los Public Hostnames en Cloudflare Zero Trust"
-echo "   - Subdomain: traefik, gitea, sonarr, etc."
-echo "   - Service: https://$K3S_NODE:$TRAEFIK_SERVICE"
+print_status "El túnel está en modo remoto: No crear Public Hostnames en el dashboard"
 echo ""
 
 # 11. Comandos útiles

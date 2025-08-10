@@ -4,10 +4,11 @@ metadata:
   name: prowlarr-ingress
   namespace: prowlarr
   annotations:
-    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
+  ingressClassName: traefik
   rules:
-  - host: prowlarr.homelab.local
+  - host: prowlarr.danielriquelme.cl
     http:
       paths:
       - path: /

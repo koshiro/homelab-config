@@ -84,7 +84,7 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provis
 #### **Opción C: Configurar IP estática manualmente**
 ```bash
 # En la consola VNC de TrueNAS:
-# 1. Configurar IP estática: 192.168.1.19/24
+# 1. Configurar IP estática: 192.168.1.20/24
 # 2. Gateway: 192.168.1.1
 # 3. DNS: 8.8.8.8, 1.1.1.1
 ```
@@ -106,10 +106,10 @@ curl -k https://traefik.danielriquelme.cl/ -v
 ssh root@192.168.1.100 "qm status 101"
 
 # Escanear puertos
-nmap -p 80,443,22 192.168.1.19
+nmap -p 80,443,22 192.168.1.20
 
 # Probar ping
-ping -c 2 192.168.1.19
+ping -c 2 192.168.1.20
 ```
 
 ### **Verificar Cloudflare Tunnel**

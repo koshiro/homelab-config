@@ -8,3 +8,6 @@ resources:
   - ingress.yml
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
+  - secret-auth.yml
+  - middleware-basicauth.yml
+  - middleware-redirect-root.yml

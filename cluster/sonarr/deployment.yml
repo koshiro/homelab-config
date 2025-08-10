@@ -31,6 +31,10 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: media
+              mountPath: /media
           resources:
             requests:
               cpu: 100m
@@ -40,17 +44,23 @@ spec:
               memory: 1024Mi
           readinessProbe:
             httpGet:
-              path: /api/v3/system/status
+              path: /
               port: 8989
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/v3/system/status
+              path: /
               port: 8989
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
       volumes:
         - name: config
           persistentVolumeClaim:
-            claimName: sonarr-config
+            claimName: sonarr-config-pvc
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-shared-pvc
+        - name: media
+          persistentVolumeClaim:
+            claimName: sonarr-media-pvc

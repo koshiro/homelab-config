@@ -5,12 +5,15 @@ metadata:
   name: plex
   namespace: plex
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-production"
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/custom-request-headers: |
+      X-Forwarded-Proto:https
+      X-Forwarded-Host: plex.danielriquelme.cl
+      X-Forwarded-Port: "443"
 spec:
+  ingressClassName: traefik
   rules:
-    - host: plex.\${DOMAIN_NAME}
+    - host: plex.danielriquelme.cl
       http:
         paths:
           - path: /
@@ -20,7 +23,4 @@ spec:
                 name: plex
                 port:
                   number: 32400
-  tls:
-    - hosts:
-        - plex.\${DOMAIN_NAME}
-      secretName: plex-tls
+  # sin TLS; Cloudflare termina HTTPS

@@ -94,3 +94,5 @@ spec:
         http:
           tls:
             certResolver: letsencrypt
+      ssh:
+        address: ":2222"

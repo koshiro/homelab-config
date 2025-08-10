@@ -30,6 +30,10 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: media
+              mountPath: /media
           resources:
             requests:
               cpu: 100m
@@ -39,17 +43,23 @@ spec:
               memory: 512Mi
           readinessProbe:
             httpGet:
-              path: /api/system/status
+              path: /
               port: 6767
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/system/status
+              path: /
               port: 6767
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 10
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: bazarr-config
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-shared-pvc
+        - name: media
+          persistentVolumeClaim:
+            claimName: bazarr-media-pvc

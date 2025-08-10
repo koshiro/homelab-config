@@ -23,5 +23,5 @@ spec:
       tunnelName: "homelab-tunnel"
       service:
         name: traefik
-        namespace: traefik
+        namespace: kube-system
         port: 80

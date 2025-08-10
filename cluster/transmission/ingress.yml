@@ -4,10 +4,13 @@ metadata:
   name: transmission-ingress
   namespace: transmission
   annotations:
-    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: transmission-basicauth@kubernetescrd,transmission-redirect-root@kubernetescrd
+    traefik.ingress.kubernetes.io/basicauth-removeheader: "true"
 spec:
+  ingressClassName: traefik
   rules:
-  - host: transmission.homelab.local
+  - host: transmission.danielriquelme.cl
     http:
       paths:
       - path: /

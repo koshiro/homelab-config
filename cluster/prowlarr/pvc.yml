@@ -9,4 +9,66 @@ spec:
   resources:
     requests:
       storage: 1Gi
+  storageClassName: local-path
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-downloads-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-ssd
+  nfs:
+    server: 192.168.1.20
+    path: /mnt/homelab-ssd/downloads
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: downloads-shared-pvc
+  namespace: prowlarr
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-ssd
+  volumeName: prowlarr-downloads-pv
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-media-pv
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: nfs-csi
+  nfs:
+    server: 192.168.1.20
+    path: /mnt/homelab-storage/media
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-media-pvc
+  namespace: prowlarr
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-csi
+  volumeName: prowlarr-media-pv
+  resources:
+    requests:
+      storage: 1Ti

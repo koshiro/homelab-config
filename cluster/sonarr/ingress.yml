@@ -5,12 +5,10 @@ metadata:
   name: sonarr
   namespace: sonarr
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-production"
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
-    - host: sonarr.\${DOMAIN_NAME}
+    - host: sonarr.danielriquelme.cl
       http:
         paths:
           - path: /
@@ -20,7 +18,4 @@ spec:
                 name: sonarr
                 port:
                   number: 8989
-  tls:
-    - hosts:
-        - sonarr.\${DOMAIN_NAME}
-      secretName: sonarr-tls
+  # sin TLS; Cloudflare termina HTTPS

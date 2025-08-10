@@ -10,12 +10,55 @@ data:
     ROOT_URL = https://gitea.danielriquelme.cl
     SSH_DOMAIN = gitea.danielriquelme.cl
     SSH_PORT = 22
+    HTTP_PORT = 3000
+    PROTOCOL = http
+    DOMAIN = gitea.danielriquelme.cl
 
     [database]
-    DB_TYPE = sqlite3
+    DB_TYPE = postgres
+    HOST = gitea-postgres.gitea.svc.cluster.local:5432
+    NAME = gitea
+    USER = gitea
+    SSL_MODE = disable
+    CHARSET = utf8
 
     [repository]
     ROOT = /data/gitea/repositories
 
     [container]
     ENABLED = true
+
+    [security]
+    INSTALL_LOCK = true
+    SECRET_KEY = 
+    INTERNAL_TOKEN = 
+
+    [service]
+    DISABLE_REGISTRATION = true
+    REQUIRE_SIGNIN_VIEW = true
+    ENABLE_NOTIFY_MAIL = false
+    DEFAULT_KEEP_EMAIL_PRIVATE = true
+    DEFAULT_ALLOW_CREATE_ORGANIZATION = false
+    DEFAULT_ENABLE_TIMETRACKING = true
+    NO_REPLY_ADDRESS = noreply.gitea.danielriquelme.cl
+
+    [log]
+    MODE = console
+    LEVEL = info
+
+    [session]
+    PROVIDER = file
+    PROVIDER_CONFIG = /data/gitea/sessions
+
+    [admin]
+    DISABLE_REGULAR_ORG_CREATION = true
+
+    [repository]
+    DEFAULT_PRIVATE = true
+    DISABLE_HTTP_GIT = false
+    ENABLE_PUSH_CREATE_USER = false
+    ENABLE_PUSH_CREATE_ORG = false
+
+    [ui]
+    DEFAULT_SHOW_FULL_NAME = false
+    SHOW_USER_EMAIL = false

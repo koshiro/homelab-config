@@ -53,13 +53,15 @@ Estos playbooks se ejecutan secuencialmente mediante `ansible/playbook_homelab.y
 - **Tags**: `k3s`, `cluster`
 
 ### **6. Configurar Cloudflare Tunnel (integrado en pipeline principal)**
-- **Propósito**: Configuración automática del túnel de Cloudflare
+- **Propósito**: Configuración automática del túnel de Cloudflare (modo remotamente gestionado)
 - **Acciones**:
   - Lee credenciales del archivo `.env`
+  - Usa `CF_API_TOKEN` (Cloudflare Tunnel: Edit, DNS: Edit)
   - Decodifica token del túnel
-  - Despliega `cloudflared` pods en k3s
-  - Configura ingress para dominio principal
-  - **Configura IngressRoute correcto para Traefik Dashboard (HTTPS)**
+  - Despliega `cloudflared` pods en k3s (ConfigMap sin reglas ingress locales)
+  - Aplica configuración remota del túnel vía API (`/cfd_tunnel/{id}/configurations`)
+  - Crea CNAMEs apuntando a `<TUNNEL_ID>.cfargotunnel.com`
+  - **Configura IngressRoute correcto para Traefik Dashboard (HTTPS externo, HTTP interno)**
 - **Tags**: `cloudflare`, `tunnel`
 
 ### **7. Setup Gitea + GitOps (`playbook_setup_gitea_ecosystem.yml`)**

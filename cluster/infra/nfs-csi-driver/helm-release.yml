@@ -23,7 +23,7 @@ spec:
       targetPath: nfs.server
     - kind: ConfigMap
       name: cluster-settings
-      valuesKey: TRUENAS_DATA_POOL
+      valuesKey: TRUENAS_MEDIA_POOL
       targetPath: nfs.path
   values:
     storageClass:

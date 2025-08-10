@@ -50,8 +50,7 @@
     - name: Extraer variables de Cloudflare del .env
       ansible.builtin.set_fact:
         cf_domain: "{{ (env_content.content | b64decode).split('\n') | select('match', '^DOMAIN_NAME=') | first | regex_replace('^DOMAIN_NAME=(.*)$', '\\1') }}"
-        cf_email: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CF_API_EMAIL=') | first | regex_replace('^CF_API_EMAIL=(.*)$', '\\1') }}"
-        cf_api_key: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CF_API_KEY=') | first | regex_replace('^CF_API_KEY=(.*)$', '\\1') }}"
+        cf_api_token: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CF_API_TOKEN=') | first | regex_replace('^CF_API_TOKEN=(.*)$', '\\1') }}"
         cf_tunnel_token: "{{ (env_content.content | b64decode).split('\n') | select('match', '^CLOUDFLARE_TUNNEL_TOKEN=') | first | regex_replace('^CLOUDFLARE_TUNNEL_TOKEN=(.*)$', '\\1') }}"
 
     - name: Decodificar token del túnel
@@ -81,7 +80,7 @@
             }
         EOF &&
         
-        # Crear ConfigMap de configuración del túnel
+        # Crear ConfigMap de configuración del túnel (sin reglas ingress; configuración remota por API)
         cat <<EOF | sudo k3s kubectl apply -f -
         apiVersion: v1
         kind: ConfigMap
@@ -94,12 +93,6 @@
             credentials-file: /etc/cloudflared/creds/credentials.json
             metrics: 0.0.0.0:2000
             no-autoupdate: true
-            ingress:
-            - hostname: {{ cf_domain }}
-              service: https://192.168.1.131:32634
-            - hostname: \"*.{{ cf_domain }}\"
-              service: https://192.168.1.131:32634
-           - service: http_status:404
         EOF &&
         
         # Crear deployment de cloudflared
@@ -159,7 +152,7 @@
         url: "https://api.cloudflare.com/client/v4/accounts/{{ tunnel_data.a }}/cfd_tunnel/{{ tunnel_data.t }}"
         method: GET
         headers:
-          Authorization: "Bearer {{ cf_api_key }}"
+          Authorization: "Bearer {{ cf_api_token }}"
           Content-Type: "application/json"
         status_code: 200
       register: tunnel_info
@@ -186,7 +179,7 @@
         url: "https://api.cloudflare.com/client/v4/zones?name={{ cf_domain }}"
         method: GET
         headers:
-          Authorization: "Bearer {{ cf_api_key }}"
+          Authorization: "Bearer {{ cf_api_token }}"
           Content-Type: "application/json"
         status_code: 200
       register: zone_info
@@ -200,7 +193,7 @@
         url: "https://api.cloudflare.com/client/v4/zones/{{ cf_zone_id }}/dns_records"
         method: POST
         headers:
-          Authorization: "Bearer {{ cf_api_key }}"
+          Authorization: "Bearer {{ cf_api_token }}"
           Content-Type: "application/json"
         body_format: json
         body:
@@ -221,7 +214,7 @@
         url: "https://api.cloudflare.com/client/v4/zones/{{ cf_zone_id }}/dns_records"
         method: POST
         headers:
-          Authorization: "Bearer {{ cf_api_key }}"
+          Authorization: "Bearer {{ cf_api_token }}"
           Content-Type: "application/json"
         body_format: json
         body:
@@ -287,8 +280,7 @@
           📊 ESTADO DEL TÚNEL:
           {{ tunnel_status.stdout_lines | join('\n          ') }}
           
-          ⚠️  IMPORTANTE: Configura manualmente los Public Hostnames en Cloudflare Zero Trust
-          ⚠️  Puede tomar 1-2 minutos para que los DNS se propaguen.
+          ⚠️  Nota: El túnel usa configuración remota vía API. No crear Public Hostnames en el dashboard.
 
 - name: 7. Configurar el Ecosistema de Gitea y GitOps
   import_playbook: playbooks/core/playbook_setup_gitea_ecosystem.yml

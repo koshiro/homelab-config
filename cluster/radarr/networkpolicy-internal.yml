@@ -1,0 +1,30 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal-traffic
+  namespace: radarr
+spec:
+  podSelector:
+    matchLabels:
+      app: radarr
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: radarr
+    ports:
+    - protocol: TCP
+      port: 7878
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: overseerr
+    - namespaceSelector:
+        matchLabels:
+          name: bazarr
+    ports:
+    - protocol: TCP
+      port: 7878

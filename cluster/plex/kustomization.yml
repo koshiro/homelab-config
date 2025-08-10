@@ -10,6 +10,8 @@ resources:
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
   - networkpolicy-dlna.yml
+  - networkpolicy-overseerr-ingress.yml
+  - networkpolicy-egress.yml
 
 # Configuración para que FluxCD sustituya las variables
 patches:

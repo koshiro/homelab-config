@@ -7,6 +7,8 @@ resources:
   - configmap-app-ini.yml
   - deployment.yml
   - service.yml
+  - postgres.yml
+  - pvc-nvme.yml
   - ingress.yml
   - ingress-tcp.yml
   - networkpolicy-deny.yml

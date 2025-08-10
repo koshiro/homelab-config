@@ -15,12 +15,28 @@ spec:
     spec:
       containers:
         - name: gitea
-          image: gitea/gitea:1.22.0
+          image: gitea/gitea:1.22.3
           ports:
             - containerPort: 3000
               name: http
             - containerPort: 22
               name: ssh
+          env:
+            - name: GITEA__database__PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: GITEA__database__USER
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgres-secret
+                  key: POSTGRES_USER
+            - name: GITEA__database__NAME
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgres-secret
+                  key: POSTGRES_DB
           volumeMounts:
             - name: data
               mountPath: /data
@@ -29,33 +45,33 @@ spec:
               subPath: app.ini
           resources:
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 100m
+              memory: 128Mi
             limits:
-              cpu: 1000m
-              memory: 1024Mi
+              cpu: 500m
+              memory: 512Mi
           readinessProbe:
             httpGet:
               path: /api/healthz
               port: 3000
-            initialDelaySeconds: 200
-            timeoutSeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            timeoutSeconds: 10
+            periodSeconds: 30
             successThreshold: 1
-            failureThreshold: 10
+            failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /api/healthz
               port: 3000
-            initialDelaySeconds: 200
-            timeoutSeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 120
+            timeoutSeconds: 10
+            periodSeconds: 30
             successThreshold: 1
-            failureThreshold: 10
+            failureThreshold: 3
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: gitea-data-pvc
+            claimName: gitea-data-nvme-pvc
         - name: config
           configMap:
             name: gitea-app-ini

@@ -9,7 +9,7 @@
   tasks:
     - name: Esperar a que TrueNAS Web UI esté disponible
       ansible.builtin.uri:
-        url: "https://192.168.1.19/api/v2.0/system/info"
+        url: "https://{{ truenas_host }}/api/v2.0/system/info"
         method: GET
         validate_certs: false
         status_code: [200, 401]  # 401 es OK, significa que necesita auth
@@ -20,7 +20,7 @@
 
     - name: Crear usuario de Ansible en TrueNAS usando API REST
       ansible.builtin.uri:
-        url: "https://192.168.1.19/api/v2.0/user"
+        url: "https://{{ truenas_host }}/api/v2.0/user"
         method: POST
         body_format: json
         body:
@@ -40,7 +40,7 @@
 
     - name: Obtener información del usuario ansible si ya existe
       ansible.builtin.uri:
-        url: "https://192.168.1.19/api/v2.0/user?username=ansible"
+        url: "https://{{ truenas_host }}/api/v2.0/user?username=ansible"
         method: GET
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
@@ -51,7 +51,7 @@
 
     - name: Crear API Key usando API REST
       ansible.builtin.uri:
-        url: "https://192.168.1.19/api/v2.0/auth/api_key"
+        url: "https://{{ truenas_host }}/api/v2.0/auth/api_key"
         method: POST
         body_format: json
         body:

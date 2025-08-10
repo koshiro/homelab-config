@@ -8,3 +8,5 @@ resources:
   - ingress.yml
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
+  - networkpolicy-arr-ingress.yml
+  - networkpolicy-egress.yml

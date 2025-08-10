@@ -1,0 +1,62 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-qbittorrent-egress
+  namespace: sonarr
+spec:
+  podSelector:
+    matchLabels:
+      app: sonarr
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: qbittorrent
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-qbittorrent-egress
+  namespace: radarr
+spec:
+  podSelector:
+    matchLabels:
+      app: radarr
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: qbittorrent
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-qbittorrent-egress
+  namespace: prowlarr
+spec:
+  podSelector:
+    matchLabels:
+      app: prowlarr
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: qbittorrent
+    ports:
+    - protocol: TCP
+      port: 8080

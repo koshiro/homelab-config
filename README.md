@@ -78,9 +78,10 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
         # Dominio principal
         DOMAIN_NAME=tudominio.com
         
-        # Credenciales de Cloudflare  
-        CF_API_EMAIL=tu_email@ejemplo.com
-        CF_API_KEY=tu_api_key_de_cloudflare
+        # Token de Cloudflare (permisos: Account → Cloudflare Tunnel: Edit, Zone → DNS: Edit)
+        CF_API_TOKEN=tu_api_token_de_cloudflare
+        
+        # Credenciales del túnel (token base64 exportado desde Cloudflare)
         CLOUDFLARE_TUNNEL_TOKEN=tu_tunnel_token_base64
         ```
     *   **⚠️ Importante:** El túnel de Cloudflare se configura **automáticamente** durante el despliegue usando estas credenciales.
@@ -226,6 +227,8 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
     - ✅ **GitOps**: FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea  
     - ✅ **CI/CD**: Gitea Actions Runner está listo para construir y desplegar tus aplicaciones
     - ✅ **Almacenamiento**: TrueNAS proporciona storage NFS centralizado
+      - `nfs-csi` → pool `homelab-storage` (media)
+      - `nfs-ssd` → pool `homelab-ssd` (descargas)
     - ✅ **Alta Disponibilidad**: k3s multi-nodo con balanceador de carga integrado
 
 ## 🚨 **Troubleshooting y Comandos Útiles**
@@ -264,6 +267,54 @@ ssh root@<IP_PROXMOX> "qm set 9000 --ciuser ubuntu --cipassword ubuntu --sshkeys
 # Recrear VMs con plantilla corregida
 ansible-playbook -i ansible/inventory ansible/playbooks/core/playbook_create_vms.yml
 ```
+
+### Preparar GPU NVIDIA para Plex (Proxmox + k3s)
+
+1) Proxmox (host): habilitar IOMMU y VFIO
+- En `/etc/default/grub` agrega: `intel_iommu=on iommu=pt`
+- Carga VFIO: en `/etc/modules`: `vfio`, `vfio_iommu_type1`, `vfio_pci`, `vfio_virqfd`
+- En `/etc/modprobe.d/vfio.conf`: `options vfio-pci ids=10de:2484,10de:228b disable_vga=1`
+- Blacklist host: en `/etc/modprobe.d/blacklist-nvidia.conf`:
+  - `blacklist nvidia`
+  - `blacklist nvidia_drm`
+  - `blacklist nvidia_modeset`
+  - `blacklist nouveau`
+- `update-grub` y reboot Proxmox
+- Verifica: `lspci -nnk -d 10de:` → `Kernel driver in use: vfio-pci`
+
+2) Proxmox VM k3s-node-1
+- `qm set 102 --hostpci0 01:00.0,pcie=1,x-vga=1,rombar=0`
+- `qm set 102 --hostpci1 01:00.1,pcie=1,rombar=0`
+- `qm set 102 --machine q35 --cpu host`
+- Reinicia VM `102`
+
+3) Dentro de k3s-node-1 (Ubuntu 22.04): drivers y runtime
+- Instala driver NVIDIA (último estable 570) y toolkit:
+  ```bash
+  sudo add-apt-repository -y ppa:graphics-drivers/ppa && sudo apt update
+  sudo apt install -y nvidia-driver-570
+  distribution=$( . /etc/os-release; echo ${ID}${VERSION_ID} )
+  curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+  curl -fsSL https://nvidia.github.io/libnvidia-container/stable/${distribution}/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+  sudo apt update && sudo apt install -y nvidia-container-toolkit
+  ```
+- Configura containerd de k3s con runtime NVIDIA: crea `/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl` con sección `runtimes.'nvidia'.options.BinaryName="/usr/bin/nvidia-container-runtime"`.
+- `sudo systemctl restart k3s`
+- Verifica: `nvidia-smi`
+
+4) Device Plugin NVIDIA
+- Aplica el device plugin:
+  ```bash
+  kubectl apply -f cluster/infra/nvidia-device-plugin.yml
+  kubectl -n nvidia-device-plugin get pods -o wide
+  ```
+- Verifica recurso: `kubectl get node k3s-node-1 -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'`
+
+5) Plex con GPU
+- Ya configurado `runtimeClassName: nvidia` y `nvidia.com/gpu: 1` en `cluster/plex/deployment.yml`.
+- Rollout: `kubectl -n plex rollout restart deploy/plex`
+- Verifica dentro del pod: `ls -l /dev/nvidia*`
+- En UI de Plex → Settings → Transcoder → activa Hardware Acceleration.
 
 ### **Problema: k3s Falló Durante Instalación**
 ```bash
@@ -304,7 +355,7 @@ ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
 ```
 
 **🏠 URLs LOCALES (Solo desde la red local):**
-- **TrueNAS**: https://192.168.1.19
+- **TrueNAS**: https://192.168.1.20
 - **Proxmox**: https://192.168.1.100:8006
 
 **✅ CONFIGURACIÓN DNS AUTOMÁTICA:**
@@ -333,36 +384,36 @@ ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n cloudflared -l app=cloudflare
 
 # Verificar registros DNS en Cloudflare (desde local)
 curl -X GET "https://api.cloudflare.com/client/v4/zones/TU_ZONE_ID/dns_records" \
-     -H "Authorization: Bearer TU_CF_API_KEY" \
+     -H "Authorization: Bearer $CF_API_TOKEN" \
      -H "Content-Type: application/json"
 ```
 
-### **Configuración Correcta de Traefik con Cloudflare Tunnel**
+### **Configuración Correcta de Traefik con Cloudflare Tunnel (Gestión Remota)**
 
 **✅ CONFIGURACIÓN ACTUALIZADA:**
 
-#### **1. Configuración del Túnel de Cloudflare**
-El archivo `tunnel_config.json` está configurado correctamente para usar HTTPS:
+#### **1. Configuración del Túnel de Cloudflare (Remota por API)**
+Usamos túnel remotamente gestionado: la configuración `ingress` se aplica vía API, no en el ConfigMap local.
 
+Endpoint:
+`PUT /accounts/{ACCOUNT_ID}/cfd_tunnel/{TUNNEL_ID}/configurations`
+
+Body:
 ```json
 {
   "config": {
     "ingress": [
-      {
-        "hostname": "traefik.danielriquelme.cl",
-        "service": "https://192.168.1.131:32634"
-      },
-      {
-        "hostname": "gitea.danielriquelme.cl", 
-        "service": "https://192.168.1.131:32634"
-      }
+      { "hostname": "gitea.tu-dominio.com", "service": "http://traefik.kube-system.svc.cluster.local:80" },
+      { "hostname": "*.tu-dominio.com",  "service": "http://traefik.kube-system.svc.cluster.local:80" },
+      { "service": "http_status:404" }
     ]
   }
 }
 ```
+Requiere `CF_API_TOKEN` con permiso Cloudflare Tunnel: Edit.
 
 #### **2. Configuración de Ingress con Anotaciones Correctas**
-Los ingress ahora incluyen las anotaciones necesarias para Cloudflare Tunnel:
+Los ingress deben usar `web` (HTTP). El TLS externo lo termina Cloudflare. No referenciar secretos TLS.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -372,17 +423,13 @@ metadata:
   namespace: gitea
   annotations:
     # Configuración para Cloudflare Tunnel
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
     # Configuración de seguridad
     traefik.ingress.kubernetes.io/headers-frame-deny: "true"
     traefik.ingress.kubernetes.io/headers-browser-xss-filter: "true"
 spec:
   ingressClassName: traefik
-  tls:
-  - hosts:
-    - gitea.danielriquelme.cl
-    secretName: gitea-tls
+  # sin sección tls
   rules:
   - host: gitea.danielriquelme.cl
     http:
@@ -404,33 +451,8 @@ Traefik está configurado con:
 - ✅ Headers de seguridad
 - ✅ Rate limiting
 
-#### **4. Configuración Manual en Cloudflare Zero Trust**
-
-**⚠️ IMPORTANTE:** Después del despliegue automático, debes configurar manualmente los Public Hostnames en Cloudflare Zero Trust:
-
-1. **Accede a Cloudflare Zero Trust Dashboard**
-2. **Ve a Access → Tunnels**
-3. **Selecciona tu túnel**
-4. **Configura los Public Hostnames:**
-
-   **Para Traefik Dashboard:**
-   ```
-   Subdomain: traefik
-   Domain: danielriquelme.cl
-   Service: https://192.168.1.131:32634
-   ```
-
-   **Para otros servicios:**
-   ```
-   Subdomain: gitea
-   Domain: danielriquelme.cl
-   Service: https://192.168.1.131:32634
-   ```
-
-   **⚠️ CONFIGURACIÓN CORRECTA:**
-   - **Protocolo:** HTTPS (NO HTTP)
-   - **Puerto:** 31280 (verificar con el script de verificación)
-   - **IP:** 192.168.1.131 (nodo k3s)
+#### **4. Cloudflare Zero Trust**
+No crear Public Hostnames cuando el túnel es remoto. Mantener los CNAME apuntando a `<TUNNEL_ID>.cfargotunnel.com`.
 
 #### **5. Script de Verificación Automática**
 Usa el script actualizado para verificar la configuración:
@@ -607,7 +629,7 @@ ssh ubuntu@192.168.1.131 "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm in
 
 ### **Paso 1: Acceso Inicial a TrueNAS**
 
-1. **Accede a la interfaz web**: `https://192.168.1.19` (IP obtenida por DHCP)
+1. **Accede a la interfaz web**: `https://192.168.1.20` (IP obtenida por DHCP)
    - **Usuario**: `truenas_admin` 
    - **Contraseña**: `Constantinopl4` (según `homelab_vars.yml`)
 
@@ -675,7 +697,7 @@ Ejecutar **antes** de continuar con el playbook:
 
 ```bash
  # Verificar que el pool existe
- curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
+ curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.20/api/v2.0/pool
  
  # Debería mostrar: [{"name": "homelab-storage", ...}]
 ```
@@ -697,7 +719,7 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truena
 **Error: "Parent dataset does not exist"**
 ```bash
 # Verificar pools disponibles
-curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.19/api/v2.0/pool
+curl -k -u "truenas_admin:Constantinopl4" https://192.168.1.20s/api/v2.0/pool
 
 # Si no hay pools, crear manualmente desde la interfaz web
 # Luego verificar el nombre exacto y actualizar homelab_vars.yml
