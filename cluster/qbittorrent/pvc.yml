@@ -19,8 +19,17 @@ metadata:
   namespace: qbittorrent
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: nfs-csi  # Volviendo a nfs-csi para compatibilidad con nodeSelector p2p
+    - ReadWriteOnce  # local-path solo soporta RWO
+  storageClassName: local-path
   resources:
     requests:
       storage: 50Gi
+  # Configurar nodeAffinity para asegurar que se cree en el nodo p2p
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: p2p
+          operator: In
+          values:
+          - "true"
