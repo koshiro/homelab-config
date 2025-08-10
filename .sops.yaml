@@ -1,6 +1,11 @@
 # .sops.yaml
-# Reglas de creación para SOPS
+# Política de cifrado con age para ficheros *.sops.yml específicos.
 creation_rules:
-  - path_regex: .*.sops.yml$
-    # Reemplaza esta clave PGP con la tuya
-    pgp: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0"
+  - path_regex: cluster/config/cluster-secrets\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+  - path_regex: cluster/cloudflared/secret\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
