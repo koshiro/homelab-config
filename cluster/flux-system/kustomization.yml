@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flux-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flux-https-auth
+  namespace: flux-system
+stringData:
+  username: "daniel"
+  password: "6b6d22e669d593c08de635b202dda1cb8d8383eb"
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: homelab-cluster
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  ref:
+    branch: main
+  secretRef:
+    name: flux-https-auth
+  url: https://gitea.danielriquelme.cl/daniel/homelab-config.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: homelab-cluster
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./cluster
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: homelab-cluster
