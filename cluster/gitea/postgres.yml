@@ -4,9 +4,10 @@ metadata:
   name: gitea-postgres-secret
   namespace: gitea
 stringData:
-  POSTGRES_PASSWORD: "giteaPassw0rd_Secure2024!"
-  POSTGRES_USER: "gitea"
-  POSTGRES_DB: "gitea"
+  # Valores inyectados vía postBuild substituteFrom (no versionar contraseñas)
+  POSTGRES_PASSWORD: ${GITEA_POSTGRES_PASSWORD}
+  POSTGRES_USER: ${GITEA_POSTGRES_USER}
+  POSTGRES_DB: ${GITEA_POSTGRES_DB}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

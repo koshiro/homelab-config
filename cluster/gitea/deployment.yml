@@ -23,20 +23,20 @@ spec:
               name: ssh
           env:
             - name: GITEA__database__PASSWD
-              valueFrom:
-                secretKeyRef:
-                  name: gitea-postgres-secret
-                  key: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitea-postgres-secret
+              key: POSTGRES_PASSWORD
             - name: GITEA__database__USER
-              valueFrom:
-                secretKeyRef:
-                  name: gitea-postgres-secret
-                  key: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: gitea-postgres-secret
+              key: POSTGRES_USER
             - name: GITEA__database__NAME
-              valueFrom:
-                secretKeyRef:
-                  name: gitea-postgres-secret
-                  key: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: gitea-postgres-secret
+              key: POSTGRES_DB
           volumeMounts:
             - name: data
               mountPath: /data
