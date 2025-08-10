@@ -26,11 +26,9 @@ spec:
         - containerPort: 6881
           name: bt-tcp
           protocol: TCP
-          hostPort: 6881
         - containerPort: 6881
           name: bt-udp
           protocol: UDP
-          hostPort: 6881
         env:
         - name: PUID
           value: "1000"
