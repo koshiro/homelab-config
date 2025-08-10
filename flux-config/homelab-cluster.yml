@@ -24,10 +24,10 @@ spec:
   sourceRef:
     kind: GitRepository
     name: homelab-cluster
-  decryption:
-    provider: sops
-    secretRef:
-      name: sops-age
+  # decryption:
+  #   provider: sops
+  #   secretRef:
+  #     name: sops-age
   postBuild:
     substitute:
       cluster_name: "homelab"
