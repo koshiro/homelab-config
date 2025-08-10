@@ -14,8 +14,9 @@ resources:
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
   - networkpolicy-ssh.yml
-  - helm-repository-runner.yml
-  - helm-release-runner.yml
+  # Runner deshabilitado para reflejar estado actual del clúster
+  # - helm-repository-runner.yml
+  # - helm-release-runner.yml
 
 # Configuración para que FluxCD sustituya las variables
 patches:
