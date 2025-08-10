@@ -5,8 +5,11 @@ metadata:
   name: homelab-cluster
   namespace: flux-system
 spec:
-  # MODO OBSERVACIÓN: Suspendido para evitar cambios automáticos
-  suspend: true
+  # MODO OBSERVACIÓN: Activado pero sin forzar cambios
+  suspend: false
+  
+  # No forzar aplicación de cambios
+  force: false
   
   interval: 10m0s
   path: ./cluster
@@ -17,9 +20,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: homelab-config
-  
-  # Validación del lado del cliente solamente
-  validation: client
   
   # Configuración para sustituir variables
   postBuild:

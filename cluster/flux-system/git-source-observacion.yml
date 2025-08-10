@@ -10,7 +10,7 @@ spec:
     branch: main
   secretRef:
     name: flux-system
-  url: ssh://git@192.168.1.131:30022/daniel/homelab-config.git
+  url: ssh://git@gitea.gitea.svc.cluster.local:22/daniel/homelab-config.git
   # Sin verificación de firma por ahora
   # verify:
   #   mode: head
