@@ -11,8 +11,9 @@ resources:
   - config
   - flux-system
   # --- INFRA ---
-  - infra/nfs-csi-driver
-  - traefik
+  - infra/nvidia-device-plugin
+  - infra/nfs-csi-driver # Gestionado fuera de Flux por ahora
+  # - traefik # Gestionado fuera de Flux por ahora
   - cloudflared
   # --- APPS ---
   - gitea
