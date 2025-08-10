@@ -20,7 +20,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: nfs-csi  # Cambiando al StorageClass que funciona
+  storageClassName: local-path  # Cambiando a local-path que ya funciona
   resources:
     requests:
       storage: 50Gi
