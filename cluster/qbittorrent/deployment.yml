@@ -40,8 +40,6 @@ spec:
           value: "6881"
         - name: QB_WEBUI_PORT
           value: "8080"
-        - name: QB_BITTORRENT_PORT
-          value: "6881"
         - name: QB_WEBUI_USERNAME
           value: "admin"
         - name: QB_WEBUI_PASSWORD
@@ -67,10 +65,10 @@ spec:
         resources:
           requests:
             cpu: 200m
-            memory: 512Mi
+            memory: 256Mi
           limits:
-            cpu: 2000m
-            memory: 2048Mi
+            cpu: 1000m
+            memory: 1024Mi
         livenessProbe:
           httpGet:
             path: /
