@@ -13,22 +13,6 @@ spec:
 
 ---
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: qbittorrent-downloads-pv
-spec:
-  capacity:
-    storage: 50Gi
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nfs-ssd
-  nfs:
-    server: 192.168.1.20
-    path: /mnt/homelab-ssd/downloads
-
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: qbittorrent-downloads
@@ -37,7 +21,6 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: nfs-ssd
-  volumeName: qbittorrent-downloads-pv
   resources:
     requests:
       storage: 50Gi
