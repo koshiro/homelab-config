@@ -19,8 +19,8 @@ metadata:
   namespace: qbittorrent
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: nfs-csi
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 50Gi

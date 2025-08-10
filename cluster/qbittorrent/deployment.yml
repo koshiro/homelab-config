@@ -15,8 +15,15 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      nodeSelector:
-        p2p: "true"
+      # Eliminamos nodeSelector temporalmente para permitir local-path
+      # nodeSelector:
+      #   p2p: "true"
+      # En su lugar, usamos tolerations para preferir el nodo p2p
+      tolerations:
+      - key: "p2p"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
@@ -59,9 +66,9 @@ spec:
         - name: QB_MAX_CONNECTIONS_PER_TORRENT
           value: "100"
         volumeMounts:
-        - name: config
+        - name: qbittorrent-config
           mountPath: /config
-        - name: downloads
+        - name: qbittorrent-downloads
           mountPath: /downloads
 
         resources:
@@ -84,10 +91,10 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 15
       volumes:
-      - name: config
+      - name: qbittorrent-config
         persistentVolumeClaim:
           claimName: qbittorrent-config
-      - name: downloads
+      - name: qbittorrent-downloads
         persistentVolumeClaim:
           claimName: qbittorrent-downloads
 
