@@ -28,3 +28,13 @@ spec:
       name: nfs-csi
       defaultClass: false
       provisionerName: k8s-sigs.io/nfs-subdir-external-provisioner
+    # Configurar permisos para evitar errores de "read-only file system"
+    securityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+    # Configurar permisos de directorio NFS
+    nfsPermissions:
+      enabled: true
+      uid: 1000
+      gid: 1000
+      mode: 0755
