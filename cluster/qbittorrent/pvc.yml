@@ -20,7 +20,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: local-path  # Cambiando a local-path que ya funciona
+  storageClassName: nfs-csi  # Volviendo a nfs-csi para compatibilidad con nodeSelector p2p
   resources:
     requests:
       storage: 50Gi
