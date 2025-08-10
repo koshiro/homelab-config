@@ -21,11 +21,9 @@ spec:
       name: cluster-settings
       valuesKey: TRUENAS_HOST
       targetPath: nfs.server
-    - kind: ConfigMap
-      name: cluster-settings
-      valuesKey: TRUENAS_DOWNLOADS_POOL
-      targetPath: nfs.path
   values:
+    nfs:
+      path: /mnt/homelab-ssd  # Ruta absoluta para el almacenamiento SSD
     storageClass:
       name: nfs-ssd
       defaultClass: false
