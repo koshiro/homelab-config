@@ -9,3 +9,6 @@ creation_rules:
     key_groups:
       - age:
           - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
+
+creation_rules:
+  - path_regex: cluster/qbittorrent/secret-credentials\.sops\.yml\n    encrypted_regex: "^(data|stringData)$"\n    age: ["publickey1"]
