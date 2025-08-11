@@ -50,9 +50,15 @@ spec:
         - name: QB_WEBUI_PORT
           value: "8080"
         - name: QB_WEBUI_USERNAME
-          value: "admin"
+          valueFrom:
+            secretKeyRef:
+              name: qbittorrent-credentials
+              key: username
         - name: QB_WEBUI_PASSWORD
-          value: "admin"
+          valueFrom:
+            secretKeyRef:
+              name: qbittorrent-credentials
+              key: password
         - name: QB_DHT_ENABLED
           value: "true"
         - name: QB_PEX_ENABLED
