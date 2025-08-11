@@ -4,16 +4,21 @@ metadata:
   name: qbittorrent-peer
   namespace: qbittorrent
 spec:
-  type: LoadBalancer
+  type: NodePort
   externalTrafficPolicy: Local
   selector:
     app: qbittorrent
+  # Forzar que se ejecute en el mismo nodo que qBittorrent
+  nodeSelector:
+    kubernetes.io/hostname: k3s-node-3
   ports:
     - name: bittorrent-tcp
       protocol: TCP
       port: 6881
       targetPort: 6881
+      nodePort: 31681
     - name: bittorrent-udp
       protocol: UDP
       port: 6881
       targetPort: 6881
+      nodePort: 31682
