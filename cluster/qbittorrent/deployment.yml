@@ -73,16 +73,11 @@ spec:
           value: "6881"
         - name: QB_WEBUI_PORT
           value: "8080"
-        - name: QB_WEBUI_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: qbittorrent-credentials
-              key: username
-        - name: QB_WEBUI_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: qbittorrent-credentials
-              key: password
+        # SOLUCIÓN DOCUMENTADA: Variables que reconoce linuxserver/qbittorrent
+        - name: QB_USERNAME
+          value: "admin"
+        - name: QB_PASSWORD
+          value: "adminadmin"
         - name: QB_DHT_ENABLED
           value: "true"
         - name: QB_PEX_ENABLED
