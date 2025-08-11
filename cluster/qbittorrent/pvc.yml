@@ -6,22 +6,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 1Gi
-  storageClassName: local-path
 
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: qbittorrent-downloads
-  namespace: qbittorrent
-spec:
-  accessModes:
-    - ReadWriteOnce
-  # SOLUCIÓN: StorageClass personalizado que solo usa k3s-node-2
-  storageClassName: local-path-p2p
-  resources:
-    requests:
-      storage: 50Gi
+# NOTA: qbittorrent-downloads ahora usa hostPath directamente en el deployment
+# Esto elimina la complejidad de PVCs y StorageClasses

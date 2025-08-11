@@ -15,15 +15,38 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      # Configuramos nodeSelector para usar k3s-node-2 (nodo p2p)
+      # ESTRATEGIA DOCUMENTADA: Nodo P2P dedicado
+      # qBittorrent se ejecuta en k3s-node-2 (nodo p2p)
       nodeSelector:
         p2p: "true"
-      # Eliminamos tolerations que ya no necesitamos
-      # tolerations:
-      # - key: "p2p"
-      #   operator: "Equal"
-      #   value: "true"
-      #   effect: "NoSchedule"
+      # Tolerations para permitir fallback si es necesario
+      tolerations:
+      - key: "p2p"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      # Anti-affinity para evitar que múltiples instancias P2P se ejecuten en el mismo nodo
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - qbittorrent
+              topologyKey: kubernetes.io/hostname
+      # SOLUCIÓN DOCUMENTADA: hostPath directo para storage local
+      volumes:
+      - name: qbittorrent-config
+        persistentVolumeClaim:
+          claimName: qbittorrent-config
+      - name: qbittorrent-downloads
+        hostPath:
+          path: /mnt/qbittorrent-downloads
+          type: DirectoryOrCreate
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
@@ -96,11 +119,4 @@ spec:
             port: 8080
           initialDelaySeconds: 15
           periodSeconds: 15
-      volumes:
-      - name: qbittorrent-config
-        persistentVolumeClaim:
-          claimName: qbittorrent-config
-      - name: qbittorrent-downloads
-        persistentVolumeClaim:
-          claimName: qbittorrent-downloads
 
