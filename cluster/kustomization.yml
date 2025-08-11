@@ -10,9 +10,9 @@ kind: Kustomization
 resources:
   - config
   # --- INFRA ---
-  - infra/nvidia-device-plugin.yml
-  - infra/nvidia-runtimeclass.yml
-  - infra/nfs-csi-driver # Ahora gestionado por Flux
+  - infra/nfs-csi-driver
+  - infra/local-path-p2p
+  - infra/nvidia-device-plugin
   # - traefik # Gestionado fuera de Flux por ahora
   - cloudflared
   # --- APPS ---

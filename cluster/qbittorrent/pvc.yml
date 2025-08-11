@@ -20,9 +20,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  # SOLUCIÓN TEMPORAL: Usar local-path mientras se resuelven permisos NFS
-  # TODO: Volver a nfs-ssd cuando se resuelvan los permisos en TrueNAS
-  storageClassName: local-path
+  # SOLUCIÓN: StorageClass personalizado que solo usa k3s-node-2
+  storageClassName: local-path-p2p
   resources:
     requests:
       storage: 50Gi
