@@ -24,3 +24,12 @@ spec:
   resources:
     requests:
       storage: 50Gi
+  # Configurar nodeAffinity para asegurar que se cree en k3s-node-3
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - k3s-node-3
