@@ -4,5 +4,4 @@ kind: Kustomization
 resources:
   - deployment.yml
   - service.yml
-  - service-peer.yml
   - namespace.yml

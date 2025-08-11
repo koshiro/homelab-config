@@ -52,14 +52,16 @@ spec:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
         ports:
-        - containerPort: 8080
-          name: webui
-        - containerPort: 6881
-          name: bt-tcp
-          protocol: TCP
-        - containerPort: 6881
-          name: bt-udp
-          protocol: UDP
+          - containerPort: 8080
+            name: webui
+          - containerPort: 6881
+            name: bt-tcp
+            protocol: TCP
+            hostPort: 6881
+          - containerPort: 6881
+            name: bt-udp
+            protocol: UDP
+            hostPort: 6881
         env:
         - name: PUID
           value: "1000"
