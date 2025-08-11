@@ -6,3 +6,4 @@ namespace: qbittorrent
 resources:
   - secret.sops.yml
   - job-configure-nfs.yml
+  - job-mount-nfs-on-node2.yml

@@ -24,14 +24,15 @@ spec:
               set -e
               base="https://${TRUENAS_HOST}/api/v2.0"
               authHeader="Authorization: Bearer ${TRUENAS_API_KEY}"
-              ds_path="/mnt/homelab-ssd/qbittorrent"
-              echo "Creando dataset ${ds_path} si no existe..."
+              ds_name="homelab-ssd/qbittorrent"
+              ds_path="/mnt/${ds_name}"
+              echo "Creando dataset ${ds_name} si no existe..."
               curl -ksS -H "$authHeader" -H 'Content-Type: application/json' \
                 -X POST "$base/pool/dataset" \
-                -d "{\"name\": \"${ds_path}\"}" || true
-              echo "Creando share NFS con mapall uid/gid 1000..."
+                -d "{\"name\": \"${ds_name}\"}" || true
+              echo "Creando share NFS..."
               curl -ksS -H "$authHeader" -H 'Content-Type: application/json' \
                 -X POST "$base/sharing/nfs" \
-                -d "{\"path\": \"${ds_path}\", \"alldirs\": false, \"ro\": false, \"mapall_user\": \"1000\", \"mapall_group\": \"1000\", \"networks\": [\"192.168.1.0/24\"] }" || true
+                -d "{\"paths\": [\"${ds_path}\"], \"alldirs\": false, \"read_only\": false, \"enabled\": true, \"networks\": [\"192.168.1.0/24\"] }" || true
               echo "Asegurando NFS service activo..."
               curl -ksS -H "$authHeader" -H 'Content-Type: application/json' -X PUT "$base/service" -d '{"service": "nfs", "action": "start"}' || true

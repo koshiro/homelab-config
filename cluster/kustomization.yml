@@ -15,7 +15,7 @@ resources:
   - infra/nvidia-runtimeclass.yml
   # - traefik # Gestionado fuera de Flux por ahora
   - cloudflared
-  - ../cluster/truenas
+  - truenas
   # --- APPS ---
   - gitea
   - plex

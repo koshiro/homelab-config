@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qbittorrent-init
+  namespace: qbittorrent
+  labels:
+    app: qbittorrent
+data:
+  init-config.sh: |
+    #!/bin/sh
+    set -e
+    CFG="/config/qBittorrent/qBittorrent.conf"
+    mkdir -p /downloads/incomplete /downloads/config
+    # /config está montado como subPath en /downloads/config
+    [ -f "$CFG" ] || (mkdir -p /config/qBittorrent && touch "$CFG")
+
+    chown -R 1000:1000 /downloads || true
+
+    ensure_kv() {
+      key="$1"; val="$2"
+      if grep -q "^$key=" "$CFG" 2>/dev/null; then
+        sed -i "s|^$key=.*|$key=$val|" "$CFG"
+      else
+        echo "$key=$val" >> "$CFG"
+      fi
+    }
+
+    ensure_kv 'Downloads\\SavePath' '/downloads/'
+    ensure_kv 'Downloads\\UseDefaultSavePath' 'true'
+    ensure_kv 'Downloads\\TempPath' '/downloads/incomplete'
+    ensure_kv 'Downloads\\TempPathEnabled' 'true'
+    ensure_kv 'Session\\DefaultSavePath' '/downloads/'
+    ensure_kv 'WebUI\\LocalHostAuth' 'false'
+
+    echo "[init] Rutas fijadas y permisos aplicados"

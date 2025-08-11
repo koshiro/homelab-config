@@ -38,16 +38,27 @@ spec:
                   values:
                   - qbittorrent
               topologyKey: kubernetes.io/hostname
-      # SOLUCIÓN DOCUMENTADA: hostPath directo para storage local
+      # SOLUCIÓN DOCUMENTADA: NFS SSD TrueNAS para datos y config
       volumes:
-      - name: qbittorrent-config
-        hostPath:
-          path: /mnt/qbittorrent-config
-          type: DirectoryOrCreate
-      - name: qbittorrent-downloads
-        hostPath:
-          path: /mnt/qbittorrent-downloads  # Montado via NFS desde TrueNAS en k3s-node-2
-          type: DirectoryOrCreate
+      - name: qbittorrent-data
+        nfs:
+          server: 192.168.1.20
+          path: /mnt/homelab-ssd/downloads
+      - name: qbittorrent-init-scripts
+        configMap:
+          name: qbittorrent-init
+          defaultMode: 0755
+      # InitContainer: fija rutas de descargas en qBittorrent.conf y prepara /downloads/config
+      initContainers:
+      - name: init-qbittorrent-config
+        image: alpine:3.20
+        command: ["sh", "/init/init-config.sh"]
+        volumeMounts:
+        - name: qbittorrent-data
+          mountPath: /downloads
+        - name: qbittorrent-init-scripts
+          mountPath: /init
+      # volúmenes unificados arriba
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
@@ -93,10 +104,11 @@ spec:
         - name: QB_MAX_CONNECTIONS_PER_TORRENT
           value: "100"
         volumeMounts:
-        - name: qbittorrent-config
-          mountPath: /config
-        - name: qbittorrent-downloads
+        - name: qbittorrent-data
           mountPath: /downloads
+        - name: qbittorrent-data
+          mountPath: /config
+          subPath: config
 
         resources:
           requests:
