@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: truenas-configure-nfs
+  namespace: qbittorrent
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: truenas-setup
+          image: curlimages/curl:8.9.1
+          env:
+            - name: TRUENAS_HOST
+              value: "192.168.1.20"
+            - name: TRUENAS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: truenas-api
+                  key: apiKey
+          command: ["sh", "-lc"]
+          args:
+            - |
+              set -e
+              base="https://${TRUENAS_HOST}/api/v2.0"
+              authHeader="Authorization: Bearer ${TRUENAS_API_KEY}"
+              ds_path="/mnt/homelab-ssd/qbittorrent"
+              echo "Creando dataset ${ds_path} si no existe..."
+              curl -ksS -H "$authHeader" -H 'Content-Type: application/json' \
+                -X POST "$base/pool/dataset" \
+                -d "{\"name\": \"${ds_path}\"}" || true
+              echo "Creando share NFS con mapall uid/gid 1000..."
+              curl -ksS -H "$authHeader" -H 'Content-Type: application/json' \
+                -X POST "$base/sharing/nfs" \
+                -d "{\"path\": \"${ds_path}\", \"alldirs\": false, \"ro\": false, \"mapall_user\": \"1000\", \"mapall_group\": \"1000\", \"networks\": [\"192.168.1.0/24\"] }" || true
+              echo "Asegurando NFS service activo..."
+              curl -ksS -H "$authHeader" -H 'Content-Type: application/json' -X PUT "$base/service" -d '{"service": "nfs", "action": "start"}' || true

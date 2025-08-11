@@ -46,7 +46,7 @@ spec:
           type: DirectoryOrCreate
       - name: qbittorrent-downloads
         hostPath:
-          path: /mnt/qbittorrent-downloads
+          path: /mnt/qbittorrent-downloads  # Montado via NFS desde TrueNAS en k3s-node-2
           type: DirectoryOrCreate
       containers:
       - name: qbittorrent
