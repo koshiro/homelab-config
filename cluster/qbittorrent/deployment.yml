@@ -41,8 +41,9 @@ spec:
       # SOLUCIÓN DOCUMENTADA: hostPath directo para storage local
       volumes:
       - name: qbittorrent-config
-        persistentVolumeClaim:
-          claimName: qbittorrent-config
+        hostPath:
+          path: /mnt/qbittorrent-config
+          type: DirectoryOrCreate
       - name: qbittorrent-downloads
         hostPath:
           path: /mnt/qbittorrent-downloads
