@@ -19,31 +19,8 @@ metadata:
   namespace: qbittorrent
 spec:
   accessModes:
-    - ReadWriteOnce
-  # Usar hostPath directamente para evitar problemas de nodeAffinity
-  storageClassName: ""
-  volumeName: qbittorrent-downloads-pv
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: qbittorrent-downloads-pv
-spec:
-  capacity:
-    storage: 50Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  # Forzar que se cree en k3s-node-3
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - k3s-node-3
-  hostPath:
-    path: /mnt/qbittorrent-downloads
-    type: DirectoryOrCreate
+    - ReadWriteMany
+  storageClassName: nfs-ssd
+  resources:
+    requests:
+      storage: 50Gi

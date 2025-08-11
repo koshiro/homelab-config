@@ -15,9 +15,9 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      # Configuramos nodeSelector para usar k3s-node-3 que tiene más espacio
+      # Configuramos nodeSelector para usar k3s-node-2 (nodo p2p)
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-3
+        p2p: "true"
       # Eliminamos tolerations que ya no necesitamos
       # tolerations:
       # - key: "p2p"

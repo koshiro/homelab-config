@@ -10,7 +10,7 @@ spec:
     app: qbittorrent
   # Forzar que se ejecute en el mismo nodo que qBittorrent
   nodeSelector:
-    kubernetes.io/hostname: k3s-node-3
+    p2p: "true"
   ports:
     - name: bittorrent-tcp
       protocol: TCP
