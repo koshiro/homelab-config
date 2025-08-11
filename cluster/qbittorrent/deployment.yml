@@ -15,15 +15,15 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      # Eliminamos nodeSelector temporalmente para permitir local-path
-      # nodeSelector:
-      #   p2p: "true"
-      # En su lugar, usamos tolerations para preferir el nodo p2p
-      tolerations:
-      - key: "p2p"
-        operator: "Equal"
-        value: "true"
-        effect: "NoSchedule"
+      # Configuramos nodeSelector para usar k3s-node-3 que tiene más espacio
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-3
+      # Eliminamos tolerations que ya no necesitamos
+      # tolerations:
+      # - key: "p2p"
+      #   operator: "Equal"
+      #   value: "true"
+      #   effect: "NoSchedule"
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
