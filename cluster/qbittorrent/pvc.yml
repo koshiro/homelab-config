@@ -19,8 +19,10 @@ metadata:
   namespace: qbittorrent
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: nfs-ssd
+    - ReadWriteOnce
+  # SOLUCIÓN TEMPORAL: Usar local-path mientras se resuelven permisos NFS
+  # TODO: Volver a nfs-ssd cuando se resuelvan los permisos en TrueNAS
+  storageClassName: local-path
   resources:
     requests:
       storage: 50Gi
