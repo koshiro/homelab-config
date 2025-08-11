@@ -13,3 +13,7 @@ creation_rules:
     key_groups:
       - age:
           - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
+  - path_regex: cluster/tailscale/secret\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v

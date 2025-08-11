@@ -16,6 +16,7 @@ resources:
   # - traefik # Gestionado fuera de Flux por ahora
   - cloudflared
   - truenas
+  - tailscale
   # --- APPS ---
   - gitea
   - plex
