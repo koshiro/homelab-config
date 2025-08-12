@@ -6,6 +6,8 @@ metadata:
   labels:
     app: qbittorrent
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:

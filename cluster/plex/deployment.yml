@@ -16,8 +16,6 @@ spec:
         app: plex
     spec:
       runtimeClassName: nvidia # Habilita el uso de la GPU NVIDIA
-      nodeSelector:
-        kubernetes.io/hostname: k3s-node-1
       containers:
         - name: plex
           image: lscr.io/linuxserver/plex:latest

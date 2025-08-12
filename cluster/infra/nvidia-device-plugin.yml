@@ -21,7 +21,6 @@ spec:
       labels:
         name: nvidia-device-plugin-ds
     spec:
-      runtimeClassName: nvidia
       tolerations:
         - effect: NoSchedule
           operator: Exists
