@@ -33,6 +33,10 @@ spec:
         - name: websecure
           port: 443
           targetPort: websecure
+        - name: smb
+          port: 445
+          targetPort: smb
+          protocol: TCP
     # Configuración del dashboard
     api:
       dashboard: true
@@ -94,3 +98,9 @@ spec:
         http:
           tls:
             certResolver: letsencrypt
+      smb:
+        address: ":445"
+        transport:
+          # Deshabilitar TLS en este entrypoint; SMB tiene su propio cifrado
+          tls:
+            enabled: false

@@ -11,7 +11,7 @@ spec:
     branch: main
   secretRef:
     name: flux-system
-  url: http://localhost:3000/daniel/homelab-config.git
+  url: http://gitea.gitea.svc.cluster.local/daniel/homelab-config.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

@@ -26,4 +26,11 @@ resources:
   - bazarr
   - overseerr
   - qbittorrent
+  - timemachine-smb # Desplegando Time Machine con Samba
+  # - timemachine # Eliminado - Reemplazado por la versión Samba
   # - transmission  # NO DESPLEGADO - Comentado para evitar errores
+  # --- FLUX ---
+  - flux-ssh-key.sops.yml
+  decryption:
+    provider: sops
+    secretRef:

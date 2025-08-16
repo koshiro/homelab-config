@@ -15,6 +15,8 @@ resources:
   - networkpolicy-ingress.yml
   - networkpolicy-ssh.yml
   - networkpolicy-flux-ingress.yml
+  - networkpolicy-dns.yml
+  - networkpolicy-db.yml
   - helm-repository-runner.yml
   - helm-release-runner.yml
 

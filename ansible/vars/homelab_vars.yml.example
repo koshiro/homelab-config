@@ -63,6 +63,8 @@ vms:
 
 # Configuración de TrueNAS
 truenas_data_pool: "homelab-storage" # Nombre del pool de ZFS para datos (NO usar espacios ni dos puntos)
+# ID del nuevo disco de 12TB para agregar a TrueNAS (obtener con: ls -la /dev/disk/by-id/)
+truenas_new_12tb_disk_id: "ata-WDC_WD120EMFZ-11A6JA0_XXXXXXXX" # Reemplazar con el ID real del disco
 truenas_datasets:
   - { name: "media", description: "Librería principal de Plex" }
   - { name: "downloads", description: "Directorio de descargas" }

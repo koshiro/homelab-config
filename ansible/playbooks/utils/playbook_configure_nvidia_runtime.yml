@@ -1,0 +1,27 @@
+- name: Configurar NVIDIA Container Runtime en k3s
+  hosts: k3s_nodes
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Crear directorio de configuración de containerd para k3s
+      file:
+        path: /etc/rancher/k3s/config.toml.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Crear fichero de configuración para NVIDIA runtime
+      copy:
+        dest: /etc/rancher/k3s/config.toml.d/nvidia.toml
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+            privileged_without_host_devices = false
+            runtime_engine = ""
+            runtime_root = ""
+            runtime_type = "io.containerd.runc.v2"
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+              BinaryName = "/usr/bin/nvidia-container-runtime"

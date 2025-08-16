@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: timemachine-smb-storage-pvc
+  namespace: timemachine-smb
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-csi
+  resources:
+    requests:
+      storage: 3Ti
+  # El PV 'timemachine-storage-pv' será reclamado por este PVC.
+  # No es necesario especificar el volumeName si las características coinciden.
+
+

@@ -15,6 +15,18 @@ spec:
       labels:
         app: gitea
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: Always
+      initContainers:
+        - name: fix-permissions
+          image: alpine:3.20
+          command: ["sh","-lc","chown -R 1000:1000 /data && chmod -R u+rwX,g+rwX /data"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: gitea
           image: gitea/gitea:1.22.3
@@ -24,11 +36,10 @@ spec:
             - containerPort: 22
               name: ssh
           env:
-            - name: GITEA__database__PASSWD
-              valueFrom:
-                secretKeyRef:
-                  name: gitea-postgres-secret
-                  key: POSTGRES_PASSWORD
+            - name: GITEA__database__DB_TYPE
+              value: postgres
+            - name: GITEA__database__HOST
+              value: gitea-postgres.gitea.svc.cluster.local:5432
             - name: GITEA__database__USER
               valueFrom:
                 secretKeyRef:
@@ -39,12 +50,14 @@ spec:
                 secretKeyRef:
                   name: gitea-postgres-secret
                   key: POSTGRES_DB
+            - name: GITEA__database__PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgres-secret
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /data
-            - name: config
-              mountPath: /etc/gitea/app.ini
-              subPath: app.ini
           resources:
             requests:
               cpu: 100m
@@ -74,6 +87,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: gitea-data-nvme-pvc
-        - name: config
-          configMap:
-            name: gitea-app-ini

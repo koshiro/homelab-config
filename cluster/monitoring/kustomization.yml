@@ -1,0 +1,12 @@
+# cluster/monitoring/kustomization.yml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yml
+  - helm-repository.yml
+  - helm-release.yml
+  - secret-grafana.sops.yml
+  - secret-proxmox.sops.yml
+  - ingress.yml
+  - pve-exporter.yml
+  - speedtest-exporter.yml

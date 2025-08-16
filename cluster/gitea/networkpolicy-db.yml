@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gitea-to-postgres
+  namespace: gitea
+spec:
+  podSelector:
+    matchLabels:
+      app: gitea
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: gitea-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-from-gitea
+  namespace: gitea
+spec:
+  podSelector:
+    matchLabels:
+      app: gitea-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gitea
+      ports:
+        - protocol: TCP
+          port: 5432
+
+
+
+
+
+

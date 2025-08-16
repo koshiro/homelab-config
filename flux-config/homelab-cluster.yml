@@ -9,8 +9,8 @@ spec:
   ref:
     branch: main
   secretRef:
-    name: flux-system  # Usa el mismo secreto que creó bootstrap
-  url: https://gitea.danielriquelme.cl/daniel/homelab-config.git
+    name: flux-ssh-key
+  url: ssh://git@gitea.gitea.svc.cluster.local/daniel/homelab-config.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

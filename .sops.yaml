@@ -1,6 +1,10 @@
 # .sops.yaml
 # Política de cifrado con age para ficheros *.sops.yml específicos.
 creation_rules:
+  - path_regex: ansible/vars/homelab_vars\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
   - path_regex: cluster/config/cluster-secrets\.sops\.yml$
     key_groups:
       - age:
@@ -14,6 +18,14 @@ creation_rules:
       - age:
           - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
   - path_regex: cluster/tailscale/secret\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
+  - path_regex: cluster/flux-ssh-key\.sops\.yml$
+    key_groups:
+      - age:
+          - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v
+  - path_regex: cluster/monitoring/.*\.sops\.yml$
     key_groups:
       - age:
           - age1ah9fskpkhm4v6jpagc20gjd6z3tfhtqvyae9uq58fwecrvtvjf5qrdj60v

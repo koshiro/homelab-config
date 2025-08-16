@@ -1,0 +1,119 @@
+# ansible/playbooks/core/playbook_add_disk_to_truenas.yml
+- name: Agregar disco de 12TB a TrueNAS VM
+  hosts: proxmox_host
+  vars_files:
+    - ../../vars/homelab_vars.yml
+  
+  vars:
+    truenas_vmid: 100
+    # Este valor debe ser actualizado con el ID real del disco de 12TB
+    new_disk_id: "{{ truenas_new_12tb_disk_id | default('') }}"
+  
+  tasks:
+    - name: Verificar que se ha especificado el ID del disco
+      fail:
+        msg: "Debes especificar truenas_new_12tb_disk_id en homelab_vars.yml"
+      when: new_disk_id == ""
+    
+    - name: Verificar que el disco existe en el sistema
+      stat:
+        path: "/dev/disk/by-id/{{ new_disk_id }}"
+      register: disk_exists
+      
+    - name: Fallar si el disco no existe
+      fail:
+        msg: "El disco /dev/disk/by-id/{{ new_disk_id }} no existe"
+      when: not disk_exists.stat.exists
+    
+    - name: Obtener configuración actual de la VM TrueNAS
+      command: "cat /etc/pve/qemu-server/{{ truenas_vmid }}.conf"
+      register: vm_config
+      changed_when: false
+    
+    - name: Mostrar configuración actual
+      debug:
+        msg: "{{ vm_config.stdout_lines }}"
+    
+    - name: Encontrar el próximo slot SCSI disponible
+      shell: |
+        NEXT_SCSI=0
+        while grep -q "scsi$NEXT_SCSI:" /etc/pve/qemu-server/{{ truenas_vmid }}.conf 2>/dev/null; do
+            ((NEXT_SCSI++))
+        done
+        echo $NEXT_SCSI
+      register: next_scsi_slot
+      changed_when: false
+    
+    - name: Mostrar slot SCSI que se utilizará
+      debug:
+        msg: "Utilizando slot SCSI: scsi{{ next_scsi_slot.stdout }}"
+    
+    - name: Verificar si el disco ya está agregado
+      shell: "grep '{{ new_disk_id }}' /etc/pve/qemu-server/{{ truenas_vmid }}.conf || true"
+      register: disk_already_added
+      changed_when: false
+    
+    - name: Agregar disco a la VM TrueNAS
+      command: "qm set {{ truenas_vmid }} -scsi{{ next_scsi_slot.stdout }} /dev/disk/by-id/{{ new_disk_id }}"
+      register: add_disk_result
+      when: disk_already_added.stdout == ""
+    
+    - name: Mostrar resultado de agregar disco
+      debug:
+        msg: "{{ add_disk_result.stdout if add_disk_result is defined else 'Disco ya estaba agregado' }}"
+    
+    - name: Verificar configuración actualizada
+      command: "cat /etc/pve/qemu-server/{{ truenas_vmid }}.conf"
+      register: updated_vm_config
+      changed_when: false
+    
+    - name: Mostrar configuración actualizada
+      debug:
+        msg: "{{ updated_vm_config.stdout_lines }}"
+    
+    - name: Preguntar si reiniciar la VM
+      pause:
+        prompt: "¿Deseas reiniciar la VM TrueNAS ahora para que detecte el nuevo disco? (y/N)"
+      register: restart_confirmation
+    
+    - name: Reiniciar VM TrueNAS si se confirma
+      block:
+        - name: Detener VM TrueNAS
+          command: "qm stop {{ truenas_vmid }}"
+          register: stop_result
+          
+        - name: Esperar a que la VM se detenga completamente
+          wait_for:
+            timeout: 30
+          delegate_to: localhost
+          
+        - name: Iniciar VM TrueNAS
+          command: "qm start {{ truenas_vmid }}"
+          register: start_result
+          
+        - name: Mostrar resultado del reinicio
+          debug:
+            msg: "VM TrueNAS reiniciada exitosamente"
+            
+      when: restart_confirmation.user_input | lower == 'y'
+    
+    - name: Instrucciones finales
+      debug:
+        msg: |
+          ✅ Disco agregado exitosamente a TrueNAS VM
+          
+          📋 Próximos pasos:
+          1. {{ 'La VM se reinició automáticamente' if restart_confirmation.user_input | lower == 'y' else 'Reinicia la VM manualmente: qm restart ' + truenas_vmid | string }}
+          2. Espera 30-60 segundos a que TrueNAS inicie
+          3. Verifica que TrueNAS detecte el disco:
+             - Accede a https://{{ truenas_host }}
+             - Ve a Storage > Disks
+             - O ejecuta: ./scripts/verify-truenas-disk.sh
+          4. Crea o expande un pool ZFS con el nuevo disco
+          5. Configura los datasets necesarios
+          
+          💡 Para automatización futura, actualiza homelab_vars.yml:
+          truenas_new_12tb_disk_id: "{{ new_disk_id }}"
+
+
+

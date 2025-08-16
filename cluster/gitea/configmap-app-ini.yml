@@ -7,12 +7,12 @@ metadata:
 data:
   app.ini: |
     [server]
-    ROOT_URL = https://gitea.danielriquelme.cl
+    ROOT_URL = http://gitea.gitea.svc.cluster.local
     SSH_DOMAIN = gitea.danielriquelme.cl
     SSH_PORT = 22
     HTTP_PORT = 3000
     PROTOCOL = http
-    DOMAIN = gitea.danielriquelme.cl
+    DOMAIN = gitea.gitea.svc.cluster.local
 
     [database]
     DB_TYPE = postgres

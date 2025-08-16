@@ -1,0 +1,58 @@
+# speedtest-exporter.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speedtest-exporter
+  namespace: monitoring
+  labels:
+    app: speedtest-exporter
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: speedtest-exporter
+  template:
+    metadata:
+      labels:
+        app: speedtest-exporter
+    spec:
+      containers:
+        - name: speedtest-exporter
+          image: miguelndecarvalho/speedtest-exporter:v3.5.4
+          ports:
+            - name: http
+              containerPort: 9798
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: speedtest-exporter
+  namespace: monitoring
+  labels:
+    app: speedtest-exporter
+spec:
+  selector:
+    app: speedtest-exporter
+  ports:
+    - name: http
+      port: 9798
+      targetPort: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: speedtest-exporter-monitor
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: speedtest-exporter
+  endpoints:
+    - port: http
+      # Intervalo y timeout válidos para el operador
+      interval: 2m
+      scrapeTimeout: 90s

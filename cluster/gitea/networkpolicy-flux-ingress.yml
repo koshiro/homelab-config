@@ -14,8 +14,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: flux-system
+              name: flux-system
       ports:
+        - protocol: TCP
+          port: 80 # Puerto HTTP (Service) para Git smart HTTP
         - protocol: TCP
           port: 22 # Puerto SSH
         - protocol: TCP
