@@ -7,3 +7,4 @@ resources:
   - repository-github.yml
   # Application del cluster
   - argocd-app-homelab.yml
+  # Secret con clave AGE para SOPS (se crea fuera de Git por seguridad)
