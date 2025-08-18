@@ -30,7 +30,7 @@ spec:
             - name: PGID
               value: "1000"
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "homepage.tail*.ts.net,192.168.1.*,10.0.0.*,172.16.0.*"
+              value: "k3s-node-1-k3s,192.168.1.131,homepage.local"
             - name: HOMEPAGE_TITLE
               value: "Homelab Dashboard"
             - name: HOMEPAGE_THEME
