@@ -28,6 +28,33 @@ El flujo de trabajo es el siguiente:
 
 ## 📊 Monitoreo
 
+### 🏠 Dashboard Homepage - Vista Centralizada del Homelab
+
+El sistema incluye un dashboard centralizado usando [Homepage](https://github.com/gethomepage/homepage) que proporciona una vista cómoda de todos los servicios corriendo en el servidor, incluyendo Proxmox, TrueNAS y todos los pods de Kubernetes.
+
+**Características del Dashboard:**
+- **Acceso Privado**: Solo a través de Tailscale para máxima seguridad
+- **Monitoreo en Tiempo Real**: Estado de todos los servicios del homelab
+- **Widgets Integrados**: Métricas de Proxmox, TrueNAS, Kubernetes, Plex, etc.
+- **Interfaz Moderna**: Tema oscuro con diseño responsive
+- **Agrupación Inteligente**: Servicios organizados por categorías
+
+**Acceso:**
+- **Local**: `http://192.168.1.131/homepage`
+- **Tailscale**: `https://homepage.tail*.ts.net`
+- **Interno**: `http://homepage.homepage.svc.cluster.local:3000`
+
+**Despliegue:**
+```bash
+# Despliegue automático
+./scripts/setup-homepage-dashboard.sh
+
+# Despliegue manual
+kubectl apply -k cluster/homepage/
+```
+
+Para más detalles, ver [HOMEPAGE_DASHBOARD_SETUP.md](docs/HOMEPAGE_DASHBOARD_SETUP.md).
+
 ### TrueNAS con Prometheus y Grafana
 
 El sistema incluye monitoreo completo de TrueNAS usando:

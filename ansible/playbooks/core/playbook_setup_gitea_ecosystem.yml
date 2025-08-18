@@ -79,35 +79,31 @@
         cmd: git push origin main
         chdir: /tmp/homelab-config
 
-    - name: Crear secreto para FluxCD
+    - name: Crear secreto para ArgoCD
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: v1
           kind: Secret
           metadata:
-            name: flux-git-credentials
-            namespace: flux-system
+            name: argocd-git-credentials
+            namespace: argocd
           stringData:
             username: "{{ gitea_admin_user }}"
             password: "{{ gitea_admin_password }}"
 
-    - name: Apuntar FluxCD al repositorio de Gitea
+    - name: Configurar repositorio para ArgoCD
       kubernetes.core.k8s:
         state: present
         definition:
-          apiVersion: source.toolkit.fluxcd.io/v1beta2
-          kind: GitRepository
+          apiVersion: v1
+          kind: ConfigMap
           metadata:
-            name: flux-system
-            namespace: flux-system
-          spec:
-            interval: 1m0s
-            ref:
-              branch: main
-            secretRef:
-              name: flux-git-credentials
+            name: argocd-repo-config
+            namespace: argocd
+          data:
             url: http://gitea.gitea.svc.cluster.local/homelab/homelab-config.git
+            branch: main
 
     - name: Obtener token de registro del runner
       uri:

@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-widgets
+  namespace: homepage
+  labels:
+    app: homepage
+    part-of: homelab-dashboard
+data:
+  widgets.yaml: |
+    # Widgets de monitoreo del Homelab
+    
+    # Widget de estado del sistema
+    - name: "💻 Estado del Sistema"
+      type: system-stats
+      options:
+        cpu: true
+        memory: true
+        disk: true
+        network: true
+        uptime: true
+        os: true
+    
+    # Widget de contenedores Docker
+    - name: "🐳 Contenedores Docker"
+      type: docker
+      options:
+        url: "unix:///var/run/docker.sock"
+        containers: true
+        stats: true
+        labels: true
+    
+    # Widget de pods de Kubernetes
+    - name: "☸️ Pods Kubernetes"
+      type: kubernetes-pods
+      options:
+        namespace: all
+        showStatus: true
+        showRestarts: true
+        showAge: true
+    
+    # Widget de métricas del clúster
+    - name: "📊 Métricas del Clúster"
+      type: kubernetes
+      options:
+        namespace: all
+        showNodes: true
+        showPods: true
+        showServices: true
+    
+    # Widget de estado de TrueNAS
+    - name: "💾 Estado TrueNAS"
+      type: truenas
+      options:
+        url: "https://192.168.1.20"
+        apiKey: "${TRUENAS_API_KEY}"
+        showPools: true
+        showDatasets: true
+        showSystem: true
+    
+    # Widget de estado de Proxmox
+    - name: "🏠 Estado Proxmox"
+      type: proxmox
+      options:
+        url: "https://192.168.1.100:8006"
+        username: "root@pam"
+        apiTokenId: "ansible"
+        apiTokenSecret: "${PROXMOX_API_TOKEN_SECRET}"
+        showVMs: true
+        showNodes: true
+        showStorage: true
+    
+    # Widget de estado de Plex
+    - name: "🎬 Estado Plex"
+      type: plex
+      options:
+        url: "https://plex.danielriquelme.cl"
+        token: "${PLEX_TOKEN}"
+        showLibraries: true
+        showSessions: true
+        showStats: true
+    
+    # Widget de estado de Sonarr
+    - name: "📺 Estado Sonarr"
+      type: sonarr
+      options:
+        url: "https://sonarr.danielriquelme.cl"
+        apiKey: "${SONARR_API_KEY}"
+        showSeries: true
+        showQueue: true
+        showCalendar: true
+    
+    # Widget de estado de Radarr
+    - name: "🎬 Estado Radarr"
+      type: radarr
+      options:
+        url: "https://radarr.danielriquelme.cl"
+        apiKey: "${RADARR_API_KEY}"
+        showMovies: true
+        showQueue: true
+        showCalendar: true
+    
+    # Widget de estado de qBittorrent
+    - name: "📥 Estado qBittorrent"
+      type: qbittorrent
+      options:
+        url: "https://qbittorrent.danielriquelme.cl"
+        username: "admin"
+        password: "${QBITTORRENT_PASSWORD}"
+        showTorrents: true
+        showStats: true
+        showSpeed: true
+    
+    # Widget de estado de Grafana
+    - name: "📊 Estado Grafana"
+      type: grafana
+      options:
+        url: "https://grafana.danielriquelme.cl"
+        apiKey: "${GRAFANA_API_KEY}"
+        showDashboards: true
+        showAlerts: true
+        showMetrics: true

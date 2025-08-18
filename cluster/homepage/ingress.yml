@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app: homepage
+    part-of: homelab-dashboard
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: homepage-auth@kubernetescrd
+    # Solo permitir acceso desde Tailscale
+    traefik.ingress.kubernetes.io/whitelist-source-range: "100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "*.tail*.ts.net"
+        - "homepage.local"
+      secretName: homepage-tls
+  rules:
+    - host: "*.tail*.ts.net"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage
+                port:
+                  number: 3000
+    - host: "homepage.local"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage
+                port:
+                  number: 3000

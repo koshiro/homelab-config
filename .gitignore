@@ -1,8 +1,60 @@
-# Ficheros de variables de Ansible
-ansible/vars/homelab_vars.yml
-
-# Ficheros de entorno
+# Archivos de credenciales y configuración sensible
 .env
+*.env
+.env.local
+.env.production
+.env.staging
 
-# Ficheros de SO
+# Archivos de SOPS que no están encriptados
+*.sops.yml
+!*.sops.yml
+
+# Claves de encriptación
+.age-key
+*.age-key
+
+# Archivos de configuración local
+config.local.yml
+secrets.local.yml
+
+# Logs y archivos temporales
+*.log
+*.tmp
+*.temp
+
+# Archivos de sistema
 .DS_Store
+Thumbs.db
+
+# Directorios de trabajo
+/tmp/
+/temp/
+/cache/
+
+# Archivos de backup
+*.bak
+*.backup
+*.old
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de Ansible
+*.retry
+ansible.log
+
+# Archivos de Kubernetes
+*.kubeconfig
+kubeconfig
+
+# Archivos de Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Archivos de Docker
+.dockerignore
+docker-compose.override.yml

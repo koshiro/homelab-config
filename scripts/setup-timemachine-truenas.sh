@@ -4,13 +4,32 @@
 
 set -e
 
-# Configuración
-TRUENAS_HOST="192.168.1.20"
-API_KEY="1-W3MgqZZFNYGPVYIHWKLtaXEuWFvkRkbeUi3dHAGUlAlj5dwEzI5cRcG9eCHxSjpV"
-DATASET_NAME="timemachine"
-POOL_NAME="homelab-storage"
+# Cargar variables de entorno si existe .env
+if [ -f ".env" ]; then
+    source .env
+fi
+
+# Configuración - usar variables de entorno o valores por defecto
+TRUENAS_HOST="${TRUENAS_HOST:-192.168.1.20}"
+API_KEY="${TRUENAS_API_KEY:-}"
+DATASET_NAME="${DATASET_NAME:-timemachine}"
+POOL_NAME="${POOL_NAME:-homelab-storage}"
+
+# Verificar que la API key esté configurada
+if [ -z "$API_KEY" ]; then
+    echo "❌ Error: TRUENAS_API_KEY no está configurada"
+    echo "📝 Crea un archivo .env con:"
+    echo "   TRUENAS_API_KEY=tu_api_key_aqui"
+    echo "   TRUENAS_HOST=192.168.1.20"
+    echo "   DATASET_NAME=timemachine"
+    echo "   POOL_NAME=homelab-storage"
+    exit 1
+fi
 
 echo "🔧 Configurando Time Machine en TrueNAS..."
+echo "📍 Host: ${TRUENAS_HOST}"
+echo "📁 Dataset: ${DATASET_NAME}"
+echo "💾 Pool: ${POOL_NAME}"
 
 # 1. Crear el dataset para Time Machine
 echo "📁 Creando dataset '${DATASET_NAME}' en pool '${POOL_NAME}'..."
@@ -40,16 +59,20 @@ USER_EXISTS=$(curl -s -H "Authorization: Bearer ${API_KEY}" \
 
 if [ -z "$USER_EXISTS" ]; then
   echo "👤 Creando usuario timemachine..."
+  
+  # Generar contraseña aleatoria si no está configurada
+  TIMEMACHINE_PASSWORD="${TIMEMACHINE_PASSWORD:-$(openssl rand -base64 12)}"
+  
   USER_RESPONSE=$(curl -s -X POST \
     -H "Authorization: Bearer ${API_KEY}" \
     -H "Content-Type: application/json" \
-    -d '{
-      "username": "timemachine",
-      "full_name": "Time Machine User",
-      "password": "TimeMachine2024!",
-      "uid": 1000,
-      "group": 100
-    }' \
+    -d "{
+      \"username\": \"timemachine\",
+      \"full_name\": \"Time Machine User\",
+      \"password\": \"${TIMEMACHINE_PASSWORD}\",
+      \"uid\": 1000,
+      \"group\": 100
+    }" \
     "http://${TRUENAS_HOST}/api/v2.0/user")
   
   if echo "$USER_RESPONSE" | grep -q "error\|Error"; then
@@ -57,6 +80,7 @@ if [ -z "$USER_EXISTS" ]; then
     exit 1
   else
     echo "✅ Usuario timemachine creado exitosamente"
+    echo "🔑 Contraseña generada: ${TIMEMACHINE_PASSWORD}"
   fi
 else
   echo "✅ Usuario timemachine ya existe"
@@ -91,11 +115,15 @@ echo "✅ Configuración de Time Machine completada en TrueNAS!"
 echo "📊 Dataset: ${POOL_NAME}/${DATASET_NAME}"
 echo "🌐 Share NFS: /mnt/${POOL_NAME}/${DATASET_NAME}"
 echo "🔑 Usuario: timemachine"
-echo "🔑 Contraseña: TimeMachine2024!"
+if [ -n "$TIMEMACHINE_PASSWORD" ]; then
+  echo "🔑 Contraseña: ${TIMEMACHINE_PASSWORD}"
+fi
 echo ""
 echo "🚀 Ahora puedes desplegar el servicio en Kubernetes con:"
-echo "   kubectl apply -k cluster/timemachine/"
+echo "   kubectl apply -k cluster/timemachine-smb/"
 echo ""
 echo "📋 Para verificar la configuración:"
-echo "   kubectl get pods -n timemachine"
-echo "   kubectl get svc -n timemachine"
+echo "   kubectl get pods -n timemachine-smb"
+echo "   kubectl get svc -n timemachine-smb"
+echo ""
+echo "💡 Recuerda guardar la contraseña del usuario timemachine en un lugar seguro"

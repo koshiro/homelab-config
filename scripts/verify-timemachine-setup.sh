@@ -3,11 +3,27 @@
 
 set -e
 
-# Configuración
-TRUENAS_HOST="192.168.1.20"
-API_KEY="1-W3MgqZZFNYGPVYIHWKLtaXEuWFvkRkbeUi3dHAGUlAlj5dwEzI5cRcG9eCHxSjpV"
-DATASET_NAME="timemachine"
-POOL_NAME="homelab-storage"
+# Cargar variables de entorno si existe .env
+if [ -f ".env" ]; then
+    source .env
+fi
+
+# Configuración - usar variables de entorno o valores por defecto
+TRUENAS_HOST="${TRUENAS_HOST:-192.168.1.20}"
+API_KEY="${TRUENAS_API_KEY:-}"
+DATASET_NAME="${DATASET_NAME:-timemachine}"
+POOL_NAME="${POOL_NAME:-homelab-storage}"
+
+# Verificar que la API key esté configurada
+if [ -z "$API_KEY" ]; then
+    echo "❌ Error: TRUENAS_API_KEY no está configurada"
+    echo "📝 Crea un archivo .env con:"
+    echo "   TRUENAS_API_KEY=tu_api_key_aqui"
+    echo "   TRUENAS_HOST=192.168.1.20"
+    echo "   DATASET_NAME=timemachine"
+    echo "   POOL_NAME=homelab-storage"
+    exit 1
+fi
 
 echo "🔍 Verificando configuración de Time Machine en TrueNAS..."
 echo ""
@@ -127,6 +143,6 @@ echo ""
 echo "   3. Configurar Time Machine en macOS:"
 echo "      - Conectar a afp://tm.danielriquelme.cl"
 echo "      - Usuario: timemachine"
-echo "      - Contraseña: TimeMachine2024!"
+echo "      - Contraseña: [configurada en el archivo .env]"
 
 

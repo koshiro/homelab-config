@@ -13,7 +13,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: tailscale
-        namespace: flux-system
+        namespace: argocd
   valuesFrom:
     - kind: Secret
       name: tailscale-auth

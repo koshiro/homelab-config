@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cluster-settings
-  namespace: flux-system # Disponible para todo el clúster
+  namespace: argocd # Disponible para todo el clúster
 data:
   # Red
   NETWORK_GATEWAY: "{{ network_gateway }}"

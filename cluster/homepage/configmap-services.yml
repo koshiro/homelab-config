@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-services
+  namespace: homepage
+  labels:
+    app: homepage
+    part-of: homelab-dashboard
+data:
+  services.yaml: |
+    # Servicios del Homelab
+    - name: "🏠 Proxmox"
+      description: "Servidor de virtualización"
+      icon: "proxmox.png"
+      url: "https://192.168.1.100:8006"
+      target: _blank
+      group: "Infraestructura"
+      widget:
+        type: proxmox
+        url: "https://192.168.1.100:8006"
+        username: "root@pam"
+        apiTokenId: "ansible"
+        apiTokenSecret: "${PROXMOX_API_TOKEN_SECRET}"
+    
+    - name: "💾 TrueNAS"
+      description: "Almacenamiento NAS"
+      icon: "truenas.png"
+      url: "https://192.168.1.20"
+      target: _blank
+      group: "Infraestructura"
+      widget:
+        type: truenas
+        url: "https://192.168.1.20"
+        apiKey: "${TRUENAS_API_KEY}"
+    
+    - name: "☸️ Kubernetes"
+      description: "Dashboard del clúster"
+      icon: "kubernetes.png"
+      url: "https://192.168.1.131:32634"
+      target: _blank
+      group: "Infraestructura"
+    
+    - name: "📊 Grafana"
+      description: "Monitoreo y métricas"
+      icon: "grafana.png"
+      url: "https://grafana.danielriquelme.cl"
+      target: _blank
+      group: "Monitoreo"
+    
+    - name: "🎬 Plex"
+      description: "Servidor de medios"
+      icon: "plex.png"
+      url: "https://plex.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: plex
+        url: "https://plex.danielriquelme.cl"
+        token: "${PLEX_TOKEN}"
+    
+    - name: "📺 Sonarr"
+      description: "Gestión de series de TV"
+      icon: "sonarr.png"
+      url: "https://sonarr.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: sonarr
+        url: "https://sonarr.danielriquelme.cl"
+        apiKey: "${SONARR_API_KEY}"
+    
+    - name: "🎬 Radarr"
+      description: "Gestión de películas"
+      icon: "radarr.png"
+      url: "https://radarr.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: radarr
+        url: "https://radarr.danielriquelme.cl"
+        apiKey: "${RADARR_API_KEY}"
+    
+    - name: "🔍 Prowlarr"
+      description: "Buscador de indexadores"
+      icon: "prowlarr.png"
+      url: "https://prowlarr.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: prowlarr
+        url: "https://prowlarr.danielriquelme.cl"
+        apiKey: "${PROWLARR_API_KEY}"
+    
+    - name: "📚 Bazarr"
+      description: "Subtítulos automáticos"
+      icon: "bazarr.png"
+      url: "https://bazarr.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: bazarr
+        url: "https://bazarr.danielriquelme.cl"
+        apiKey: "${BAZARR_API_KEY}"
+    
+    - name: "🎯 Overseerr"
+      description: "Solicitudes de contenido"
+      icon: "overseerr.png"
+      url: "https://overseerr.danielriquelme.cl"
+      target: _blank
+      group: "Medios"
+      widget:
+        type: overseerr
+        url: "https://overseerr.danielriquelme.cl"
+        apiKey: "${OVERSEERR_API_KEY}"
+    
+    - name: "📥 qBittorrent"
+      description: "Cliente de torrents"
+      icon: "qbittorrent.png"
+      url: "https://qbittorrent.danielriquelme.cl"
+      target: _blank
+      group: "Descargas"
+      widget:
+        type: qbittorrent
+        url: "https://qbittorrent.danielriquelme.cl"
+        username: "admin"
+        password: "${QBITTORRENT_PASSWORD}"
+    
+    - name: "🔄 Gitea"
+      description: "Repositorio Git"
+      icon: "gitea.png"
+      url: "https://gitea.danielriquelme.cl"
+      target: _blank
+      group: "Desarrollo"
+    
+    - name: "🚀 ArgoCD"
+      description: "GitOps y despliegues"
+      icon: "argocd.png"
+      url: "https://argocd.danielriquelme.cl"
+      target: _blank
+      group: "Desarrollo"
+    
+    - name: "🕰️ Time Machine"
+      description: "Backup de Mac"
+      icon: "timemachine.png"
+      url: "smb://192.168.1.131/timemachine"
+      target: _blank
+      group: "Backup"
+    
+    - name: "🔗 Tailscale"
+      description: "VPN privada"
+      icon: "tailscale.png"
+      url: "https://login.tailscale.com"
+      target: _blank
+      group: "Red"

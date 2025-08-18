@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-settings
+  namespace: homepage
+  labels:
+    app: homepage
+    part-of: homelab-dashboard
+data:
+  settings.yaml: |
+    # Configuración principal de Homepage
+    title: "🏠 Homelab Dashboard"
+    theme: dark
+    language: es
+    color: slate
+    
+    # Configuración de la página
+    headerStyle: clean
+    layout: auto
+    columns: 3
+    
+    # Configuración de widgets
+    widgets:
+      - search
+      - weather
+      - system-stats
+      - docker
+      - kubernetes
+      - kubernetes-pods
+    
+    # Configuración de Docker
+    docker:
+      enabled: true
+      socket: /var/run/docker.sock
+      containers: true
+      stats: true
+      labels: true
+    
+    # Configuración de Kubernetes
+    kubernetes:
+      enabled: true
+      inCluster: true
+      namespace: all
+    
+    # Configuración de búsqueda
+    search:
+      provider: duckduckgo
+      target: _blank
+    
+    # Configuración de weather
+    weather:
+      provider: openweathermap
+      apiKey: ${OPENWEATHER_API_KEY}
+      latitude: -33.4489
+      longitude: -70.6693
+      units: metric
+      language: es
+    
+    # Configuración de sistema
+    system:
+      enabled: true
+      cpu: true
+      memory: true
+      disk: true
+      network: true
