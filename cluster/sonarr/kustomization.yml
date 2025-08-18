@@ -12,10 +12,10 @@ resources:
   - networkpolicy-arr-ingress.yml
   - networkpolicy-egress.yml
 
-# Configuración para que FluxCD sustituya las variables
+# Configuración para que ArgoCD sustituya las variables
 patches:
   - patch: |-
-      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      apiVersion: kustomize.toolkit.fluxcd.io/v1beta1
       kind: Kustomization
       metadata:
         name: not-used

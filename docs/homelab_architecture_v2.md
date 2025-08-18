@@ -9,7 +9,7 @@ Los principios fundamentales se mantienen:
 *   **Virtualización como Base:** Proxmox VE.
 *   **Orquestación de Contenedores:** Kubernetes (k3s).
 *   **Almacenamiento Centralizado:** TrueNAS CORE.
-*   **Gestión Declarativa (GitOps):** FluxCD.
+*   **Gestión Declarativa (GitOps):** ArgoCD.
 *   **Automatización de la Infraestructura:** Ansible.
 
 ## 2. Diseño Físico y de Almacenamiento
@@ -121,7 +121,7 @@ graph TD
 ## 5. Arquitectura del Clúster Kubernetes (k3s)
 
 *   **Componentes Centrales (Gestionados por GitOps):**
-    *   **FluxCD:** El agente de GitOps que sincroniza el clúster con este repositorio.
+    *   **ArgoCD:** El agente de GitOps que sincroniza el clúster con este repositorio.
     *   **Cloudflared:** El conector seguro a la red de Cloudflare.
     *   **Aplicaciones de medios:** Plex, qBittorrent, Sonarr, Radarr, Prowlarr, Bazarr, Overseerr.
 
@@ -129,10 +129,10 @@ graph TD
 
 Para no interrumpir servicios en producción ya funcionales:
 
-- **Traefik (k3s)**: gestionado por la instalación de k3s en `kube-system`. No está siendo gestionado por Helm/Flux en este repositorio.
-- **NFS CSI / Provisioners**: el almacenamiento (StorageClass/Provisioners) ya está operativo y no es gestionado por Helm/Flux en este repositorio.
+- **Traefik (k3s)**: gestionado por la instalación de k3s en `kube-system`. No está siendo gestionado por Helm/ArgoCD en este repositorio.
+- **NFS CSI / Provisioners**: el almacenamiento (StorageClass/Provisioners) ya está operativo y no es gestionado por Helm/ArgoCD en este repositorio.
 
-Estos componentes quedan explícitamente fuera de reconciliación de Flux para evitar reinstalaciones o cambios disruptivos.
+Estos componentes quedan explícitamente fuera de reconciliación de ArgoCD para evitar reinstalaciones o cambios disruptivos.
 
 ### 5.2. Plan de migración futura a GitOps (opción B)
 
@@ -144,7 +144,7 @@ Si se decide migrar Traefik y/o NFS a gestión declarativa, se seguirá este pla
 4. **Cutover controlado**: cambiar reglas/Service/DNS para mover tráfico al nuevo despliegue.
 5. **Activación en producción**: incluir los HelmRelease/Kustomizations en `cluster/` y habilitar su reconciliación por carpetas, con `prune` gradual.
 
-## 6. Metodología de Gestión con GitOps (FluxCD)
+## 6. Metodología de Gestión con GitOps (ArgoCD)
 
 _(Sin cambios respecto a la v1.0. El flujo de trabajo es el mismo)_
 
@@ -155,7 +155,7 @@ Ansible se utiliza **únicamente para la configuración inicial y la recuperaci�
     *   `playbook_proxmox_host.yml`: Configura el hipervisor.
     *   `playbook_vms.yml`: Crea las Máquinas Virtuales para k3s y TrueNAS.
     *   `playbook_k3s_cluster.yml`: Instala k3s en las VMs.
-    *   `playbook_gitops_bootstrap.yml`: Despliega los manifiestos iniciales de FluxCD en el clúster para que se haga cargo del resto.
+    *   `playbook_gitops_bootstrap.yml`: Despliega los manifiestos iniciales de ArgoCD en el clúster para que se haga cargo del resto.
 
 ## 8. Guía de Puesta en Marcha (Bootstrap Guide)
 

@@ -68,11 +68,11 @@ sops archivo.yml
 - ✅ `cluster/monitoring/secret-proxmox.sops.yml`
 - ✅ `cluster/monitoring/secret-truenas-credentials.sops.yml`
 - ✅ `cluster/monitoring/secret-grafana.sops.yml`
-- ✅ `cluster/homepage/secret-credentials.sops.yml`
+
 
 ### **Archivos eliminados:**
-- ✅ `cluster/flux-ssh-key.sops.yml` - Eliminado (no se usa Flux)
-- ✅ `cluster/flux-system/` - Eliminado (no se usa Flux)
+- ✅ `cluster/flux-ssh-key.sops.yml` - Eliminado (migrado a ArgoCD)
+- ✅ `cluster/flux-system/` - Eliminado (migrado a ArgoCD)
 
 ## 🚀 **Próximos Pasos Recomendados**
 

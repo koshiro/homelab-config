@@ -13,11 +13,10 @@ resources:
   - infra/nfs-csi-driver
   # - infra/nvidia-device-plugin.yml  # Archivo no existe
   - infra/nvidia-runtimeclass.yml
-  # - traefik # Gestionado fuera de Flux por ahora
+  # - traefik # Gestionado fuera de ArgoCD por ahora
   - cloudflared
   - truenas
   - tailscale
-  - homepage
   # --- GITOPS ---
   - argocd
   # --- APPS ---

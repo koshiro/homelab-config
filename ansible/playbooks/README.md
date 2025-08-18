@@ -12,7 +12,7 @@ ansible/playbooks/
 │   ├── playbook_initial_truenas_setup.yml # Setup inicial TrueNAS + API Key
 │   ├── playbook_configure_truenas.yml    # Configuración completa TrueNAS
 │   ├── playbook_configure_cluster.yml    # Instalación k3s (LTS robusta)
-│   └── playbook_setup_gitea_ecosystem.yml # Setup Gitea + GitOps completo
+
 ├── utils/                   # Utilidades de mantenimiento
 │   └── playbook_resize_vm_disks.yml      # Redimensionar discos VMs
 └── README.md               # Este archivo
@@ -64,14 +64,7 @@ Estos playbooks se ejecutan secuencialmente mediante `ansible/playbook_homelab.y
   - **Configura IngressRoute correcto para Traefik Dashboard (HTTPS externo, HTTP interno)**
 - **Tags**: `cloudflare`, `tunnel`
 
-### **7. Setup Gitea + GitOps (`playbook_setup_gitea_ecosystem.yml`)**
-- **Propósito**: Establecer el ecosistema de desarrollo completo
-- **Acciones**: 
-  - Configura Gitea (crear repos, tokens)
-  - Establece FluxCD para GitOps automático
-  - Configura Gitea Actions Runner
-  - Revoca tokens por seguridad
-- **Tags**: `gitops`, `gitea`
+
 
 ## 🛠️ **Playbooks Utils - Utilidades de Mantenimiento**
 
@@ -102,8 +95,7 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truena
 # Solo Cloudflare Tunnel
 ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags cloudflare
 
-# Solo GitOps
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags gitops
+
 ```
 
 ### **Utilidades Individuales**

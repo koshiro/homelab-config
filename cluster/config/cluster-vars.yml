@@ -8,8 +8,7 @@ metadata:
 data:
   # === Dominios y URLs ===
   DOMAIN_NAME: "homelab.lan" # Reemplazar con tu dominio real
-  GITEA_DOMAIN: "gitea.homelab.lan"
-  GITEA_REPO_URL: "ssh://git@gitea.gitea.svc.cluster.local:22/daniel/homelab-config.git"
+  
 
   # === Cloudflare ===
   CLOUDFLARE_ACCOUNT_TAG: "REEMPLAZAR_CON_ACCOUNT_TAG"

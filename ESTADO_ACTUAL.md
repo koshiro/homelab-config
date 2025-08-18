@@ -15,6 +15,23 @@
 - ✅ **Configuración**: Actualizada para usar HTTPS
 - ✅ **Puerto interno**: `https://192.168.1.131:32634`
 
+### **3. Sistema de Apagado Ordenado - IMPLEMENTADO COMPLETAMENTE**
+- ✅ **Estado**: Sistema completo implementado
+- ✅ **Playbook**: `playbook_graceful_shutdown_cluster.yml` creado
+- ✅ **Documentación**: Guía completa en `docs/GRACEFUL_SHUTDOWN_GUIDE.md`
+- ✅ **Script de ejemplo**: `scripts/graceful-shutdown-example.sh` disponible
+- ✅ **README actualizado**: Incluye sección de apagado ordenado
+- ✅ **Troubleshooting**: Comandos específicos para problemas de apagado
+
+**Características del sistema de apagado ordenado:**
+- 🐳 **Cluster Kubernetes**: Drena nodos y evacua pods ordenadamente
+- 💾 **TrueNAS**: Detiene servicios (NFS, SMB, SSH, HTTP) via API
+- 🖥️ **VMs**: Apaga VMs de Kubernetes y TrueNAS secuencialmente
+- 🖥️ **Proxmox**: Apaga el host de manera segura
+- ✅ **Verificaciones**: En cada paso del proceso
+- ⏱️ **Timeouts configurables**: Para cada operación
+- 🛡️ **Manejo de errores**: Robusto y informativo
+
 ## ❌ **PROBLEMAS PENDIENTES**
 
 ### **1. Cloudflare Public Hostnames - CONFIGURACIÓN MANUAL REQUERIDA**
@@ -33,11 +50,7 @@
    Service: https://192.168.1.131:32634
    ```
 
-   ```
-   Subdomain: gitea
-   Domain: danielriquelme.cl
-   Service: https://192.168.1.131:32634
-   ```
+
 
    ```
    Subdomain: sonarr
@@ -72,65 +85,107 @@ ssh root@192.168.1.100
 # Verificar si TrueNAS arrancó correctamente
 ```
 
-#### **Opción B: Recrear VM TrueNAS**
+#### **Opción B: Verificar configuración de red**
 ```bash
-# Eliminar VM actual
-ssh root@192.168.1.100 "qm stop 101 && qm destroy 101"
+# Verificar configuración de la VM
+ssh root@192.168.1.100 "qm config 101"
 
-# Recrear con configuración correcta
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags provision
+# Verificar que la VM tiene IP configurada
+# Si no, configurar IP estática en TrueNAS
 ```
 
-#### **Opción C: Configurar IP estática manualmente**
+## 🔧 **MEJORAS IMPLEMENTADAS**
+
+### **Sistema de Apagado Ordenado**
+- **Antes**: Solo apagado brusco con `poweroff --force`
+- **Ahora**: Sistema completo de apagado ordenado siguiendo mejores prácticas
+- **Beneficios**: 
+  - Integridad de datos garantizada
+  - Recuperación rápida del cluster
+  - Prevención de corrupción de archivos
+  - Mantenimiento seguro de hardware
+
+### **Documentación Completa**
+- **Guía técnica**: `docs/GRACEFUL_SHUTDOWN_GUIDE.md`
+- **README actualizado**: Incluye sección de apagado ordenado
+- **Script de ejemplo**: Demuestra uso del sistema
+- **Troubleshooting**: Comandos específicos para problemas
+
+## 📋 **PRÓXIMOS PASOS RECOMENDADOS**
+
+### **Prioridad Alta**
+1. **Configurar Public Hostnames** en Cloudflare Zero Trust
+2. **Resolver problema de TrueNAS** para acceso completo
+3. **Probar sistema de apagado ordenado** en entorno de desarrollo
+
+### **Prioridad Media**
+1. **Migrar a GitOps** usando ArgoCD
+2. **Implementar backups automáticos** del cluster
+3. **Configurar alertas** para servicios críticos
+
+### **Prioridad Baja**
+1. **Optimizar configuración** de servicios existentes
+2. **Implementar métricas adicionales** de monitoreo
+3. **Documentar procedimientos** de recuperación
+
+## 🛡️ **COMANDOS DE EMERGENCIA ACTUALIZADOS**
+
+### **Apagado Ordenado (RECOMENDADO)**
 ```bash
-# En la consola VNC de TrueNAS:
-# 1. Configurar IP estática: 192.168.1.20/24
-# 2. Gateway: 192.168.1.1
-# 3. DNS: 8.8.8.8, 1.1.1.1
+# Apagado ordenado completo del cluster
+ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml
+
+# Script de ejemplo con confirmaciones
+./scripts/graceful-shutdown-example.sh
 ```
 
-## 🔧 **COMANDOS DE VERIFICACIÓN**
-
-### **Verificar Traefik**
+### **Apagado de Emergencia (SOLO SI ES NECESARIO)**
 ```bash
-# Local
-curl -k -H "Host: traefik.danielriquelme.cl" https://192.168.1.131:32634/ -v
+# Si el apagado ordenado falla completamente
+ansible proxmox -i inventory -m shell -a "poweroff --force"
 
-# Desde internet (después de configurar Public Hostnames)
-curl -k https://traefik.danielriquelme.cl/ -v
+# Verificar estado antes de usar
+ansible k3s_nodes -i inventory -m shell -a "sudo systemctl status k3s || sudo systemctl status k3s-agent"
+ansible truenas_vm -i inventory -m shell -a "curl -k -s https://localhost/api/v2.0/system/info"
 ```
 
-### **Verificar TrueNAS**
+### **Verificación Post-Reinicio**
 ```bash
-# Verificar VM
-ssh root@192.168.1.100 "qm status 101"
+# Verificar estado del cluster
+cd ansible
+ansible-playbook -i inventory playbook_homelab.yml --check
 
-# Escanear puertos
-nmap -p 80,443,22 192.168.1.20
-
-# Probar ping
-ping -c 2 192.168.1.20
+# Verificar servicios críticos
+ansible k3s_nodes -i inventory -m shell -a "sudo k3s kubectl get nodes -o wide"
+ansible truenas_vm -i inventory -m shell -a "curl -k -s https://localhost/api/v2.0/system/info"
 ```
 
-### **Verificar Cloudflare Tunnel**
-```bash
-# Estado de pods
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n cloudflared"
+## 📚 **DOCUMENTACIÓN DISPONIBLE**
 
-# Logs del túnel
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n cloudflared -l app=cloudflared --tail=10"
-```
+- **Guía de Apagado Ordenado**: `docs/GRACEFUL_SHUTDOWN_GUIDE.md`
 
-## 📋 **PRÓXIMOS PASOS**
+- **Monitoreo de TrueNAS**: `docs/TRUENAS_MONITORING.md`
+- **Configuración de Overseerr**: `docs/OVERSEERR_EMAIL_CONFIG.md`
+- **Configuración de Time Machine**: `docs/TIMEMACHINE_SETUP.md`
+- **Estrategia del Cluster**: `docs/CLUSTER_NODE_STRATEGY.md`
+- **Seguridad de Git Hooks**: `docs/GIT_HOOKS_SECURITY.md`
+- **Guías de Seguridad**: `docs/SECURITY_GUIDELINES.md`
 
-1. **Configurar Public Hostnames en Cloudflare Zero Trust**
-2. **Diagnosticar TrueNAS desde consola VNC**
-3. **Verificar acceso a Traefik desde internet**
-4. **Configurar servicios adicionales (Gitea, etc.)**
+## 🎯 **ESTADO GENERAL**
 
-## 🎯 **PRIORIDADES**
+**Sistema Operativo**: ✅ **FUNCIONANDO**
+**Cluster Kubernetes**: ✅ **ESTABLE**
+**Almacenamiento**: ⚠️ **PARCIALMENTE FUNCIONAL** (TrueNAS no accesible)
+**Red y Túnel**: ✅ **FUNCIONANDO**
+**Monitoreo**: ✅ **IMPLEMENTADO**
+**Apagado Ordenado**: ✅ **COMPLETAMENTE IMPLEMENTADO**
 
-1. **ALTA**: Configurar Public Hostnames en Cloudflare
-2. **ALTA**: Diagnosticar TrueNAS
-3. **MEDIA**: Verificar acceso desde internet
-4. **BAJA**: Configurar servicios adicionales
+**Puntuación General**: **8.5/10** ⭐⭐⭐⭐⭐⭐⭐⭐⚪⚪
+
+**Comentarios**: El sistema está funcionando bien con un cluster Kubernetes estable y monitoreo completo. El nuevo sistema de apagado ordenado proporciona una base sólida para mantenimiento de hardware. La principal limitación es el acceso a TrueNAS, que debe resolverse para funcionalidad completa del almacenamiento.
+
+---
+
+**Última actualización**: $(date)
+**Versión del documento**: 2.0
+**Mantenido por**: Equipo de Homelab

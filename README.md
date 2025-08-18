@@ -2,58 +2,33 @@
 
 ![Estado](https://img.shields.io/badge/Estado-Listo%20para%20Despliegue-brightgreen)
 ![Orquestación](https://img.shields.io/badge/Orquestación-Kubernetes%20(k3s)-blue)
-![Metodología](https://img.shields.io/badge/Metodología-GitOps%20(FluxCD)%20%2B%20Ansible-informational)
+![Metodología](https://img.shields.io/badge/Metodología-GitOps%20(ArgoCD)%20%2B%20Ansible-informational)
 
 Este repositorio contiene la configuración completa para un centro de datos personal que no solo ejecuta aplicaciones, sino que también proporciona un ecosistema de desarrollo y despliegue continuo (CI/CD) completamente automatizado.
 
 ## 🤖 Filosofía de Diseño
 
 *   **Infraestructura como Código (IaC):** Todo, desde la creación de VMs hasta la configuración de aplicaciones, está definido como código en este repositorio.
-*   **GitOps como Fuente de la Verdad:** El estado deseado del clúster de Kubernetes se define en un repositorio de Git (`homelab-config`) que vive dentro de nuestra propia instancia de Gitea. FluxCD se encarga de sincronizar el clúster con este repositorio.
-*   **CI/CD Integrado:** Gitea Actions se utiliza para construir, probar y desplegar aplicaciones automáticamente. El pipeline de CI/CD actualiza la versión de la imagen en el repositorio `homelab-config`, y FluxCD se encarga del resto.
+*   **GitOps como Fuente de la Verdad:** El estado deseado del clúster de Kubernetes se define en un repositorio de Git (`homelab-config`) que vive en GitHub. ArgoCD se encarga de sincronizar el clúster con este repositorio.
+*   **CI/CD Integrado:** GitHub Actions se utiliza para construir, probar y desplegar aplicaciones automáticamente. El pipeline de CI/CD actualiza la versión de la imagen en el repositorio `homelab-config`, y ArgoCD se encarga del resto.
 
 ## 🏗️ Arquitectura del Ecosistema
 
 El sistema se compone de dos tipos de repositorios:
 
 1.  **`homelab-config` (Este Repositorio):** Contiene la configuración de la infraestructura (Ansible) y los manifiestos de Kubernetes (`/cluster`) que describen el estado deseado del clúster.
-2.  **Repositorios de Aplicaciones (ej. `tattoo-app`):** Contienen el código fuente de las aplicaciones. Su pipeline de CI/CD produce imágenes de Docker que se almacenan en el registro de contenedores de Gitea.
+2.  **Repositorios de Aplicaciones (ej. `tattoo-app`):** Contienen el código fuente de las aplicaciones. Su pipeline de CI/CD produce imágenes de Docker que se almacenan en el registro de contenedores de GitHub.
 
 El flujo de trabajo es el siguiente:
 
-1.  Un desarrollador hace `push` a un repositorio de aplicación en Gitea.
-2.  Gitea Actions construye una nueva imagen de Docker y la sube al registro de Gitea.
-3.  Gitea Actions actualiza el manifiesto de la aplicación en el repositorio `homelab-config` con la nueva versión de la imagen.
-4.  FluxCD detecta el cambio en `homelab-config` y despliega la nueva versión de la aplicación en el clúster.
+1.  Un desarrollador hace `push` a un repositorio de aplicación en GitHub.
+2.  GitHub Actions construye una nueva imagen de Docker y la sube al registro de GitHub.
+3.  GitHub Actions actualiza el manifiesto de la aplicación en el repositorio `homelab-config` con la nueva versión de la imagen.
+4.  ArgoCD detecta el cambio en `homelab-config` y despliega la nueva versión de la aplicación en el clúster.
 
 ## 📊 Monitoreo
 
-### 🏠 Dashboard Homepage - Vista Centralizada del Homelab
 
-El sistema incluye un dashboard centralizado usando [Homepage](https://github.com/gethomepage/homepage) que proporciona una vista cómoda de todos los servicios corriendo en el servidor, incluyendo Proxmox, TrueNAS y todos los pods de Kubernetes.
-
-**Características del Dashboard:**
-- **Acceso Privado**: Solo a través de Tailscale para máxima seguridad
-- **Monitoreo en Tiempo Real**: Estado de todos los servicios del homelab
-- **Widgets Integrados**: Métricas de Proxmox, TrueNAS, Kubernetes, Plex, etc.
-- **Interfaz Moderna**: Tema oscuro con diseño responsive
-- **Agrupación Inteligente**: Servicios organizados por categorías
-
-**Acceso:**
-- **Local**: `http://192.168.1.131/homepage`
-- **Tailscale**: `https://homepage.tail*.ts.net`
-- **Interno**: `http://homepage.homepage.svc.cluster.local:3000`
-
-**Despliegue:**
-```bash
-# Despliegue automático
-./scripts/setup-homepage-dashboard.sh
-
-# Despliegue manual
-kubectl apply -k cluster/homepage/
-```
-
-Para más detalles, ver [HOMEPAGE_DASHBOARD_SETUP.md](docs/HOMEPAGE_DASHBOARD_SETUP.md).
 
 ### TrueNAS con Prometheus y Grafana
 
@@ -85,6 +60,30 @@ Para más detalles, ver [TRUENAS_MONITORING.md](docs/TRUENAS_MONITORING.md).
 ## 🚀 Guía de Puesta en Marcha (Bootstrap)
 
 Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmox recién instalado.
+
+## 🛑 Apagado Ordenado del Cluster
+
+Para mantenimiento de hardware o actualizaciones del sistema, **SIEMPRE** usa el apagado ordenado:
+
+```bash
+# Apagado ordenado completo del cluster
+ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml
+```
+
+**¿Por qué es importante?**
+- ✅ **Integridad de datos**: Evita corrupción de archivos NFS
+- ✅ **Recuperación rápida**: El cluster se estabiliza más rápido
+- ✅ **Prevención de errores**: Evita locks persistentes y problemas de sincronización
+
+**Secuencia del apagado ordenado:**
+1. **Cluster Kubernetes**: Drena nodos y evacua pods ordenadamente
+2. **TrueNAS**: Detiene servicios (NFS, SMB, SSH, HTTP) via API
+3. **VMs**: Apaga VMs de Kubernetes y TrueNAS
+4. **Proxmox**: Apaga el host de manera segura
+
+**Para más detalles, ver [GRACEFUL_SHUTDOWN_GUIDE.md](docs/GRACEFUL_SHUTDOWN_GUIDE.md)**
+
+### Prerrequisitos
 
 ### Prerrequisitos
 
@@ -240,14 +239,10 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
             - Configura ingress para `*.tu-dominio.com`
             - Establece conexión segura sin port forwarding
 
-    *   **6. Configurar el Ecosistema de Gitea y GitOps (`playbook_setup_gitea_ecosystem.yml`):**
+    
         *   **Propósito:** Despliega infraestructura esencial y establece el ecosistema GitOps completo.
         *   **Qué hace:** 
-            - Espera que Gitea esté disponible
-            - Crea token temporal y repositorios (`homelab-config`, `tattoo-app`)
-            - Configura FluxCD para GitOps automático
-            - Configura Gitea Actions Runner
-            - Revoca tokens temporales por seguridad
+
 
     ## 🛠️ **Playbooks Utils (ansible/playbooks/utils/)**
 
@@ -280,14 +275,28 @@ Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmo
     Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo:
     
     - ✅ **Cloudflare Tunnel**: Tu dominio es accesible desde internet sin port forwarding
-    - ✅ **GitOps**: FluxCD vigila el repositorio `homelab-config` en tu propia instancia de Gitea  
-    - ✅ **CI/CD**: Gitea Actions Runner está listo para construir y desplegar tus aplicaciones
+    - ✅ **GitOps**: ArgoCD vigila el repositorio `homelab-config` en GitHub
+- ✅ **CI/CD**: GitHub Actions está listo para construir y desplegar tus aplicaciones
     - ✅ **Almacenamiento**: TrueNAS proporciona storage NFS centralizado
       - `nfs-csi` → pool `homelab-storage` (media)
       - `nfs-ssd` → pool `homelab-ssd` (descargas)
     - ✅ **Alta Disponibilidad**: k3s multi-nodo con balanceador de carga integrado
 
 ## 🚨 **Troubleshooting y Comandos Útiles**
+
+### **Problema: Apagado del Cluster (CRÍTICO - Siempre usar apagado ordenado)**
+```bash
+# ❌ NUNCA usar apagado brusco - puede corromper datos
+# ansible proxmox -i inventory -m shell -a "poweroff --force"
+
+# ✅ SIEMPRE usar apagado ordenado para mantenimiento
+ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml
+
+# Si el apagado ordenado falla, verificar estado:
+ansible k3s_nodes -i inventory -m shell -a "sudo systemctl status k3s || sudo systemctl status k3s-agent"
+ansible truenas_vm -i inventory -m shell -a "curl -k -s https://localhost/api/v2.0/system/info"
+ansible proxmox_host -i inventory -m shell -a "qm list"
+```
 
 ### **Problema: Espacio Insuficiente en Disco (RARO - VMs tienen 30GB)**
 ```bash
@@ -396,7 +405,7 @@ ssh k3s-node-1 "sudo journalctl -u k3s -f"
 ### **URLs de Acceso Post-Instalación**
 
 **🌐 URLs PÚBLICAS (Acceso desde Internet):**
-- **Gitea**: https://gitea.tu-dominio.com
+
 - **Traefik Dashboard**: https://traefik.tu-dominio.com  
 - **Sonarr**: https://sonarr.tu-dominio.com
 - **Radarr**: https://radarr.tu-dominio.com
@@ -429,7 +438,7 @@ ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
 ### **Verificar DNS y Túnel de Cloudflare**
 ```bash
 # Verificar que los DNS se propagaron
-nslookup gitea.tu-dominio.com
+
 nslookup traefik.tu-dominio.com
 
 # Verificar estado del túnel en k3s
@@ -459,7 +468,7 @@ Body:
 {
   "config": {
     "ingress": [
-      { "hostname": "gitea.tu-dominio.com", "service": "http://traefik.kube-system.svc.cluster.local:80" },
+      
       { "hostname": "*.tu-dominio.com",  "service": "http://traefik.kube-system.svc.cluster.local:80" },
       { "service": "http_status:404" }
     ]
@@ -475,8 +484,7 @@ Los ingress deben usar `web` (HTTP). El TLS externo lo termina Cloudflare. No re
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: gitea
-  namespace: gitea
+  
   annotations:
     # Configuración para Cloudflare Tunnel
     traefik.ingress.kubernetes.io/router.entrypoints: web
@@ -487,14 +495,14 @@ spec:
   ingressClassName: traefik
   # sin sección tls
   rules:
-  - host: gitea.danielriquelme.cl
+  
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: gitea
+    
             port:
               number: 3000
 ```
@@ -530,7 +538,7 @@ Este script verifica:
 
 ### **Troubleshooting de Aplicaciones**
 
-**Problema: 404/502 en aplicaciones (Gitea, etc.)**
+**Problema: 404/502 en aplicaciones**
 
 **Solución:**
 ```bash
@@ -540,24 +548,16 @@ ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n kube-system | grep traefi
 # 2. Verificar los puertos actuales
 ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
 
-# 3. Verificar estado de la aplicación
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n gitea"
 
-# 4. Verificar logs de la aplicación
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n gitea -l app=gitea --tail=20"
-
-# 5. Verificar configuración del Ingress
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get ingress -n gitea -o yaml"
 ```
 
 **✅ CONFIGURACIÓN CORRECTA:**
 - **Traefik:** Instalado por defecto en K3s
 - **Puertos:** HTTP (32055), HTTPS (32634) - verificar con `kubectl get service traefik -n kube-system`
-- **Health Checks:** Usar `/api/healthz` para Gitea (no `/api/v1/version`)
+- **Health Checks:** Verificar endpoints de salud de las aplicaciones
 
 **⚠️ IMPORTANTE:** 
 - Los puertos pueden cambiar después de reinstalaciones
-- Gitea necesita configuración inicial en modo instalación
 - Verificar health checks en deployments
 
 ### **Comandos de Mantenimiento**

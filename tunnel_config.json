@@ -5,10 +5,7 @@
         "hostname": "traefik.danielriquelme.cl",
         "service": "http://192.168.1.131:80"
       },
-      {
-        "hostname": "gitea.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
-      },
+
       {
         "hostname": "sonarr.danielriquelme.cl",
         "service": "http://192.168.1.131:80"

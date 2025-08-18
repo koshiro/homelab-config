@@ -6,7 +6,7 @@ resources:
   - deployment.yml
   - secret.sops.yml
 
-# Configuración para que FluxCD sustituya las variables
+# Configuración para que ArgoCD sustituya las variables
 patches:
   - patch: |-
       apiVersion: kustomize.config.k8s.io/v1beta1

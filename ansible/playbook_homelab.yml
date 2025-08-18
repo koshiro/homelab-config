@@ -166,7 +166,7 @@
     - name: Definir servicios a exponer públicamente
       ansible.builtin.set_fact:
         public_services:
-          - { subdomain: "gitea", description: "Gitea Git Repository" }
+        
           - { subdomain: "traefik", description: "Traefik Dashboard" }
           - { subdomain: "sonarr", description: "Sonarr TV Shows" }
           - { subdomain: "radarr", description: "Radarr Movies" }
@@ -282,9 +282,7 @@
           
           ⚠️  Nota: El túnel usa configuración remota vía API. No crear Public Hostnames en el dashboard.
 
-- name: 7. Configurar el Ecosistema de Gitea y GitOps
-  import_playbook: playbooks/core/playbook_setup_gitea_ecosystem.yml
-  tags: [gitops, gitea]
+
 
 - name: 8. Verificación Final del Sistema
   hosts: k3s_nodes[0]
@@ -311,7 +309,7 @@
           sudo k3s kubectl get nodes
           
           Interface Web:
-          - Gitea: http://gitea.homelab.local
+  
           - TrueNAS: https://{{ hostvars['truenas']['ansible_host'] }}
           
           ¡Sistema listo para desarrollo y producción!

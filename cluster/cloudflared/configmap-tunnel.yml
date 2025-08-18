@@ -9,7 +9,7 @@ data:
     credentials-file: /etc/cloudflared/creds/credentials.json
     
     ingress:
-      - hostname: gitea.danielriquelme.cl
+    
         service: http://traefik.kube-system.svc.cluster.local:80
         originRequest:
           noTLSVerify: true

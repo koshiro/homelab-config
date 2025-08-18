@@ -88,7 +88,7 @@ fi
 
 # 7. Verificar DNS
 echo "7. Verificando resolución DNS..."
-for subdomain in traefik gitea sonarr radarr; do
+for subdomain in traefik sonarr radarr; do
     if nslookup "$subdomain.$DOMAIN" >/dev/null 2>&1; then
         print_status "DNS OK para $subdomain.$DOMAIN"
     else
@@ -98,7 +98,7 @@ done
 
 # 8. Verificar conectividad externa via Cloudflare
 echo "8. Verificando conectividad externa via Cloudflare..."
-for host in gitea.$DOMAIN traefik.$DOMAIN; do
+for host in traefik.$DOMAIN; do
   code=$(curl -sS -o /dev/null -w "%{http_code}" https://$host || true)
   echo "$host -> $code"
 done
@@ -118,7 +118,7 @@ echo "✅ Conectividad local: OK"
 echo ""
 echo "🌐 URLs de acceso:"
 echo "   - Traefik Dashboard: https://traefik.$DOMAIN"
-echo "   - Gitea: https://gitea.$DOMAIN"
+echo ""
 echo ""
 print_status "El túnel está en modo remoto: No crear Public Hostnames en el dashboard"
 echo ""
