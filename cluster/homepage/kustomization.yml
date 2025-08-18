@@ -12,3 +12,4 @@ resources:
   - configmap-services.yml
   - configmap-bookmarks.yml
   - configmap-widgets.yml
+

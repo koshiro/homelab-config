@@ -6,6 +6,9 @@ metadata:
   labels:
     app: homepage
     part-of: homelab-dashboard
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: "homepage"
 spec:
   type: ClusterIP
   ports:

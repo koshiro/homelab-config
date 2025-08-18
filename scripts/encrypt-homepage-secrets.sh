@@ -113,3 +113,4 @@ echo ""
 
 log_success "¡Secretos encriptados exitosamente!"
 log_info "Ahora puedes aplicar los secretos al clúster de forma segura"
+

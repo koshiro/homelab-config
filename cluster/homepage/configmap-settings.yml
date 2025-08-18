@@ -28,13 +28,9 @@ data:
       - kubernetes
       - kubernetes-pods
     
-    # Configuración de Docker
+    # Configuración de Docker (deshabilitado en favor de Kubernetes)
     docker:
-      enabled: true
-      socket: /var/run/docker.sock
-      containers: true
-      stats: true
-      labels: true
+      enabled: false
     
     # Configuración de Kubernetes
     kubernetes:

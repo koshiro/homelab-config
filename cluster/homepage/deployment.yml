@@ -46,9 +46,6 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /app/config
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
-              readOnly: true
           resources:
             requests:
               memory: "128Mi"
@@ -72,10 +69,6 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: homepage-config
-        - name: docker-sock
-          hostPath:
-            path: /var/run/docker.sock
-            type: Socket
       # Permitir que se despliegue en cualquier nodo
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"

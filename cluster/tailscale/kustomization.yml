@@ -4,6 +4,5 @@ resources:
   - namespace.yml
   - helm-repository.yml
   - helm-release.yml
-  - secret.sops.yml
   - daemonset.yml
 

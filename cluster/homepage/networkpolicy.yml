@@ -17,10 +17,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
-        - podSelector:
+              name: traefik
+        - namespaceSelector:
             matchLabels:
-              app: traefik
+              kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: TCP
           port: 3000

@@ -48,7 +48,7 @@ spec:
             - >-
               tailscaled --state=/var/lib/tailscale/tailscaled.state &
               sleep 2 &&
-              tailscale up --authkey="${TS_AUTHKEY}" --ssh=true --accept-dns=false &&
+              tailscale up --auth-key="${TS_AUTHKEY}" --ssh=true --accept-dns=false --hostname="${NODE_NAME}-k3s" --reset &&
               tail -f /dev/null
       volumes:
         - name: dev-net-tun

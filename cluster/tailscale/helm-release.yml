@@ -5,7 +5,7 @@ metadata:
   namespace: tailscale
 spec:
   interval: 15m
-  suspend: true
+  suspend: false
   chart:
     spec:
       chart: tailscale-operator
