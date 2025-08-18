@@ -26,6 +26,35 @@ El flujo de trabajo es el siguiente:
 3.  Gitea Actions actualiza el manifiesto de la aplicación en el repositorio `homelab-config` con la nueva versión de la imagen.
 4.  FluxCD detecta el cambio en `homelab-config` y despliega la nueva versión de la aplicación en el clúster.
 
+## 📊 Monitoreo
+
+### TrueNAS con Prometheus y Grafana
+
+El sistema incluye monitoreo completo de TrueNAS usando:
+- **node_exporter** para métricas del sistema
+- **Prometheus** para recopilación de métricas
+- **Grafana** con dashboard personalizado "TrueNAS System Metrics"
+
+**Características del Dashboard:**
+- Uso de CPU, memoria y disco en tiempo real
+- Tráfico de red por interfaz
+- Alertas configurables (CPU > 80%, Memoria > 80%, Disco > 80%)
+- Métricas del sistema operativo de TrueNAS
+
+**Acceso:**
+- Grafana: https://grafana.danielriquelme.cl
+- Dashboard: TrueNAS System Metrics
+- Métricas: `kubectl port-forward -n monitoring svc/truenas-node-exporter 9100:9100`
+
+**Verificación:**
+```bash
+./scripts/verify-truenas-monitoring.sh
+```
+
+Para más detalles, ver [TRUENAS_MONITORING.md](docs/TRUENAS_MONITORING.md).
+
+---
+
 ## 🚀 Guía de Puesta en Marcha (Bootstrap)
 
 Sigue estos pasos para desplegar el homelab desde cero en un servidor con Proxmox recién instalado.

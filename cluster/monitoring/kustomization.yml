@@ -7,6 +7,9 @@ resources:
   - helm-release.yml
   - secret-grafana.sops.yml
   - secret-proxmox.sops.yml
+  - secret-truenas-credentials.sops.yml
   - ingress.yml
   - pve-exporter.yml
   - speedtest-exporter.yml
+  - truenas-node-exporter.yml
+  - grafana-dashboard-truenas-simple.yml

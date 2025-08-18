@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: http://argocd.danielriquelme.cl
+  admin.enabled: "true"
+  users.anonymous.enabled: "false"
+  # Configuración para GitHub - repositorio privado
+  repositories: |
+    - url: git@github.com:koshiro/homelab-config.git
+      type: git
+      name: homelab-config
+      sshPrivateKey: |
+        # La clave SSH se configurará en el secret de ArgoCD

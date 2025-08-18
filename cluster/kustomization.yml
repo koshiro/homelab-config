@@ -1,9 +1,9 @@
 # /cluster/kustomization.yml
 # Este es el plano maestro para todo el clúster.
-# FluxCD leerá este archivo para desplegar todo lo demás.
+# ArgoCD leerá este archivo para desplegar todo lo demás.
 # 
 # ESTADO ACTUAL: Cluster funcionando manualmente, migrando a GitOps
-# SERVICIOS ACTIVOS: gitea, plex, sonarr, radarr, prowlarr, bazarr, overseerr, qbittorrent, traefik, cloudflared
+# SERVICIOS ACTIVOS: plex, sonarr, radarr, prowlarr, bazarr, overseerr, qbittorrent, traefik, cloudflared
 # PENDIENTES: transmission (no desplegado), arr-networkpolicies (aplicadas manualmente)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -17,8 +17,9 @@ resources:
   - cloudflared
   - truenas
   - tailscale
+  # --- GITOPS ---
+  - argocd
   # --- APPS ---
-  - gitea
   - plex
   - sonarr
   - radarr
@@ -31,5 +32,3 @@ resources:
   # - transmission  # NO DESPLEGADO - Comentado para evitar errores
   - pingvin
   # - palmr  # eliminado
-  # --- FLUX ---
-  - flux-ssh-key.sops.yml
