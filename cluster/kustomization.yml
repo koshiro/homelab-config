@@ -11,7 +11,7 @@ resources:
   - config
   # --- INFRA ---
   - infra/nfs-csi-driver
-  - infra/nvidia-device-plugin.yml
+  # - infra/nvidia-device-plugin.yml  # Archivo no existe
   - infra/nvidia-runtimeclass.yml
   # - traefik # Gestionado fuera de Flux por ahora
   - cloudflared

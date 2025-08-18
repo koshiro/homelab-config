@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  # Configuración básica para que ArgoCD funcione
+  admin.enabled: "true"
+  users.anonymous.enabled: "false"
+  # URL del servidor (se puede cambiar después)
+  url: http://argocd.danielriquelme.cl

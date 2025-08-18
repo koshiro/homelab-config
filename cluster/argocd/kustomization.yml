@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - argocd-repo-github.yml
-  - argocd-app-homelab.yml
+  # Instalación oficial de ArgoCD
+  - install.yaml
+  # Configuración del repositorio SSH
   - repository-github.yml
+  # Application del cluster
+  - argocd-app-homelab.yml
