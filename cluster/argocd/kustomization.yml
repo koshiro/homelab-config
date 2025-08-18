@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - argocd-repo-github.yml
   - argocd-app-homelab.yml
+  - repository-github.yml
