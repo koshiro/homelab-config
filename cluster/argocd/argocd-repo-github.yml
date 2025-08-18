@@ -8,9 +8,8 @@ data:
   admin.enabled: "true"
   users.anonymous.enabled: "false"
   # Configuración para GitHub - repositorio privado
+  # Las credenciales SSH se configuran en el secret argocd-repo-credentials
   repositories: |
     - url: git@github.com:koshiro/homelab-config.git
       type: git
       name: homelab-config
-      sshPrivateKey: |
-        # La clave SSH se configurará en el secret de ArgoCD
