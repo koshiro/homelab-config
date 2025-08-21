@@ -4,7 +4,8 @@ kind: Kustomization
 namespace: qbittorrent
 
 resources:
-  - secret.sops.yml
   - job-configure-nfs.yml
   - job-mount-nfs-on-node2.yml
   # - job-configure-palmr.yml # eliminado
+generators:
+  - ./secret-generator.yaml

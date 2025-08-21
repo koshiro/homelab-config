@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ksops-installer
+  namespace: argocd
+  labels:
+    app: ksops-installer
+spec:
+  selector:
+    matchLabels:
+      app: ksops-installer
+  template:
+    metadata:
+      labels:
+        app: ksops-installer
+    spec:
+      containers:
+      - name: ksops
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args: ["-c", "apk add --no-cache curl && curl -L -o /usr/local/bin/ksops https://github.com/viaduct-ai/kustomize-sops/releases/latest/download/ksops && chmod +x /usr/local/bin/ksops && ksops --version"]
+        volumeMounts:
+        - name: host-bin
+          mountPath: /host/usr/local/bin
+      volumes:
+      - name: host-bin
+        hostPath:
+          path: /usr/local/bin
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+

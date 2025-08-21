@@ -122,6 +122,7 @@ ssh root@192.168.1.100 "qm config 101"
 1. **Migrar a GitOps** usando ArgoCD
 2. **Implementar backups automáticos** del cluster
 3. **Configurar alertas** para servicios críticos
+4. **Implementar centralización de modelos de IA** (AUTOMATIC1111 + ComfyUI)
 
 ### **Prioridad Baja**
 1. **Optimizar configuración** de servicios existentes
@@ -163,7 +164,7 @@ ansible truenas_vm -i inventory -m shell -a "curl -k -s https://localhost/api/v2
 ## 📚 **DOCUMENTACIÓN DISPONIBLE**
 
 - **Guía de Apagado Ordenado**: `docs/GRACEFUL_SHUTDOWN_GUIDE.md`
-
+- **Centralización de Modelos de IA**: `docs/CENTRALIZACION_MODELOS_AI.md`
 - **Monitoreo de TrueNAS**: `docs/TRUENAS_MONITORING.md`
 - **Configuración de Overseerr**: `docs/OVERSEERR_EMAIL_CONFIG.md`
 - **Configuración de Time Machine**: `docs/TIMEMACHINE_SETUP.md`
@@ -179,6 +180,7 @@ ansible truenas_vm -i inventory -m shell -a "curl -k -s https://localhost/api/v2
 **Red y Túnel**: ✅ **FUNCIONANDO**
 **Monitoreo**: ✅ **IMPLEMENTADO**
 **Apagado Ordenado**: ✅ **COMPLETAMENTE IMPLEMENTADO**
+**IA y Machine Learning**: 🔄 **PLANIFICADO** (Centralización de modelos)
 
 **Puntuación General**: **8.5/10** ⭐⭐⭐⭐⭐⭐⭐⭐⚪⚪
 

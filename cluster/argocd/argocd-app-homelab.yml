@@ -11,11 +11,6 @@ spec:
     repoURL: git@github.com:koshiro/homelab-config.git
     targetRevision: HEAD
     path: cluster
-    kustomize:
-      decryption:
-        provider: sops
-        secretRef:
-          name: sops-age
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

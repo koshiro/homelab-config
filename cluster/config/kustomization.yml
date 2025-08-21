@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - cluster-vars.yml
   - cluster-settings.yml
-  - cluster-secrets.sops.yml
+generators:
+  - ./secret-generator.yaml

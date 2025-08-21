@@ -4,7 +4,8 @@ kind: Kustomization
 resources:
   - namespace.yml
   - deployment.yml
-  - secret.sops.yml
+generators:
+  - ./secret-generator.yaml
 
 # Configuración para que ArgoCD sustituya las variables
 patches:

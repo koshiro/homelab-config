@@ -4,10 +4,11 @@ namespace: timemachine-smb
 resources:
   - namespace.yml
   - pvc.yml
-  - secret.sops.yml
   - deployment.yml
   - service.yml
   - ingress-tcp.yml
   - networkpolicy.yml
+generators:
+  - ./secret-generator.yaml
 
 
