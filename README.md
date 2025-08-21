@@ -26,9 +26,37 @@ El flujo de trabajo es el siguiente:
 3.  GitHub Actions actualiza el manifiesto de la aplicación en el repositorio `homelab-config` con la nueva versión de la imagen.
 4.  ArgoCD detecta el cambio en `homelab-config` y despliega la nueva versión de la aplicación en el clúster.
 
+## 🔐 Gestión de Secretos con SOPS
+
+El homelab utiliza **SOPS (Secrets OPerationS)** con claves `age` para la gestión segura de secretos:
+
+- **Encriptación**: Todos los secretos están encriptados con SOPS antes de ser versionados en Git
+- **Integración ArgoCD**: KSOPS plugin permite a ArgoCD desencriptar automáticamente los secretos
+- **Clave actual**: `age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs`
+- **Respaldos automáticos**: Scripts para respaldar y restaurar claves
+
+### 📚 Documentación SOPS
+- **Configuración completa**: [`docs/SOPS_CONFIGURATION.md`](docs/SOPS_CONFIGURATION.md)
+- **Guía de recuperación**: [`docs/SOPS_RECOVERY_GUIDE.md`](docs/SOPS_RECOVERY_GUIDE.md)
+- **Scripts de respaldo**: [`scripts/backup-sops-keys.sh`](scripts/backup-sops-keys.sh)
+- **Scripts de restauración**: [`scripts/restore-sops-keys.sh`](scripts/restore-sops-keys.sh)
+
+### 🔧 Comandos Rápidos SOPS
+```bash
+# Respaldar claves
+./scripts/backup-sops-keys.sh
+
+# Restaurar claves
+./scripts/restore-sops-keys.sh
+
+# Encriptar archivo
+sops --encrypt secret.yaml > secret.sops.yml
+
+# Desencriptar archivo
+sops --decrypt secret.sops.yml
+```
+
 ## 📊 Monitoreo
-
-
 
 ### TrueNAS con Prometheus y Grafana
 

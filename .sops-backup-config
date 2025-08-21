@@ -1,0 +1,26 @@
+# 🔐 Configuración de Respaldo SOPS
+# Este archivo contiene la configuración para respaldos automáticos de claves SOPS
+
+# Información de la clave actual
+CURRENT_PUBLIC_KEY="age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs"
+BACKUP_DIRECTORY="$HOME/.sops-backup"
+CLUSTER_SECRET_NAME="sops-age"
+CLUSTER_SECRET_NAMESPACE="argocd"
+
+# Configuración de respaldo
+BACKUP_RETENTION_DAYS=30
+AUTO_BACKUP_ON_COMMIT=true
+
+# Ubicaciones de claves
+LOCAL_KEY_PATH="$HOME/.config/sops/age/keys.txt"
+CLUSTER_KEY_SOURCE="kubectl get secret sops-age -n argocd -o jsonpath='{.data.keys\.txt}' | base64 -d"
+
+# Fecha de última actualización
+LAST_UPDATED="2025-08-21"
+VERSION="1.0"
+
+# Notas importantes
+# - Siempre hacer respaldo antes de cambios importantes
+# - Verificar que las claves coincidan entre local y cluster
+# - Mantener respaldos en múltiples ubicaciones seguras
+# - Documentar cualquier cambio de claves en docs/SOPS_CONFIGURATION.md
