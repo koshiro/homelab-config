@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  immich-fix.server: |
+    immich.svc.cluster.local:53 {
+        errors
+        cache 30
+        forward . /etc/resolv.conf
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-server
+  namespace: immich
+spec:
+  template:
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "5"
+          - name: single-request-reopen
+            value: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-web
+  namespace: immich
+spec:
+  template:
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "5"
+          - name: single-request-reopen
+            value: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-microservices
+  namespace: immich
+spec:
+  template:
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "5"
+          - name: single-request-reopen
+            value: ""
