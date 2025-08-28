@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-web
+  namespace: immich
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-web
+  template:
+    metadata:
+      labels:
+        app: immich-web
+    spec:
+      containers:
+        - name: immich-web
+          image: ghcr.io/immich-app/immich-web:release
+          env:
+            - name: IMMICH_SERVER_URL
+              value: "http://immich-server:3001"
+          ports:
+            - containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
