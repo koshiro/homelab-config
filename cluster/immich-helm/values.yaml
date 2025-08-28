@@ -1,0 +1,135 @@
+# Valores personalizados para el Helm Chart de Immich
+
+# Configuración global
+global:
+  # Habilitar o deshabilitar componentes
+  enableMachineLearning: true
+  # Configuración de almacenamiento
+  storageClass: "nfs-csi" # StorageClass para volúmenes persistentes
+  # Configuración de red
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+      traefik.ingress.kubernetes.io/router.middlewares: authelia-authelia@kubernetescrd
+    hosts:
+      - host: immich.danielriquelme.cl
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+# Configuración del servidor
+server:
+  image:
+    repository: ghcr.io/immich-app/immich-server
+    tag: v1.139.4
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  persistence:
+    library:
+      enabled: true
+      existingClaim: "immich-library-pvc"
+    upload:
+      enabled: true
+      existingClaim: "immich-upload-pvc"
+  env:
+    IMMICH_MEDIA_LOCATION: "/usr/src/app/upload"
+    IMMICH_LIBRARY_LOCATION: "/usr/src/app/library"
+
+# Configuración del microservicio
+microservices:
+  image:
+    repository: ghcr.io/immich-app/immich-server
+    tag: v1.139.4
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  persistence:
+    library:
+      enabled: true
+      existingClaim: "immich-library-pvc"
+    upload:
+      enabled: true
+      existingClaim: "immich-upload-pvc"
+
+# Configuración del componente web
+web:
+  image:
+    repository: ghcr.io/immich-app/immich-web
+    tag: v1.139.4
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Configuración de la base de datos
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: "immich-postgres-password"
+    database: immich
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "local-path"
+      size: 10Gi
+  image:
+    repository: tensorchord/pgvector
+    tag: pg15-v0.5.1
+
+# Configuración de Redis
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      storageClass: "local-path"
+      size: 1Gi
+
+# Configuración de Machine Learning
+machinelearning:
+  enabled: true
+  image:
+    repository: ghcr.io/immich-app/immich-machine-learning
+    tag: v1.139.4
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+# Configuración de NetworkPolicy
+networkPolicy:
+  enabled: true
+  ingressRules:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 3000
+          protocol: TCP
+        - port: 3001
+          protocol: TCP
