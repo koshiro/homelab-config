@@ -2,7 +2,7 @@
 
 Este documento resume el estado actual de la migración de Immich desde CasaOS a Kubernetes y los próximos pasos a seguir.
 
-## Estado de la Migración
+## Estado de la Migración (Actualizado: 28/08/2025)
 
 ### Completado
 
@@ -26,16 +26,20 @@ Este documento resume el estado actual de la migración de Immich desde CasaOS a
    - Se ha documentado el proceso completo con guías detalladas
    - Se ha desarrollado un script para convertir la Raspberry Pi en nodo del clúster
 
+5. **Configuración de Red y Acceso**
+   - Se ha configurado DNS para resolver pibot.local desde el clúster
+   - Se ha añadido la clave SSH del job de migración a la Raspberry Pi
+   - Se ha creado una política de red para permitir el tráfico SSH
+
 ### En Progreso
 
 1. **Despliegue en Kubernetes**
    - Los recursos de Immich han sido aplicados al clúster
    - Se ha corregido la política de red para permitir comunicación interna
-   - La inicialización de los pods está en curso
+   - Se está trabajando en la instalación de la extensión pgvector en PostgreSQL
 
 2. **Migración de Datos**
-   - El job de migración ha sido creado y está en ejecución
-   - Se requiere configurar la clave SSH para continuar la migración
+   - El job de migración está esperando a que el servidor de Immich esté disponible
 
 ## Problemas Detectados
 
@@ -44,27 +48,29 @@ Este documento resume el estado actual de la migración de Immich desde CasaOS a
    - Se ha aplicado una corrección para permitir este tráfico
 
 2. **Inicialización de la Base de Datos**
-   - La base de datos se ha creado correctamente pero el servidor de Immich aún no puede conectarse
+   - El servidor de Immich falla al iniciar porque falta la extensión "vector" en PostgreSQL
+   - Se ha creado un job para instalar la extensión pgvector
 
-3. **Configuración de Job de Migración**
-   - El job de migración requiere que se agregue manualmente una clave SSH a la Raspberry Pi
+3. **Problemas de Conectividad**
+   - Se están experimentando problemas intermitentes de conexión con el clúster
+   - Posible sobrecarga del API server o problemas de red
 
 ## Próximos Pasos
 
-1. **Verificar Conectividad al Clúster**
-   - Asegurarse de que la conexión al clúster Kubernetes es estable
-   - Evitar el uso simultáneo de kubectl por múltiples agentes
+1. **Resolver Problemas de Conectividad**
+   - Verificar el estado del clúster cuando la conexión se restablezca
+   - Considerar reiniciar componentes del plano de control si es necesario
 
-2. **Completar Despliegue de Immich**
-   - Verificar que todos los pods estén en estado "Running"
-   - Verificar las comunicaciones internas entre servicios
+2. **Completar la Instalación de pgvector**
+   - Verificar que el job para instalar pgvector se ha completado correctamente
+   - Reiniciar los pods de Immich para que utilicen la nueva extensión
 
-3. **Configurar la Migración de Datos**
-   - Obtener la clave SSH del job de migración
-   - Agregarla a la Raspberry Pi para permitir la transferencia de datos
+3. **Completar la Migración de Datos**
+   - Verificar que el job de migración puede conectarse a la Raspberry Pi
+   - Monitorear la transferencia de datos y restauración de la base de datos
 
 4. **Verificar Funcionalidad**
-   - Acceder a la interfaz web de Immich
+   - Acceder a la interfaz web de Immich cuando esté disponible
    - Comprobar que las imágenes se muestran correctamente
 
 5. **Finalizar la Migración**
@@ -82,17 +88,21 @@ kubectl get nodes
 # Verificar el estado de los pods de Immich
 kubectl get pods -n immich
 
-# Ver los logs del job de migración para obtener la clave SSH
-kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-migration -o jsonpath='{.items[0].metadata.name}')
+# Verificar los logs del job de instalación de pgvector
+kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-fix-postgres-pgvector -o jsonpath='{.items[0].metadata.name}')
 
-# Agregar la clave SSH a la Raspberry Pi
-ssh daniel@pibot.local "mkdir -p ~/.ssh && echo 'CLAVE_PUBLICA' >> ~/.ssh/authorized_keys"
+# Reiniciar los pods de Immich después de instalar pgvector
+kubectl rollout restart deployment -n immich immich-server immich-microservices immich-web
+
+# Verificar el estado del job de migración
+kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-migration-fixed -o jsonpath='{.items[0].metadata.name}')
 ```
 
 ## Notas y Recomendaciones
 
-- Si persisten los problemas de conectividad, considerar reiniciar el acceso a la API del clúster
-- Si los pods no avanzan en su inicialización, considerar reiniciarlos uno por uno
-- Los volúmenes persistentes configurados garantizan que los datos permanezcan incluso si se reinician los pods
+- Los problemas de conectividad pueden deberse a la sobrecarga del API server del clúster
+- La instalación de pgvector es necesaria para que Immich pueda funcionar correctamente
+- Una vez que la extensión pgvector esté instalada, los pods de Immich deberían iniciarse correctamente
+- Si persisten los problemas, considerar recrear los pods de Immich uno por uno
 
 Este documento será actualizado a medida que avance la migración.

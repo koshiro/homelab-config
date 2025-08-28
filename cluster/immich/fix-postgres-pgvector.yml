@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-fix-postgres-pgvector
+  namespace: immich
+spec:
+  ttlSecondsAfterFinished: 86400  # El job se eliminará automáticamente después de 1 día
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: postgres-vector
+          image: postgres:15
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-secrets
+                  key: DB_PASSWORD
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              echo "Instalando herramientas necesarias..."
+              apt-get update && apt-get install -y git build-essential postgresql-server-dev-15
+              
+              echo "Clonando pgvector..."
+              git clone --branch v0.7.0 https://github.com/pgvector/pgvector.git
+              cd pgvector
+              
+              echo "Compilando pgvector..."
+              make
+              make install
+              
+              echo "Conectando a la base de datos..."
+              until psql -h immich-db -U postgres -d immich -c '\l' >/dev/null 2>&1; do
+                echo "PostgreSQL no está listo todavía..."
+                sleep 5
+              done
+              
+              echo "Creando extensión vector..."
+              psql -h immich-db -U postgres -d immich -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+              
+              echo "Verificando extensiones instaladas..."
+              psql -h immich-db -U postgres -d immich -c '\dx'
+              
+              echo "Extensión pgvector instalada correctamente."
