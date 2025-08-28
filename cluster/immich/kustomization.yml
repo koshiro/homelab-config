@@ -13,3 +13,7 @@ resources:
   - job-configure-truenas.yml
   - immich-secret.yml
   - migration-job.yml
+  - migration-images-only.yml
+  - networkpolicy-migration.yml
+  - fix-permissions.yml
+  - init-volumes.yml

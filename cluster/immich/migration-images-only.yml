@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-migration-images
+  namespace: immich
+spec:
+  ttlSecondsAfterFinished: 86400  # El job se eliminará automáticamente después de 1 día
+  template:
+    spec:
+      restartPolicy: OnFailure
+      volumes:
+        - name: immich-library
+          persistentVolumeClaim:
+            claimName: immich-library-pvc
+        - name: immich-upload
+          persistentVolumeClaim:
+            claimName: immich-upload-pvc
+        - name: custom-hosts-volume
+          configMap:
+            name: custom-hosts
+      containers:
+        - name: migration
+          image: alpine:3.18
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Instalar herramientas necesarias
+              apk add --no-cache openssh-client rsync curl
+              
+              # Configurar hosts
+              echo "Configurando hosts para pibot.local..."
+              cat /etc/custom-hosts/hosts >> /etc/hosts
+              cat /etc/hosts
+              
+              # Verificar si podemos conectar con la IP
+              echo "Verificando conexión con 192.168.1.15..."
+              ping -c 3 192.168.1.15
+              
+              # Configurar SSH
+              mkdir -p ~/.ssh
+              echo "StrictHostKeyChecking no" > ~/.ssh/config
+              chmod 600 ~/.ssh/config
+              
+              # Generar un par de claves SSH temporal
+              ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+              echo "Clave pública generada:"
+              cat ~/.ssh/id_rsa.pub
+              
+              echo "Esperando a que el usuario agregue la clave pública a 192.168.1.15..."
+              echo "Por favor, ejecuta en tu máquina local:"
+              echo "ssh daniel@192.168.1.15 \"mkdir -p ~/.ssh && echo 'CLAVE_PUBLICA' >> ~/.ssh/authorized_keys\""
+              echo "Reemplaza CLAVE_PUBLICA con la clave mostrada arriba"
+              
+              # Esperar a que el usuario confirme
+              while true; do
+                echo "Intentando conectar a 192.168.1.15..."
+                if ssh -o ConnectTimeout=5 daniel@192.168.1.15 "echo 'Conexión exitosa'"; then
+                  echo "Conexión SSH establecida correctamente"
+                  break
+                else
+                  echo "Esperando conexión SSH..."
+                  sleep 30
+                fi
+              done
+              
+              # Verificar las rutas de origen en 192.168.1.15
+              echo "Verificando rutas de origen en 192.168.1.15..."
+              ssh daniel@192.168.1.15 "ls -la /DATA/Gallery/immich"
+              
+              # Migrar las imágenes de la biblioteca
+              echo "Migrando imágenes de la biblioteca..."
+              mkdir -p /mnt/immich_library
+              chmod -R 777 /mnt/immich_library
+              rsync -avz --progress daniel@192.168.1.15:/DATA/Gallery/immich/library/ /mnt/immich_library/
+              
+              # Migrar las imágenes de upload
+              echo "Migrando imágenes de upload..."
+              mkdir -p /mnt/immich_upload
+              chmod -R 777 /mnt/immich_upload
+              rsync -avz --progress daniel@192.168.1.15:/DATA/Gallery/immich/upload/ /mnt/immich_upload/
+              
+              echo "Migración de imágenes completada con éxito."
+              
+              # Mantener el pod en ejecución para inspección
+              echo "Pod de migración completado. Se mantendrá en ejecución para inspección."
+              tail -f /dev/null
+          volumeMounts:
+            - name: immich-library
+              mountPath: /mnt/immich_library
+            - name: immich-upload
+              mountPath: /mnt/immich_upload
+            - name: custom-hosts-volume
+              mountPath: /etc/custom-hosts

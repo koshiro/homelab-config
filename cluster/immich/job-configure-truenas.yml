@@ -33,24 +33,25 @@ spec:
               fi
               
               base="https://${TRUENAS_HOST}/api/v2.0"
-              authHeader="Authorization: Bearer ${TRUENAS_API_KEY}"
+              # Construir el header de autenticación
+              auth_header="Authorization: Bearer ${TRUENAS_API_KEY}"
               
               # Crear dataset para librerías de Immich
               echo "Creando dataset para librerías de Immich..."
-              curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+              curl -k -s -H "${auth_header}" -H "Content-Type: application/json" \
                 -X POST "${base}/pool/dataset" \
                 -d '{"name": "homelab-storage/media/immich_library"}' || true
                 
               # Crear dataset para uploads de Immich
               echo "Creando dataset para uploads de Immich..."
-              curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+              curl -k -s -H "${auth_header}" -H "Content-Type: application/json" \
                 -X POST "${base}/pool/dataset" \
                 -d '{"name": "homelab-storage/media/immich_upload"}' || true
                 
               # Configurar permisos de los datasets
               echo "Configurando permisos de datasets de Immich..."
               for dataset in "immich_library" "immich_upload"; do
-                curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+                curl -k -s -H "${auth_header}" -H "Content-Type: application/json" \
                   -X POST "${base}/pool/dataset/id/homelab-storage%2Fmedia%2F${dataset}/permission" \
                   -d '{
                     "acl": [],

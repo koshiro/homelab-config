@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-fix-permissions
+  namespace: immich
+spec:
+  ttlSecondsAfterFinished: 86400  # El job se eliminará automáticamente después de 1 día
+  template:
+    spec:
+      restartPolicy: OnFailure
+      volumes:
+        - name: immich-library
+          persistentVolumeClaim:
+            claimName: immich-library-pvc
+        - name: immich-upload
+          persistentVolumeClaim:
+            claimName: immich-upload-pvc
+      containers:
+        - name: fix-permissions
+          image: alpine:3.18
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Creando directorios necesarios en upload..."
+              mkdir -p /mnt/immich_upload/encoded-video
+              mkdir -p /mnt/immich_upload/profile
+              mkdir -p /mnt/immich_upload/library
+              mkdir -p /mnt/immich_upload/thumbs
+              mkdir -p /mnt/immich_upload/backups
+              
+              echo "Configurando permisos en upload..."
+              chmod -R 777 /mnt/immich_upload
+              
+              echo "Configurando permisos en library..."
+              chmod -R 777 /mnt/immich_library
+              
+              echo "Verificando permisos..."
+              ls -la /mnt/immich_upload
+              ls -la /mnt/immich_library
+              
+              echo "Permisos configurados correctamente."
+          volumeMounts:
+            - name: immich-library
+              mountPath: /mnt/immich_library
+            - name: immich-upload
+              mountPath: /mnt/immich_upload
