@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-migration
+  namespace: immich
+spec:
+  ttlSecondsAfterFinished: 86400  # El job se eliminará automáticamente después de 1 día
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migration
+          image: alpine:3.18
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Instalar herramientas necesarias
+              apk add --no-cache openssh-client rsync curl postgresql-client jq
+
+              # Configurar SSH
+              mkdir -p ~/.ssh
+              echo "StrictHostKeyChecking no" > ~/.ssh/config
+              chmod 600 ~/.ssh/config
+
+              # Generar un par de claves SSH temporal
+              ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+              echo "Clave pública generada:"
+              cat ~/.ssh/id_rsa.pub
+              
+              echo "Esperando a que el usuario agregue la clave pública a pibot.local..."
+              echo "Por favor, ejecuta en tu máquina local:"
+              echo "ssh daniel@pibot.local \"mkdir -p ~/.ssh && echo 'CLAVE_PUBLICA' >> ~/.ssh/authorized_keys\""
+              echo "Reemplaza CLAVE_PUBLICA con la clave mostrada arriba"
+              
+              # Esperar a que el usuario confirme
+              while true; do
+                echo "Presiona Ctrl+C para terminar el job si es necesario"
+                sleep 60
+                
+                # Intentar conectarse a pibot.local
+                if ssh -o ConnectTimeout=5 daniel@pibot.local "echo 'Conexión exitosa'"; then
+                  echo "Conexión SSH establecida correctamente"
+                  break
+                else
+                  echo "Esperando conexión SSH..."
+                fi
+              done
+              
+              # Crear directorios necesarios
+              mkdir -p /tmp/immich_backup/db
+              mkdir -p /tmp/immich_backup/config
+              
+              # Obtener el dump de la base de datos
+              echo "Copiando el dump de la base de datos..."
+              scp daniel@pibot.local:/tmp/immich_db_backup.sql /tmp/immich_backup/db/
+              
+              # Esperar a que la base de datos esté lista
+              echo "Esperando a que la base de datos esté lista..."
+              until PGPASSWORD=postgres psql -h immich-db -U postgres -c '\l' >/dev/null 2>&1; do
+                echo "PostgreSQL no está listo todavía..."
+                sleep 5
+              done
+              
+              # Restaurar la base de datos
+              echo "Restaurando la base de datos..."
+              PGPASSWORD=postgres psql -h immich-db -U postgres -c "DROP DATABASE IF EXISTS immich;"
+              PGPASSWORD=postgres psql -h immich-db -U postgres -c "CREATE DATABASE immich;"
+              PGPASSWORD=postgres psql -h immich-db -U postgres -d immich -f /tmp/immich_backup/db/immich_db_backup.sql
+              
+              # Esperar a que Immich esté listo
+              echo "Esperando a que el servidor de Immich esté listo..."
+              while ! curl -s http://immich-server:3001/server-info/ping; do
+                echo "Immich server no está listo todavía..."
+                sleep 10
+              done
+              
+              echo "Migración completada con éxito."
+          volumeMounts:
+            - name: immich-config
+              mountPath: /usr/src/app/config
+      volumes:
+        - name: immich-config
+          persistentVolumeClaim:
+            claimName: immich-config-pvc

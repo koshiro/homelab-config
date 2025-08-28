@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-configure-truenas
+  namespace: immich
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: truenas-setup
+          image: curlimages/curl:8.9.1
+          env:
+            - name: TRUENAS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-settings
+                  key: TRUENAS_HOST
+                  optional: true
+            - name: TRUENAS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: truenas-api
+                  key: apiKey
+          command: ["sh", "-c"]
+          args:
+            - |
+              # Código que crea y configura el dataset en TrueNAS
+              set -e
+              # Si no está definido en el ConfigMap, usar directamente
+              if [ -z "${TRUENAS_HOST}" ]; then
+                TRUENAS_HOST="192.168.1.20"
+              fi
+              
+              base="https://${TRUENAS_HOST}/api/v2.0"
+              authHeader="Authorization: Bearer ${TRUENAS_API_KEY}"
+              
+              # Crear dataset para librerías de Immich
+              echo "Creando dataset para librerías de Immich..."
+              curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+                -X POST "${base}/pool/dataset" \
+                -d '{"name": "homelab-storage/media/immich_library"}' || true
+                
+              # Crear dataset para uploads de Immich
+              echo "Creando dataset para uploads de Immich..."
+              curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+                -X POST "${base}/pool/dataset" \
+                -d '{"name": "homelab-storage/media/immich_upload"}' || true
+                
+              # Configurar permisos de los datasets
+              echo "Configurando permisos de datasets de Immich..."
+              for dataset in "immich_library" "immich_upload"; do
+                curl -k -s -H "${authHeader}" -H "Content-Type: application/json" \
+                  -X POST "${base}/pool/dataset/id/homelab-storage%2Fmedia%2F${dataset}/permission" \
+                  -d '{
+                    "acl": [],
+                    "mode": "0755",
+                    "user": "1000",
+                    "group": "1000"
+                  }' || true
+              done
