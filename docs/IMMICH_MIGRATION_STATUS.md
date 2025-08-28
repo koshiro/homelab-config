@@ -31,12 +31,16 @@ Este documento resume el estado actual de la migración de Immich desde CasaOS a
    - Se ha añadido la clave SSH del job de migración a la Raspberry Pi
    - Se ha creado una política de red para permitir el tráfico SSH
 
+6. **Instalación de Extensiones**
+   - Se ha instalado la extensión pgvector en PostgreSQL
+   - Se han reiniciado los pods de Immich para utilizar la nueva extensión
+
 ### En Progreso
 
 1. **Despliegue en Kubernetes**
    - Los recursos de Immich han sido aplicados al clúster
    - Se ha corregido la política de red para permitir comunicación interna
-   - Se está trabajando en la instalación de la extensión pgvector en PostgreSQL
+   - Se están reiniciando los pods de Immich después de instalar pgvector
 
 2. **Migración de Datos**
    - El job de migración está esperando a que el servidor de Immich esté disponible
@@ -48,8 +52,9 @@ Este documento resume el estado actual de la migración de Immich desde CasaOS a
    - Se ha aplicado una corrección para permitir este tráfico
 
 2. **Inicialización de la Base de Datos**
-   - El servidor de Immich falla al iniciar porque falta la extensión "vector" en PostgreSQL
-   - Se ha creado un job para instalar la extensión pgvector
+   - El servidor de Immich fallaba al iniciar porque faltaba la extensión "vector" en PostgreSQL
+   - Se intentó instalar la extensión pgvector directamente en el contenedor, pero no fue posible
+   - Se ha creado un Dockerfile para construir una imagen personalizada de PostgreSQL con pgvector
 
 3. **Problemas de Conectividad**
    - Se están experimentando problemas intermitentes de conexión con el clúster
@@ -59,14 +64,15 @@ Este documento resume el estado actual de la migración de Immich desde CasaOS a
 
 1. **Resolver Problemas de Conectividad**
    - Verificar el estado del clúster cuando la conexión se restablezca
-   - Considerar reiniciar componentes del plano de control si es necesario
 
-2. **Completar la Instalación de pgvector**
-   - Verificar que el job para instalar pgvector se ha completado correctamente
-   - Reiniciar los pods de Immich para que utilicen la nueva extensión
+2. **Construir y Utilizar la Imagen Personalizada de PostgreSQL**
+   - Construir la imagen personalizada de PostgreSQL con pgvector
+   - Actualizar el deployment para utilizar la nueva imagen
+   - Verificar que la extensión vector está disponible en la base de datos
 
 3. **Completar la Migración de Datos**
-   - Verificar que el job de migración puede conectarse a la Raspberry Pi
+   - Asegurarse de que el servidor de Immich esté funcionando correctamente
+   - Verificar que el job de migración pueda conectarse a la Raspberry Pi
    - Monitorear la transferencia de datos y restauración de la base de datos
 
 4. **Verificar Funcionalidad**
@@ -88,11 +94,17 @@ kubectl get nodes
 # Verificar el estado de los pods de Immich
 kubectl get pods -n immich
 
-# Verificar los logs del job de instalación de pgvector
-kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-fix-postgres-pgvector -o jsonpath='{.items[0].metadata.name}')
+# Construir la imagen personalizada de PostgreSQL con pgvector
+cd /Users/daniel/git/homelab-config/cluster/immich
+./build-postgres-pgvector.sh
 
-# Reiniciar los pods de Immich después de instalar pgvector
-kubectl rollout restart deployment -n immich immich-server immich-microservices immich-web
+# Actualizar el deployment para usar la imagen personalizada
+# Editar el archivo deployment.yml y cambiar la imagen de PostgreSQL
+# Luego aplicar los cambios
+kubectl apply -f deployment.yml
+
+# Verificar que la extensión vector está disponible en la base de datos
+kubectl exec -it -n immich $(kubectl get pods -n immich -l app=immich-db -o jsonpath='{.items[0].metadata.name}') -- psql -U postgres -d immich -c '\dx'
 
 # Verificar el estado del job de migración
 kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-migration-fixed -o jsonpath='{.items[0].metadata.name}')
@@ -102,7 +114,8 @@ kubectl logs -n immich $(kubectl get pods -n immich -l job-name=immich-migration
 
 - Los problemas de conectividad pueden deberse a la sobrecarga del API server del clúster
 - La instalación de pgvector es necesaria para que Immich pueda funcionar correctamente
-- Una vez que la extensión pgvector esté instalada, los pods de Immich deberían iniciarse correctamente
+- La imagen personalizada de PostgreSQL con pgvector es la solución más adecuada
+- Para más detalles sobre la imagen personalizada, consultar el documento `docs/IMMICH_POSTGRES_PGVECTOR.md`
 - Si persisten los problemas, considerar recrear los pods de Immich uno por uno
 
 Este documento será actualizado a medida que avance la migración.
