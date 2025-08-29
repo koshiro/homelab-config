@@ -23,23 +23,13 @@ global:
   storageClass: "nfs-csi" # StorageClass para volúmenes persistentes
   # Configuración de red
   ingress:
-    enabled: true
-    annotations:
-      kubernetes.io/ingress.class: traefik
-      traefik.ingress.kubernetes.io/router.entrypoints: web
-      traefik.ingress.kubernetes.io/router.middlewares: authelia-authelia@kubernetescrd
-    hosts:
-      - host: immich.danielriquelme.cl
-        paths:
-          - path: /
-            pathType: Prefix
-    tls: []
+    enabled: false # Deshabilitamos el ingress del chart, usamos el nuestro
 
 # Configuración del servidor
 server:
   image:
     repository: ghcr.io/immich-app/immich-server
-    tag: v1.139.4
+    tag: release
   resources:
     requests:
       cpu: 100m
@@ -47,12 +37,18 @@ server:
     limits:
       cpu: 1000m
       memory: 1Gi
+  env:
+    REDIS_HOSTNAME: "immich-redis"
+    DB_HOSTNAME: "immich-db"
+    DB_USERNAME: "postgres"
+    DB_PASSWORD: "immich-postgres-password"
+    DB_DATABASE_NAME: "immich"
 
 # Configuración del microservicio
 microservices:
   image:
     repository: ghcr.io/immich-app/immich-server
-    tag: v1.139.4
+    tag: release
   resources:
     requests:
       cpu: 100m
@@ -60,19 +56,16 @@ microservices:
     limits:
       cpu: 1000m
       memory: 1Gi
+  env:
+    REDIS_HOSTNAME: "immich-redis"
+    DB_HOSTNAME: "immich-db"
+    DB_USERNAME: "postgres"
+    DB_PASSWORD: "immich-postgres-password"
+    DB_DATABASE_NAME: "immich"
 
 # Configuración del componente web
 web:
-  image:
-    repository: ghcr.io/immich-app/immich-web
-    tag: v1.139.4
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+  enabled: false # Deshabilitamos el componente web del chart, usamos el nuestro
 
 # Configuración de la base de datos
 postgresql:
@@ -80,21 +73,14 @@ postgresql:
 
 # Configuración de Redis
 redis:
-  enabled: true
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: true
-      storageClass: "local-path"
-      size: 1Gi
+  enabled: false # Usamos el Redis existente
 
 # Configuración de Machine Learning
 machinelearning:
   enabled: true
   image:
     repository: ghcr.io/immich-app/immich-machine-learning
-    tag: v1.139.4
+    tag: release
   resources:
     requests:
       cpu: 100m
@@ -102,6 +88,8 @@ machinelearning:
     limits:
       cpu: 2000m
       memory: 4Gi
+  env:
+    REDIS_HOSTNAME: "immich-redis"
 
 # Configuración de NetworkPolicy
 networkPolicy:
