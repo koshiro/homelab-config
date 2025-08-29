@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: photoprism
+  namespace: photoprism
+spec:
+  selector:
+    app: photoprism
+  ports:
+    - port: 2342
+      targetPort: 2342
+      protocol: TCP
+      name: http
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: photoprism-mariadb
+  namespace: photoprism
+spec:
+  selector:
+    app: photoprism-mariadb
+  ports:
+    - port: 3306
+      targetPort: 3306
+      protocol: TCP
+      name: mysql
+  type: ClusterIP
