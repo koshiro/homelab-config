@@ -13,7 +13,7 @@ resources:
   - networkpolicy-overseerr-ingress.yml
   - networkpolicy-egress.yml
 
-# Configuración para que ArgoCD sustituya las variables
+# Configuración para la sustitución de variables
 patches:
   - patch: |-
       apiVersion: kustomize.toolkit.fluxcd.io/v1beta1

@@ -1,8 +1,7 @@
 # /cluster/kustomization.yml
 # Este es el plano maestro para todo el clúster.
-# ArgoCD leerá este archivo para desplegar todo lo demás.
 # 
-# ESTADO ACTUAL: Cluster funcionando manualmente, migrando a GitOps
+# ESTADO ACTUAL: Cluster funcionando manualmente
 # SERVICIOS ACTIVOS: plex, sonarr, radarr, prowlarr, bazarr, overseerr, qbittorrent, traefik, cloudflared
 # PENDIENTES: transmission (no desplegado), arr-networkpolicies (aplicadas manualmente)
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -17,8 +16,8 @@ resources:
   - cloudflared
   - truenas
   - tailscale
-  # --- GITOPS ---
-  - argocd
+  # --- AUTH ---
+  - authelia
   # --- APPS ---
   - plex
   - sonarr
@@ -32,3 +31,5 @@ resources:
   # - transmission  # NO DESPLEGADO - Comentado para evitar errores
   - pingvin
   # - palmr  # eliminado
+  - forge  # Forge - Generador de imágenes con IA
+  - immich # Immich - Servidor de fotos

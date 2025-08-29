@@ -3,6 +3,5 @@ kind: Kustomization
 resources:
   - namespace.yml
   - helm-repository.yml
-  - helm-release.yml
+  # - helm-release.yml  # Comentado para eliminar el operator que estaba fallando
   - daemonset.yml
-

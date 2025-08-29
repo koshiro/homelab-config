@@ -7,7 +7,7 @@ resources:
 generators:
   - ./secret-generator.yaml
 
-# Configuración para que ArgoCD sustituya las variables
+# Configuración para la sustitución de variables
 patches:
   - patch: |-
       apiVersion: kustomize.config.k8s.io/v1beta1

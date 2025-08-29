@@ -1,5 +1,20 @@
 # Valores personalizados para el Helm Chart de Immich
 
+# Configuración de Immich
+immich:
+  persistence:
+    library:
+      existingClaim: "immich-library-pvc"
+    upload:
+      existingClaim: "immich-upload-pvc"
+  database:
+    type: "postgresql"
+    hostname: "immich-db"
+    port: 5432
+    username: "postgres"
+    password: "immich-postgres-password"
+    database: "immich"
+
 # Configuración global
 global:
   # Habilitar o deshabilitar componentes
@@ -32,16 +47,6 @@ server:
     limits:
       cpu: 1000m
       memory: 1Gi
-  persistence:
-    library:
-      enabled: true
-      existingClaim: "immich-library-pvc"
-    upload:
-      enabled: true
-      existingClaim: "immich-upload-pvc"
-  env:
-    IMMICH_MEDIA_LOCATION: "/usr/src/app/upload"
-    IMMICH_LIBRARY_LOCATION: "/usr/src/app/library"
 
 # Configuración del microservicio
 microservices:
@@ -55,13 +60,6 @@ microservices:
     limits:
       cpu: 1000m
       memory: 1Gi
-  persistence:
-    library:
-      enabled: true
-      existingClaim: "immich-library-pvc"
-    upload:
-      enabled: true
-      existingClaim: "immich-upload-pvc"
 
 # Configuración del componente web
 web:
@@ -78,19 +76,7 @@ web:
 
 # Configuración de la base de datos
 postgresql:
-  enabled: true
-  auth:
-    username: postgres
-    password: "immich-postgres-password"
-    database: immich
-  primary:
-    persistence:
-      enabled: true
-      storageClass: "local-path"
-      size: 10Gi
-  image:
-    repository: tensorchord/pgvector
-    tag: pg15-v0.5.1
+  enabled: false # Desactivamos el subchart de PostgreSQL ya que está deprecado
 
 # Configuración de Redis
 redis:
