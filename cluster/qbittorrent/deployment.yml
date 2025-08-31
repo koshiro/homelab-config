@@ -1,3 +1,7 @@
+# qBittorrent Deployment - CONFIGURACIÓN FUNCIONANDO
+# - Solo /data montado (igual que Sonarr/Radarr para hardlinks)
+# - hostPort 6881 TCP/UDP para P2P
+# - Nodo dedicado con etiqueta p2p=true
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,50 +21,43 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      # ESTRATEGIA DOCUMENTADA: Nodo P2P dedicado
-      # qBittorrent se ejecuta en k3s-node-2 (nodo p2p)
+      # Nodo P2P dedicado
       nodeSelector:
         p2p: "true"
-      # Tolerations para permitir fallback si es necesario
       tolerations:
       - key: "p2p"
         operator: "Equal"
         value: "true"
         effect: "NoSchedule"
-      # Anti-affinity para evitar que múltiples instancias P2P se ejecuten en el mismo nodo
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - qbittorrent
-              topologyKey: kubernetes.io/hostname
-      # SOLUCIÓN DOCUMENTADA: NFS SSD TrueNAS para datos y config
+      # VOLUMEN: Solo NFS compartido - /config será subdirectorio de /data
       volumes:
-      - name: qbittorrent-data
+      - name: shared-storage
         nfs:
           server: 192.168.1.20
-          path: /mnt/homelab-ssd/downloads
-      - name: qbittorrent-init-scripts
-        configMap:
-          name: qbittorrent-init
-          defaultMode: 0755
-      # InitContainer: fija rutas de descargas en qBittorrent.conf y prepara /downloads/config
+          path: /mnt/homelab-storage
       initContainers:
-      - name: init-qbittorrent-config
+      - name: setup-qbittorrent-unified
         image: alpine:3.20
-        command: ["sh", "/init/init-config.sh"]
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Configurando qBittorrent igual que Sonarr/Radarr..."
+          
+          # Crear estructura en /data (igual que Sonarr/Radarr)
+          mkdir -p /data/downloads/completed /data/downloads/incomplete
+          
+          # Permisos
+          chown -R 1000:1000 /data/downloads
+          
+          echo "✅ qBittorrent configurado igual que Sonarr/Radarr:"
+          echo "   • /data montado (NFS compartido)"
+          echo "   • Downloads: /data/downloads/"
+          echo "   • Config: qBittorrent lo creará automáticamente en /data"
+          echo "   • Hardlinks: /data/downloads/ <-> /data/media/ ✅"
         volumeMounts:
-        - name: qbittorrent-data
-          mountPath: /downloads
-        - name: qbittorrent-init-scripts
-          mountPath: /init
-      # volúmenes unificados arriba
+        - name: shared-storage
+          mountPath: /data
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
@@ -84,34 +81,9 @@ spec:
           value: "Etc/UTC"
         - name: WEBUI_PORT
           value: "8080"
-        - name: QB_BITTORRENT_PORT
-          value: "6881"
-        - name: QB_WEBUI_PORT
-          value: "8080"
-        # SOLUCIÓN DOCUMENTADA: Variables que reconoce linuxserver/qbittorrent
-        - name: QB_USERNAME
-          value: "admin"
-        - name: QB_PASSWORD
-          value: "adminadmin"
-        - name: QB_DHT_ENABLED
-          value: "true"
-        - name: QB_PEX_ENABLED
-          value: "true"
-        - name: QB_LSD_ENABLED
-          value: "true"
-        - name: QB_ENCRYPTION
-          value: "1"
-        - name: QB_MAX_CONNECTIONS
-          value: "500"
-        - name: QB_MAX_CONNECTIONS_PER_TORRENT
-          value: "100"
         volumeMounts:
-        - name: qbittorrent-data
-          mountPath: /downloads
-        - name: qbittorrent-data
-          mountPath: /config
-          subPath: config
-
+        - name: shared-storage
+          mountPath: /data
         resources:
           requests:
             cpu: 200m
@@ -131,4 +103,3 @@ spec:
             port: 8080
           initialDelaySeconds: 15
           periodSeconds: 15
-

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radarr-init
+  namespace: radarr
+data:
+  init-storage.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Initializing shared storage structure for Radarr..."
+    
+    # Crear estructura de directorios
+    mkdir -p /shared/downloads
+    mkdir -p /shared/media
+    mkdir -p /shared/downloads/completed
+    mkdir -p /shared/downloads/incomplete
+    
+    # Crear enlaces simbólicos para compatibilidad
+    ln -sf /shared/downloads /downloads 2>/dev/null || true
+    ln -sf /shared/media /media 2>/dev/null || true
+    
+    # Verificar permisos solo en directorios nuevos (no recursivo en media existente)
+    # Solo aplicar permisos a directorios que podamos cambiar
+    chown 1000:1000 /shared/downloads /shared/downloads/completed /shared/downloads/incomplete 2>/dev/null || true
+    chmod 755 /shared/downloads /shared/downloads/completed /shared/downloads/incomplete 2>/dev/null || true
+    
+    # Para media, solo intentar cambiar el directorio raíz si está vacío
+    if [ -z "$(ls -A /shared/media 2>/dev/null)" ]; then
+        chown 1000:1000 /shared/media 2>/dev/null || true
+        chmod 755 /shared/media 2>/dev/null || true
+    fi
+    
+    echo "Storage structure initialized successfully!"
+    echo "Downloads: /shared/downloads -> /downloads"
+    echo "Media: /shared/media -> /media"
+    echo "Both are on the same filesystem for hardlinks"
+    
+    # Test hardlinks capability
+    echo "Testing hardlink capability..."
+    echo "test" > /shared/downloads/hardlink-test.txt
+    if ln /shared/downloads/hardlink-test.txt /shared/media/hardlink-test.txt; then
+        echo "✓ Hardlinks working correctly!"
+        rm -f /shared/downloads/hardlink-test.txt /shared/media/hardlink-test.txt
+    else
+        echo "⚠ Warning: Hardlinks may not work"
+    fi

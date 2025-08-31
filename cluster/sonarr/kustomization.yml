@@ -6,6 +6,7 @@ resources:
   - pvc.yml
   - deployment.yml
   - service.yml
+  - hardlink-init-configmap.yml
   - ingress.yml
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml

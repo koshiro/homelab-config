@@ -1,6 +1,0 @@
-# NOTA: qBittorrent ahora usa hostPath directamente para ambos volúmenes:
-# - Config: /mnt/qbittorrent-config en k3s-node-2
-# - Downloads: /mnt/qbittorrent-downloads en k3s-node-2
-# 
-# Esto elimina la complejidad de PVCs y StorageClasses,
-# siguiendo las mejores prácticas documentadas para nodos dedicados.

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarr-hardlink-init
+  namespace: sonarr
+data:
+  setup-hardlinks.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "=== Configurando estructura para hardlinks ==="
+    
+    # Crear directorios como directorios normales (NO submounts)
+    mkdir -p /data/downloads
+    mkdir -p /data/media
+    mkdir -p /data/downloads/completed
+    mkdir -p /data/downloads/incomplete
+    
+    # Crear enlaces simbólicos para compatibilidad con aplicaciones
+    ln -sf /data/downloads /downloads 2>/dev/null || true
+    ln -sf /data/media /media 2>/dev/null || true
+    
+    # Permisos básicos (ignorar errores si no se pueden cambiar)
+    chmod 755 /data/downloads /data/media 2>/dev/null || true
+    
+    echo "Estructura creada:"
+    echo "  /data/downloads (directorio normal)"
+    echo "  /data/media (directorio normal)"
+    echo "  /downloads -> /data/downloads (enlace simbólico)"
+    echo "  /media -> /data/media (enlace simbólico)"
+    
+    # Probar hardlinks
+    echo "Probando hardlinks..."
+    echo "test hardlink" > /data/downloads/test-hardlink.txt
+    if ln /data/downloads/test-hardlink.txt /data/media/test-hardlink.txt 2>/dev/null; then
+        echo "✅ ¡Hardlinks funcionando correctamente!"
+        rm -f /data/downloads/test-hardlink.txt /data/media/test-hardlink.txt
+    else
+        echo "❌ Hardlinks no funcionan aún"
+        ls -la /data/
+        df -h /data/
+    fi
