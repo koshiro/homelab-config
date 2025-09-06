@@ -1,76 +1,110 @@
 #!/bin/bash
+# shellcheck disable=SC2155
+# Script de diagnóstico y mantenimiento de etcd para K3s
+#
+# Este script realiza comprobaciones de salud no destructivas en el
+# cluster y etcd, y realiza una limpieza básica de recursos.
 
-# Script de mantenimiento de etcd para K3s
-# Optimiza etcd sin modificar la configuración de K3s
+set -euo pipefail
 
-echo "=== Mantenimiento de Etcd en K3s ==="
-echo "Ejecutando en: $(hostname) - $(date)"
+# --- Configuración y Colores ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# 1. Verificar estado del cluster
-echo "🔍 Verificando estado del cluster..."
-kubectl get nodes > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ Cluster no disponible. Esperando..."
-    sleep 30
-    kubectl get nodes > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ Cluster aún no disponible. Abortando."
+# --- Funciones de Logging ---
+info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+success() { echo -e "${GREEN}✅ $1${NC}"; }
+warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error() { echo -e "${RED}❌ $1${NC}"; }
+
+# --- Función Principal ---
+main() {
+    info "=== Diagnóstico y Mantenimiento de Etcd en K3s ==="
+    info "Ejecutando en: $(hostname) - $(date)"
+    echo
+
+    # 1. Verificar estado del cluster
+    info "🔍 1. Verificando estado del cluster..."
+    if ! kubectl get nodes > /dev/null 2>&1; then
+        error "El cluster no está disponible o kubectl no está configurado."
         exit 1
     fi
-fi
+    success "El cluster está disponible."
+    kubectl get nodes
+    echo
 
-echo "✅ Cluster disponible"
+    # 2. Limpiar recursos obsoletos para reducir la carga
+    info "🧹 2. Limpiando recursos obsoletos (Pods y Jobs terminados)..."
+    kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces --ignore-not-found=true
+    kubectl delete pods --field-selector=status.phase=Failed --all-namespaces --ignore-not-found=true
+    kubectl delete jobs --field-selector=status.successful=1 --all-namespaces --ignore-not-found=true
+    success "Limpieza de pods y jobs completada."
+    echo
 
-# 2. Limpiar recursos obsoletos
-echo "🧹 Limpiando recursos obsoletos..."
-
-# Limpiar pods completados
-kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces --ignore-not-found=true
-
-# Limpiar jobs completados
-kubectl delete jobs --field-selector=status.successful=1 --all-namespaces --ignore-not-found=true
-
-# 3. Compactar etcd manualmente
-echo "🗜️ Compactando base de datos etcd..."
-
-# Obtener la revisión actual de etcd
-REVISION=$(kubectl get --raw /version | jq -r '.gitVersion' 2>/dev/null || echo "unknown")
-
-# Forzar compactación de etcd
-kubectl get --raw /api/v1/namespaces > /dev/null 2>&1
-
-# 4. Verificar métricas de etcd
-echo "📊 Verificando métricas de etcd..."
-kubectl top nodes 2>/dev/null || echo "Métricas no disponibles"
-
-# 5. Verificar eventos recientes
-echo "📋 Verificando eventos recientes..."
-kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -5
-
-# 6. Verificar estado de los pods críticos
-echo "🔍 Verificando pods críticos..."
-kubectl get pods -n kube-system | grep -E "(etcd|kube-apiserver|kube-controller-manager|kube-scheduler)"
-
-# 7. Mostrar estadísticas finales
-echo ""
-echo "📊 Estadísticas del cluster:"
-echo "  Nodos: $(kubectl get nodes --no-headers | wc -l)"
-echo "  Pods totales: $(kubectl get pods --all-namespaces --no-headers | wc -l)"
-echo "  ConfigMaps: $(kubectl get configmaps --all-namespaces --no-headers | wc -l)"
-echo "  Secrets: $(kubectl get secrets --all-namespaces --no-headers | wc -l)"
-
-# 8. Verificar conectividad kubectl
-echo ""
-echo "🔗 Probando conectividad kubectl..."
-for i in {1..5}; do
-    if kubectl get nodes > /dev/null 2>&1; then
-        echo "✅ Conectividad kubectl OK (intento $i)"
-    else
-        echo "❌ Conectividad kubectl falló (intento $i)"
+    # 3. Verificar el estado del pod de etcd
+    info "🔍 3. Verificando el estado del pod de etcd en el master..."
+    local master_node=$(kubectl get nodes -l node-role.kubernetes.io/master=true,node-role.kubernetes.io/control-plane=true -o jsonpath='{.items[0].metadata.name}')
+    if [[ -z "$master_node" ]]; then
+        error "No se pudo identificar el nodo master."
+        exit 1
     fi
-    sleep 2
-done
+    info "   Master node identificado: ${master_node}"
+    
+    local etcd_pod=$(kubectl get pods -n kube-system --field-selector=spec.nodeName=${master_node} -l component=etcd -o jsonpath='{.items[0].metadata.name}')
+    if [[ -z "$etcd_pod" ]]; then
+        error "No se pudo encontrar el pod de etcd en el nodo master."
+        exit 1
+    fi
+    info "   Etcd pod identificado: ${etcd_pod}"
 
-echo ""
-echo "✅ Mantenimiento de etcd completado"
-echo "💡 Ejecuta este script periódicamente para mantener el cluster optimizado"
+    local etcd_status=$(kubectl get pod "${etcd_pod}" -n kube-system -o jsonpath='{.status.phase}')
+    if [[ "$etcd_status" == "Running" ]]; then
+        success "   El pod de etcd está en estado 'Running'."
+    else
+        error "   ¡El pod de etcd está en estado '${etcd_status}'!"
+    fi
+    echo
+
+    # 4. Verificar el estado de salud de etcd
+    info "❤️‍🩹 4. Verificando la salud del miembro etcd..."
+    local etcd_health=$(kubectl exec -n kube-system "${etcd_pod}" -- etcdctl endpoint health --cluster -w table)
+    if echo "${etcd_health}" | grep -q "is healthy"; then
+        success "   El endpoint de etcd está saludable."
+        echo "${etcd_health}"
+    else
+        error "   ¡El endpoint de etcd reporta problemas!"
+        echo "${etcd_health}"
+    fi
+    echo
+
+    # 5. Verificar el estado de la base de datos de etcd (tamaño)
+    info "🗂️  5. Verificando el tamaño de la base de datos de etcd..."
+    local etcd_db_status=$(kubectl exec -n kube-system "${etcd_pod}" -- etcdctl endpoint status --cluster -w table)
+    echo "${etcd_db_status}"
+    # Extraer el tamaño de la DB y advertir si es grande
+    local db_size=$(echo "${etcd_db_status}" | awk 'NR>1 {print $6}')
+    local db_size_mb=$(echo "${db_size}" | sed 's/.$//' | awk '{printf "%.0f", $1/1024/1024}')
+    if (( db_size_mb > 1024 )); then # Mayor a 1GB
+        warning "   El tamaño de la base de datos de etcd (${db_size_mb}MB) es grande. Considera una limpieza más profunda o un snapshot."
+    else
+        success "   El tamaño de la base de datos de etcd (${db_size_mb}MB) es saludable."
+    fi
+    echo
+    
+    # 6. Mostrar estadísticas finales del cluster
+    info "📊 6. Estadísticas finales del cluster:"
+    local node_count=$(kubectl get nodes --no-headers | wc -l | tr -d ' ')
+    local pod_count=$(kubectl get pods --all-namespaces --no-headers | wc -l | tr -d ' ')
+    echo "   - Nodos: ${node_count}"
+    echo "   - Pods Totales: ${pod_count}"
+    echo
+
+    success "✅ Diagnóstico de etcd completado."
+    info "💡 Si persisten los problemas, revisa los logs del pod de etcd: kubectl logs ${etcd_pod} -n kube-system"
+}
+
+# --- Ejecutar Script ---
+main "$@"
