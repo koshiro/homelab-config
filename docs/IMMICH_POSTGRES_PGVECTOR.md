@@ -116,3 +116,7 @@ exit
 ```
 
 Sin embargo, ten en cuenta que esta instalación manual se perderá si el pod se reinicia, por lo que es preferible utilizar la imagen personalizada.
+
+
+
+

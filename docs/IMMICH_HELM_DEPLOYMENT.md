@@ -117,3 +117,7 @@ Immich ha sido desplegado exitosamente usando el Helm Chart oficial. La aplicaci
 1. Verificar el funcionamiento de Immich una vez que se restablezca la conexión con el clúster.
 2. Eliminar la instancia de Immich en CasaOS.
 3. Configurar la Raspberry Pi CM4 como nodo del clúster.
+
+
+
+

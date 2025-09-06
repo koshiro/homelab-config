@@ -1,0 +1,177 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qbittorrent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: webui
+  - port: 6881
+    targetPort: 6881
+    protocol: TCP
+    name: bt-tcp
+  - port: 6881
+    targetPort: 6881
+    protocol: UDP
+    name: bt-udp
+  selector:
+    app: qbittorrent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent-peer
+  namespace: qbittorrent
+spec:
+  type: NodePort
+  ports:
+  - port: 6881
+    targetPort: 6881
+    protocol: TCP
+    name: bt-tcp
+    nodePort: 31681
+  - port: 6881
+    targetPort: 6881
+    protocol: UDP
+    name: bt-udp
+    nodePort: 31682
+  selector:
+    app: qbittorrent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pibot
+      initContainers:
+      - name: setup-qbittorrent-unified
+        image: alpine:3.20
+        command:
+        - sh
+        - -c
+        - |
+          echo "Configurando qBittorrent con configuración persistente..."
+          
+          # Crear estructura en /data (igual que Sonarr/Radarr)
+          mkdir -p /data/downloads/completed /data/downloads/incomplete
+          
+          # Crear directorio de configuración persistente
+          mkdir -p /config/qBittorrent
+          
+          # Permisos
+          chown -R 1000:1000 /data/downloads
+          chown -R 1000:1000 /config
+          
+          echo "✅ qBittorrent configurado con persistencia:"
+          echo "   • /data montado (NFS compartido)"
+          echo "   • /config montado (NFS persistente)"
+          echo "   • Downloads: /data/downloads/"
+          echo "   • Config: /config (PERSISTENTE)"
+          echo "   • Hardlinks: /data/downloads/ <-> /data/media/ ✅"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /data
+        - name: shared-storage
+          mountPath: /config
+          subPath: qbittorrent-config
+      containers:
+      - name: qbittorrent
+        image: linuxserver/qbittorrent:latest
+        ports:
+        - containerPort: 8080
+          name: webui
+        - containerPort: 6881
+          name: bt-tcp
+        - containerPort: 6881
+          name: bt-udp
+          protocol: UDP
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Etc/UTC"
+        - name: WEBUI_PORT
+          value: "8080"
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /data
+        - name: shared-storage
+          mountPath: /config
+          subPath: qbittorrent-config
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 4000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: shared-storage
+        nfs:
+          server: 192.168.1.20
+          path: /mnt/homelab-storage
+      tolerations:
+      - key: p2p
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  rules:
+  - host: qbittorrent.danielriquelme.cl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: qbittorrent
+            port:
+              number: 8080

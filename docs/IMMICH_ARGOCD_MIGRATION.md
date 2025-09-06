@@ -78,3 +78,7 @@ Si encuentras problemas durante la migración:
 ## Conclusión
 
 Una vez que la migración se haya completado correctamente, podrás acceder a tu instancia de Immich en el clúster Kubernetes. La configuración y los datos se habrán transferido correctamente desde la instancia de CasaOS en pibot.local.
+
+
+
+

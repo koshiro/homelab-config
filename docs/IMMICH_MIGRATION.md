@@ -162,3 +162,7 @@ Una vez que hayas verificado que la nueva instancia funciona correctamente:
 ## Referencias
 - Documentación oficial de Immich: https://immich.app/docs/install/kubernetes
 - Documentación de migración de Docker a Kubernetes: https://kubernetes.io/docs/tasks/configure-pod-container/translate-compose-kubernetes/
+
+
+
+

@@ -122,3 +122,7 @@ Después de aplicar estas correcciones, los pods de Immich comenzaron a funciona
 1. Monitorear el funcionamiento de Immich para asegurar que no haya más problemas.
 2. Considerar la migración a volúmenes persistentes en lugar de emptyDir para una solución más robusta.
 3. Implementar pruebas automatizadas para verificar la integridad de la instalación de Immich.
+
+
+
+

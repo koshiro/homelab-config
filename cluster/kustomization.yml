@@ -1,35 +1,11 @@
-# /cluster/kustomization.yml
-# Este es el plano maestro para todo el clúster.
-# 
-# ESTADO ACTUAL: Cluster funcionando manualmente
-# SERVICIOS ACTIVOS: plex, sonarr, radarr, prowlarr, bazarr, overseerr, qbittorrent, traefik, cloudflared
-# PENDIENTES: transmission (no desplegado), arr-networkpolicies (aplicadas manualmente)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - config
-  # --- INFRA ---
-  - infra/nfs-csi-driver
-  # - infra/nvidia-device-plugin.yml  # Archivo no existe
-  - infra/nvidia-runtimeclass.yml
-  # - traefik # Gestionado fuera de ArgoCD por ahora
-  - cloudflared
-  - truenas
-  - tailscale
-  # --- AUTH ---
-  - authelia
-  # --- APPS ---
-  - plex
-  - sonarr
-  - radarr
-  - prowlarr
-  - bazarr
-  - overseerr
-  - qbittorrent
-  - timemachine-smb # Desplegando Time Machine con Samba
-  # - timemachine # Eliminado - Reemplazado por la versión Samba
-  # - transmission  # NO DESPLEGADO - Comentado para evitar errores
-  - pingvin
-  # - palmr  # eliminado
-  - forge  # Forge - Generador de imágenes con IA
-  - immich # Immich - Servidor de fotos
+  - 00-infrastructure/
+  - 01-networking/
+  - 02-storage/
+  - 03-monitoring/
+  - 04-media-stack/
+  - 05-services/
+  - 06-external/
+

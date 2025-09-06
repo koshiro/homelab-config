@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qbittorrent-init
+  namespace: qbittorrent
+  labels:
+    app: qbittorrent
+data:
+  init-config.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Initializing qBittorrent with unified storage..."
+    
+    # Crear estructura de directorios en el almacenamiento compartido
+    mkdir -p /shared/downloads/incomplete
+    mkdir -p /shared/downloads/completed
+    mkdir -p /shared/downloads/config/qBittorrent
+    mkdir -p /shared/media
+    
+    # Crear enlaces simbólicos para compatibilidad con aplicaciones
+    ln -sf /shared/downloads /downloads 2>/dev/null || true
+    ln -sf /shared/media /media 2>/dev/null || true
+    ln -sf /shared/downloads/config /config 2>/dev/null || true
+    
+    CFG="/shared/downloads/config/qBittorrent/qBittorrent.conf"
+    [ -f "$CFG" ] || touch "$CFG"
+
+    # Aplicar permisos solo en directorios nuevos (no recursivo en archivos existentes)
+    chown 1000:1000 /shared/downloads /shared/downloads/incomplete /shared/downloads/completed /shared/downloads/config 2>/dev/null || true
+    chmod 755 /shared/downloads /shared/downloads/incomplete /shared/downloads/completed /shared/downloads/config 2>/dev/null || true
+    
+    # Para media, solo intentar cambiar el directorio raíz si está vacío
+    if [ -z "$(ls -A /shared/media 2>/dev/null)" ]; then
+        chown 1000:1000 /shared/media 2>/dev/null || true
+        chmod 755 /shared/media 2>/dev/null || true
+    fi
+
+    ensure_kv() {
+      key="$1"; val="$2"
+      if grep -q "^$key=" "$CFG" 2>/dev/null; then
+        sed -i "s|^$key=.*|$key=$val|" "$CFG"
+      else
+        echo "$key=$val" >> "$CFG"
+      fi
+    }
+
+    # Configurar qBittorrent para usar las rutas correctas
+    ensure_kv 'Downloads\\SavePath' '/downloads/'
+    ensure_kv 'Downloads\\UseDefaultSavePath' 'true'
+    ensure_kv 'Downloads\\TempPath' '/downloads/incomplete'
+    ensure_kv 'Downloads\\TempPathEnabled' 'true'
+    ensure_kv 'Session\\DefaultSavePath' '/downloads/'
+    ensure_kv 'WebUI\\LocalHostAuth' 'false'
+
+    echo "[init] Unified storage configured:"
+    echo "  Downloads: /shared/downloads -> /downloads"  
+    echo "  Media: /shared/media -> /media"
+    echo "  Config: /shared/downloads/config -> /config"
+    echo "  All on same filesystem for hardlinks!"
+    
+    # Test hardlinks capability
+    echo "Testing hardlink capability..."
+    echo "test" > /shared/downloads/hardlink-test.txt
+    if ln /shared/downloads/hardlink-test.txt /shared/media/hardlink-test.txt 2>/dev/null; then
+        echo "✓ Hardlinks working correctly!"
+        rm -f /shared/downloads/hardlink-test.txt /shared/media/hardlink-test.txt
+    else
+        echo "⚠ Warning: Hardlinks may not work"
+    fi

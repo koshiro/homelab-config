@@ -170,3 +170,7 @@ Este script:
 ## Conclusión
 
 La migración de Immich desde una Raspberry Pi CM4 con CasaOS a un clúster Kubernetes proporciona mayor escalabilidad, resistencia y opciones de gestión. El uso de TrueNAS para el almacenamiento de imágenes garantiza un almacenamiento seguro y escalable, mientras que la ejecución en Kubernetes permite una mejor gestión de recursos y alta disponibilidad.
+
+
+
+

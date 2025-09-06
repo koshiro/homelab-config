@@ -139,3 +139,7 @@ kubectl get nodes
 - Asegurarse de hacer copias de seguridad de los datos importantes antes de eliminar la instancia de CasaOS.
 
 Este documento será actualizado a medida que avance la migración.
+
+
+
+

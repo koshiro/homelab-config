@@ -1,6 +1,6 @@
 # Homelab: Ecosistema de Desarrollo Autodesplegable
 
-![Estado](https://img.shields.io/badge/Estado-Listo%20para%20Despliegue-brightgreen)
+![Estado](https://img.shields.io/badge/Estado-Completamente%20Funcional-brightgreen)
 ![Orquestación](https://img.shields.io/badge/Orquestación-Kubernetes%20(k3s)-blue)
 ![Metodología](https://img.shields.io/badge/Metodología-GitOps%20(ArgoCD)%20%2B%20Ansible-informational)
 

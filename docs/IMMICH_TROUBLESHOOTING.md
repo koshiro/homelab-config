@@ -81,3 +81,7 @@ Versiones incompatibles entre los diferentes componentes de Immich pueden causar
 - [Problemas conocidos de Immich en GitHub](https://github.com/immich-app/immich/issues)
 - [Discusiones sobre problemas de Immich](https://github.com/immich-app/immich/discussions)
 - [Configuración de proxy inverso para Immich](https://immich.app/docs/administration/reverse-proxy)
+
+
+
+

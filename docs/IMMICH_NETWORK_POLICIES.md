@@ -86,3 +86,7 @@ A pesar de implementar estas soluciones, los pods de Immich siguen teniendo prob
 1. Investigar por qué los pods de Immich no se están registrando correctamente en los endpoints
 2. Verificar si hay problemas con los volúmenes o la configuración de almacenamiento
 3. Considerar una revisión completa de la configuración de Immich, posiblemente utilizando la configuración oficial como referencia
+
+
+
+

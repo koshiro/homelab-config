@@ -81,3 +81,7 @@ kubectl get ingress -n immich
 - La migración de las imágenes no se completó debido a problemas de permisos en los volúmenes NFS
 - Se recomienda subir las imágenes manualmente a través de la interfaz web de Immich
 - En caso de necesitar persistencia de datos, se recomienda configurar volúmenes persistentes con los permisos adecuados
+
+
+
+
