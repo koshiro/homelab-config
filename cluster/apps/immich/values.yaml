@@ -1,0 +1,21 @@
+# values.yaml para Immich
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hosts:
+    - host: "immich.danielriquelme.cl"
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  library:
+    existingClaim: "immich-library-pvc"
+
+# Dejamos que el chart gestione sus propias bases de datos con sus PVCs por defecto
+postgresql:
+  enabled: true
+
+redis:
+  enabled: true

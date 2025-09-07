@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-library-pv
+spec:
+  capacity:
+    storage: 5Ti # Capacidad grande para la biblioteca
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-immich
+  nfs:
+    server: 192.168.1.20 # IP del servidor TrueNAS
+    path: "/mnt/homelab-storage/immich-library"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-library-pvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-immich
+  resources:
+    requests:
+      storage: 5Ti

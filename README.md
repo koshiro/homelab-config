@@ -83,6 +83,48 @@ El sistema incluye monitoreo completo de TrueNAS usando:
 
 Para más detalles, ver [TRUENAS_MONITORING.md](docs/TRUENAS_MONITORING.md).
 
+## 🔄 Sistema de Respaldo Automático
+
+El homelab incluye un sistema completo de respaldos automáticos ejecutándose en TrueNAS:
+
+### 🛡️ Respaldo de Configuraciones Críticas
+- **Configuraciones de pods** (Plex, Sonarr, Radarr, etc.) - Respaldo diario
+- **Configuración del cluster** Kubernetes - Respaldo diario
+- **Configuraciones de infraestructura** (Ansible, K8s manifests) - Respaldo semanal
+
+### 📅 Cronjobs Configurados
+| Descripción | Frecuencia | Hora | Prioridad |
+|-------------|------------|------|-----------|
+| Respaldo de configuraciones de pods | Diario | 03:00 | CRÍTICO |
+| Respaldo de configuración del cluster | Diario | 03:30 | ALTO |
+| Verificación de salud del sistema | Diario | 04:00 | ALTO |
+| Limpieza de logs del sistema | Semanal | 02:00 (dom) | MEDIO |
+| Verificación de salud del ZFS | Diario | 05:00 | ALTO |
+| Limpieza de snapshots antiguos | Semanal | 01:00 (dom) | MEDIO |
+| Verificación del estado del cluster | Cada 6h | 00:00, 06:00, 12:00, 18:00 | ALTO |
+| Verificación de conectividad | Cada 4h | 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 | MEDIO |
+| Limpieza de archivos temporales | Diario | 06:00 | MEDIO |
+| Respaldo de infraestructura | Semanal | 05:00 (dom) | ALTO |
+
+### 🔧 Gestión de Respaldos
+
+**Verificar cronjobs:**
+```bash
+ssh root@192.168.1.20 'curl -k -s -X GET "https://192.168.1.20/api/v2.0/cronjob" -H "Authorization: Bearer $(cat /root/.truenas-api-key)" | jq'
+```
+
+**Verificar respaldos:**
+```bash
+ssh root@192.168.1.20 'ls -la /mnt/homelab-storage/backups/'
+```
+
+**Ejecutar respaldo manual:**
+```bash
+ssh root@192.168.1.20 '/root/scripts/backup-pod-configs.sh'
+```
+
+**Documentación completa:** [Sistema de Respaldos](docs/guides/05_backup_system.md)
+
 ---
 
 ## 🚀 Guía de Puesta en Marcha (Bootstrap)
