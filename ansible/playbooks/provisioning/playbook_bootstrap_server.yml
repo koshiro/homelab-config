@@ -1,7 +1,8 @@
+---
 # ansible/playbooks/playbook_bootstrap_server.yml
 - name: Bootstrap del Servidor Proxmox
   hosts: proxmox_host
-  gather_facts: yes
+  gather_facts: true
 
   tasks:
     - name: Eliminar repositorios enterprise (formato .list)
@@ -48,15 +49,17 @@
     - name: Deshabilitar nag de suscripción
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/no-nag-script
-        content: 'DPkg::Post-Invoke { "if [ -s /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ] && ! grep -q -F ''NoMoreNagging'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; then echo ''Removing subscription nag from UI...''; sed -i ''/data.status/{s/!//;s/active/NoMoreNagging/}'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; fi" };'
+        content: 'DPkg::Post-Invoke { "if [ -s /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ] && ! grep -q -F ''NoMoreNagging'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js;
+          then echo ''Removing subscription nag from UI...''; sed -i ''/data.status/{s/!//;s/active/NoMoreNagging/}'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js;
+          fi" };'
 
     - name: Actualizar repositorios APT
-      apt:
-        update_cache: yes
+      ansible.builtin.apt:
+        update_cache: true
         cache_valid_time: 3600
 
     - name: Instalar paquetes base
-      apt:
+      ansible.builtin.apt:
         name: ["qemu-guest-agent", "git", "vim"]
         state: present
 
@@ -75,15 +78,15 @@
       ansible.builtin.get_url:
         url: https://pkgs.tailscale.com/stable/debian/trixie.gpg
         dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
-        mode: '0644'
-        force: yes
+        mode: "0644"
+        force: true
 
     - name: Añadir el repositorio de Tailscale
       ansible.builtin.apt_repository:
         repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian trixie main"
         state: present
         filename: tailscale
-        update_cache: no
+        update_cache: false
 
     - name: Instalar Tailscale
       ansible.builtin.apt:
@@ -92,7 +95,7 @@
 
     - name: Recargar systemd para reconocer el nuevo servicio Tailscale
       ansible.builtin.systemd:
-        daemon_reload: yes
+        daemon_reload: true
 
     - name: Esperar un momento para que systemd reconozca el servicio
       ansible.builtin.pause:
@@ -112,15 +115,16 @@
       ansible.builtin.systemd:
         name: tailscaled
         state: started
-        enabled: yes
+        enabled: true
 
     # Configuración de GPU Passthrough
     - name: Habilitar IOMMU en GRUB
       ansible.builtin.lineinfile:
         path: /etc/default/grub
-        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction vfio-pci.ids={{ gpu_vendor_device_id | default("") }}"'
-        backup: yes
+        regexp: "^GRUB_CMDLINE_LINUX_DEFAULT="
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction vfio-pci.ids={{ gpu_vendor_device_id | default("")
+          }}"'
+        backup: true
       register: grub_config_changed
 
     - name: Actualizar GRUB
@@ -131,7 +135,7 @@
       ansible.builtin.lineinfile:
         path: /etc/modules
         line: "{{ item }}"
-        create: yes
+        create: true
       loop:
         - vfio
         - vfio_iommu_type1
@@ -147,7 +151,7 @@
           blacklist nvidia_drm
           blacklist nvidia_modeset
           blacklist nouveau
-        mode: '0644'
+        mode: "0644"
       register: nvidia_blacklist_changed
 
     - name: Configurar VFIO para capturar GPU específica
@@ -159,7 +163,7 @@
           softdep nvidia_drm pre: vfio-pci
           softdep nvidia_modeset pre: vfio-pci
           softdep nouveau pre: vfio-pci
-        mode: '0644'
+        mode: "0644"
       register: vfio_config_changed
       when: gpu_vendor_device_id is defined
 
@@ -169,7 +173,8 @@
 
     - name: Verificar si necesita reinicio para GPU passthrough
       ansible.builtin.set_fact:
-        gpu_reboot_required: "{{ grub_config_changed.changed or modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed }}"
+        gpu_reboot_required: "{{ grub_config_changed.changed or modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed
+          }}"
 
     - name: Reiniciar Proxmox VE (si es necesario)
       ansible.builtin.reboot:

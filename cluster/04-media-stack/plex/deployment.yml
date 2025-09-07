@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex
+  namespace: plex
+  labels:
+    app: plex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plex
+  template:
+    metadata:
+      labels:
+        app: plex
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/media-worker
+                operator: In
+                values:
+                - "true"
+      containers:
+      - name: plex
+        image: lscr.io/linuxserver/plex:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/Santiago"
+        - name: VERSION
+          value: "docker"
+        ports:
+        - containerPort: 32400
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: shared-storage
+          mountPath: /media
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: plex-config-pvc
+      - name: shared-storage
+        hostPath:
+          path: /mnt/homelab-storage
+          type: DirectoryOrCreate

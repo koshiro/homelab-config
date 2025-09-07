@@ -1,0 +1,26 @@
+---
+- name: Configure and Mount NFS Share on Kubernetes Nodes
+  hosts: k3s_nodes
+  become: true
+  tasks:
+    - name: Ensure nfs client utilities are installed
+      apt:
+        name: nfs-common
+        state: present
+        update_cache: true
+
+    - name: Create mount point directory
+      file:
+        path: /mnt/homelab-storage
+        state: directory
+        mode: '0755'
+
+    - name: Mount NFS share via fstab for persistence
+      mount:
+        src: "192.168.1.20:/mnt/homelab-storage"
+        path: "/mnt/homelab-storage"
+        fstype: nfs
+        opts: "hard,nfsvers=4.2,noatime,nodiratime,rsize=1048576,wsize=1048576,tcp,nconnect=8"
+        state: mounted
+        dump: "0"
+        passno: "0"

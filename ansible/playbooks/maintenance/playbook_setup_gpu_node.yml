@@ -1,0 +1,13 @@
+---
+- name: Configurar un nodo con GPU NVIDIA para k3s
+  hosts: k3s_workers # Por defecto, se aplica a todos los workers
+  gather_facts: yes
+  
+  pre_tasks:
+    - name: Validar que el nodo objetivo es correcto
+      ansible.builtin.fail:
+        msg: "Este playbook está diseñado para ejecutarse en un solo nodo con GPU. Usa --limit para especificarlo. Ej: --limit k3s-node-1"
+      when: ansible_play_hosts | length > 1
+
+  roles:
+    - role: nvidia_gpu

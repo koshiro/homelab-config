@@ -62,8 +62,15 @@ spec:
       labels:
         app: qbittorrent
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: pibot
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/media-worker
+                operator: In
+                values:
+                - "true"
       initContainers:
       - name: setup-qbittorrent-unified
         image: alpine:3.20
@@ -71,24 +78,11 @@ spec:
         - sh
         - -c
         - |
-          echo "Configurando qBittorrent con configuración persistente..."
-          
-          # Crear estructura en /data (igual que Sonarr/Radarr)
+          echo "Creando directorios para qBittorrent..."
           mkdir -p /data/downloads/completed /data/downloads/incomplete
-          
-          # Crear directorio de configuración persistente
           mkdir -p /config/qBittorrent
-          
-          # Permisos
-          chown -R 1000:1000 /data/downloads
-          chown -R 1000:1000 /config
-          
-          echo "✅ qBittorrent configurado con persistencia:"
-          echo "   • /data montado (NFS compartido)"
-          echo "   • /config montado (NFS persistente)"
-          echo "   • Downloads: /data/downloads/"
-          echo "   • Config: /config (PERSISTENTE)"
-          echo "   • Hardlinks: /data/downloads/ <-> /data/media/ ✅"
+          echo "Asegurando permisos..."
+          chown -R 1000:1000 /data/downloads /config/qBittorrent
         volumeMounts:
         - name: shared-storage
           mountPath: /data
@@ -98,14 +92,6 @@ spec:
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
-        ports:
-        - containerPort: 8080
-          name: webui
-        - containerPort: 6881
-          name: bt-tcp
-        - containerPort: 6881
-          name: bt-udp
-          protocol: UDP
         env:
         - name: PUID
           value: "1000"
@@ -115,6 +101,14 @@ spec:
           value: "Etc/UTC"
         - name: WEBUI_PORT
           value: "8080"
+        ports:
+        - containerPort: 8080
+          name: webui
+        - containerPort: 6881
+          name: bt-tcp
+        - containerPort: 6881
+          name: bt-udp
+          protocol: UDP
         volumeMounts:
         - name: shared-storage
           mountPath: /data
@@ -128,27 +122,11 @@ spec:
           limits:
             cpu: 4000m
             memory: 4Gi
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 60
-          timeoutSeconds: 10
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
       volumes:
       - name: shared-storage
-        nfs:
-          server: 192.168.1.20
+        hostPath:
           path: /mnt/homelab-storage
+          type: DirectoryOrCreate
       tolerations:
       - key: p2p
         operator: Equal

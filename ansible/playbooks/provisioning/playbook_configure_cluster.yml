@@ -1,0 +1,141 @@
+---
+# ansible/playbooks/provisioning/playbook_configure_cluster.yml
+- name: Configurar el Clúster de k3s - Versión Robusta y Probada
+  hosts: k3s_nodes
+  become: true
+  gather_facts: true
+  serial: false # Permite la ejecución en paralelo para más velocidad
+  vars:
+    k3s_version: "v1.33.4+k3s1" # Versión LTS más reciente y estable que la anterior
+    k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]].ansible_host }}"
+    install_timeout: 900
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # PRE-FLIGHT CHECKS
+    # --------------------------------------------------------------------------
+    - name: Pre-flight | Verificar conectividad a internet
+      ansible.builtin.uri:
+        url: https://get.k3s.io
+        method: HEAD
+        timeout: 10
+      register: connectivity_check
+      retries: 3
+      delay: 5
+      run_once: true # Solo necesita correr una vez
+      delegate_to: localhost
+
+    - name: Pre-flight | Verificar espacio en disco suficiente (mínimo 8GB libres)
+      ansible.builtin.assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first > 8 * (1024**3)
+        fail_msg: "Espacio en disco insuficiente en {{ inventory_hostname }}. Se requieren al menos 8GB libres."
+        quiet: true
+
+    - name: Pre-flight | Instalar dependencias base (incl. cliente NFS)
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+        update_cache: true
+
+    # --------------------------------------------------------------------------
+    # MASTER NODE SETUP
+    # --------------------------------------------------------------------------
+    - name: Master | Instalar k3s
+      when: inventory_hostname in groups['k3s_master']
+      block:
+        - name: Master | Instalar k3s con configuración robusta
+          ansible.builtin.shell: |
+            curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} INSTALL_K3S_EXEC="server --cluster-init --write-kubeconfig-mode=644" sh -
+          args:
+            creates: /etc/rancher/k3s/k3s.yaml
+          changed_when: true # Siempre consideramos que la instalación es un cambio
+          async: "{{ install_timeout }}"
+          poll: 15
+
+        - name: Master | Asegurar que el servicio k3s está activo
+          ansible.builtin.systemd:
+            name: k3s
+            state: started
+            enabled: true
+
+        - name: Master | Esperar a que el API Server esté listo
+          ansible.builtin.wait_for:
+            path: /etc/rancher/k3s/k3s.yaml
+            search_regex: "server: https://127.0.0.1:6443"
+            timeout: 300
+
+        - name: Master | Leer el token del clúster
+          ansible.builtin.slurp:
+            src: /var/lib/rancher/k3s/server/node-token
+          register: k3s_token_b64
+
+        - name: Master | Registrar token y URL del servidor para los workers
+          ansible.builtin.set_fact:
+            k3s_token: "{{ k3s_token_b64.content | b64decode | trim }}"
+            k3s_url: "https://{{ k3s_master_ip }}:6443"
+            cacheable: true # Permite que otros hosts accedan a este fact
+
+    # --------------------------------------------------------------------------
+    # WORKER NODES SETUP
+    # --------------------------------------------------------------------------
+    - name: Workers | Instalar k3s agent
+      when: inventory_hostname in groups['k3s_workers']
+      block:
+        - name: Workers | Instalar k3s agent y unirlo al clúster
+          ansible.builtin.shell: |
+            curl -sfL https://get.k3s.io | K3S_URL={{ hostvars[groups['k3s_master'][0]].k3s_url }} K3S_TOKEN={{ hostvars[groups['k3s_master'][0]].k3s_token }} INSTALL_K3S_VERSION={{ k3s_version }} sh -
+          args:
+            creates: /etc/rancher/k3s/agent/k3s.yaml
+          changed_when: true
+          async: "{{ install_timeout }}"
+          poll: 15
+
+        - name: Workers | Asegurar que el servicio k3s-agent está activo
+          ansible.builtin.systemd:
+            name: k3s-agent
+            state: started
+            enabled: true
+
+    # --------------------------------------------------------------------------
+    # FINAL VERIFICATION (run on master)
+    # --------------------------------------------------------------------------
+    - name: Final | Verificar que todos los nodos están 'Ready'
+      delegate_to: "{{ groups['k3s_master'][0] }}"
+      run_once: true
+      ansible.builtin.command: kubectl get nodes --no-headers
+      register: cluster_nodes_status
+      until: "cluster_nodes_status.stdout_lines | length == groups['k3s_nodes'] | length and not cluster_nodes_status.stdout | regex_search('NotReady')"
+      retries: 20
+      delay: 15
+      changed_when: false
+
+    - name: Final | Configurar kubectl para el usuario root en el master
+      when: inventory_hostname in groups['k3s_master']
+      block:
+        - name: Crear directorio .kube
+          ansible.builtin.file:
+            path: /root/.kube
+            state: directory
+            mode: "0755"
+        - name: Enlazar k3s.yaml para kubectl
+          ansible.builtin.file:
+            src: /etc/rancher/k3s/k3s.yaml
+            dest: /root/.kube/config
+            state: link
+            force: true
+
+    - name: Final | Mostrar estado final del clúster
+      delegate_to: "{{ groups['k3s_master'][0] }}"
+      run_once: true
+      ansible.builtin.debug:
+        msg: |
+          =================================
+          🎉 CLÚSTER K3S DESPLEGADO EXITOSAMENTE
+          =================================
+          Versión: {{ k3s_version }}
+          Nodos totales: {{ groups['k3s_nodes'] | length }}
+          Estado del clúster:
+          {{ cluster_nodes_status.stdout }}
+          =================================

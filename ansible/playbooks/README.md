@@ -1,149 +1,76 @@
 # 📋 **Estructura de Playbooks - Homelab BMad**
 
-Esta estructura está organizada según los principios del **BMad Master - FitnessBrain Framework** para máxima claridad y mantenibilidad.
+Esta estructura está organizada para separar claramente el **aprovisionamiento inicial** de las **tareas de mantenimiento**, siguiendo principios de Infrastructure as Code (IaC) para máxima claridad y mantenibilidad.
 
 ## 📁 **Estructura de Directorios**
 
 ```
-ansible/playbooks/
-├── core/                    # Playbooks principales del pipeline de despliegue
-│   ├── playbook_bootstrap_server.yml      # Bootstrap inicial de Proxmox
-│   ├── playbook_create_vms.yml           # Creación de VMs
-│   ├── playbook_initial_truenas_setup.yml # Setup inicial TrueNAS + API Key
-│   ├── playbook_configure_truenas.yml    # Configuración completa TrueNAS
-│   ├── playbook_configure_cluster.yml    # Instalación k3s (LTS robusta)
-
-├── utils/                   # Utilidades de mantenimiento
-│   └── playbook_resize_vm_disks.yml      # Redimensionar discos VMs
-└── README.md               # Este archivo
+ansible/
+├── inventory                # Define los hosts y grupos (master, workers, etc.)
+├── roles/
+│   └── nvidia_gpu/          # Rol para configurar nodos con GPU NVIDIA
+├── playbooks/
+│   ├── provisioning/        # Playbooks para crear la infraestructura desde cero
+│   │   ├── playbook_bootstrap_server.yml
+│   │   ├── playbook_create_vms.yml
+│   │   ├── playbook_initial_truenas_setup.yml
+│   │   ├── playbook_configure_truenas.yml
+│   │   └── playbook_configure_cluster.yml
+│   │
+│   ├── maintenance/         # Playbooks para gestionar y mantener el entorno existente
+│   │   ├── playbook_add_disk_to_truenas.yml
+│   │   ├── playbook_graceful_shutdown_cluster.yml
+│   │   ├── playbook_mount_nfs.yml
+│   │   ├── playbook_resize_vm_disks.yml
+│   │   └── playbook_setup_gpu_node.yml  (Usa el rol nvidia_gpu)
+│   │
+│   └── playbook_provision_all.yml # Orquestador para el aprovisionamiento completo
+│
+└── vars/
+    └── homelab_vars.yml.example # Variables de configuración
 ```
 
-## 🎯 **Playbooks Core - Pipeline Principal**
+## 🚀 **Playbooks de Aprovisionamiento (`provisioning/`)**
 
-Estos playbooks se ejecutan secuencialmente mediante `ansible/playbook_homelab.yml`:
+Estos playbooks construyen todo el homelab desde cero. Se ejecutan secuencialmente a través de `playbook_provision_all.yml`.
 
-### **1. Bootstrap Proxmox (`playbook_bootstrap_server.yml`)**
-- **Propósito**: Preparar el servidor base
-- **Acciones**: Actualizar repos, instalar paquetes, configurar GPU passthrough, Tailscale
-- **Tags**: `bootstrap`, `proxmox`
+- **`playbook_bootstrap_server.yml`**: Prepara el servidor Proxmox (repos, paquetes, GPU passthrough).
+- **`playbook_create_vms.yml`**: Crea las VMs para TrueNAS y k3s.
+- **`playbook_initial_truenas_setup.yml`**: Configuración inicial de TrueNAS y generación de API Key.
+- **`playbook_configure_truenas.yml`**: Crea datasets y comparte por NFS.
+- **`playbook_configure_cluster.yml`**: Instala un clúster de k3s robusto y moderno en los nodos definidos.
 
-### **2. Crear VMs (`playbook_create_vms.yml`)**
-- **Propósito**: Provisionamiento de máquinas virtuales
-- **Acciones**: Crear VMs con especificaciones correctas (10GB+ disco)
-- **Tags**: `provision`, `vms`
-
-### **3. Setup TrueNAS (`playbook_initial_truenas_setup.yml`)**
-- **Propósito**: Configuración inicial automatizada de TrueNAS
-- **Acciones**: Crear usuarios, generar API Keys, actualizar variables
-- **Tags**: `truenas`, `setup`
-
-### **4. Configurar TrueNAS (`playbook_configure_truenas.yml`)**
-- **Propósito**: Configurar almacenamiento compartido
-- **Acciones**: Crear datasets, shares NFS, habilitar servicios
-- **Tags**: `truenas`, `storage`
-
-### **5. Configurar K3s (`playbook_configure_cluster.yml`)**
-- **Propósito**: Instalación robusta del clúster Kubernetes
-- **Versión**: k3s v1.31.11+k3s1 (LTS)
-- **Características**: 
-  - Verificación de espacio en disco
-  - Instalación con reintentos
-  - Validación completa del clúster
-  - Configuración de kubectl
-- **Tags**: `k3s`, `cluster`
-
-### **6. Configurar Cloudflare Tunnel (integrado en pipeline principal)**
-- **Propósito**: Configuración automática del túnel de Cloudflare (modo remotamente gestionado)
-- **Acciones**:
-  - Lee credenciales del archivo `.env`
-  - Usa `CF_API_TOKEN` (Cloudflare Tunnel: Edit, DNS: Edit)
-  - Decodifica token del túnel
-  - Despliega `cloudflared` pods en k3s (ConfigMap sin reglas ingress locales)
-  - Aplica configuración remota del túnel vía API (`/cfd_tunnel/{id}/configurations`)
-  - Crea CNAMEs apuntando a `<TUNNEL_ID>.cfargotunnel.com`
-  - **Configura IngressRoute correcto para Traefik Dashboard (HTTPS externo, HTTP interno)**
-- **Tags**: `cloudflare`, `tunnel`
-
-
-
-## 🛠️ **Playbooks Utils - Utilidades de Mantenimiento**
-
-### **Redimensionar Discos (`playbook_resize_vm_disks.yml`)**
-- **Propósito**: Expandir discos de VMs existentes cuando sea necesario
-- **Uso**: `ansible-playbook -i ../inventory utils/playbook_resize_vm_disks.yml`
-- **⚠️ Advertencia**: Requiere apagar las VMs temporalmente
-
-## 🚀 **Comandos de Ejecución**
-
-### **Despliegue Completo**
+### **Ejecución del Aprovisionamiento Completo**
 ```bash
-cd /path/to/homelab-config
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml
+# Despliega todo el homelab desde cero
+ansible-playbook -i ansible/inventory ansible/playbook_provision_all.yml
 ```
 
-### **Ejecución Selectiva con Tags**
+## 🛠️ **Playbooks de Mantenimiento (`maintenance/`)**
+
+Estos playbooks se utilizan para gestionar, actualizar y solucionar problemas del clúster una vez que ya está en funcionamiento.
+
+- **`playbook_add_disk_to_truenas.yml`**: Agrega un disco físico a la VM de TrueNAS.
+- **`playbook_graceful_shutdown_cluster.yml`**: Realiza un apagado ordenado de todo el sistema.
+- **`playbook_mount_nfs.yml`**: (Re)monta los directorios NFS en los nodos del clúster.
+- **`playbook_resize_vm_disks.yml`**: Expande el disco de las VMs y el filesystem interno.
+- **`playbook_setup_gpu_node.yml`**: Configura un nodo worker con drivers NVIDIA y el container toolkit.
+
+### **Ejemplos de Comandos de Mantenimiento**
 ```bash
-# Solo bootstrap de Proxmox
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags bootstrap
+# Configurar la GPU en el nodo k3s-node-1
+ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_setup_gpu_node.yml --limit k3s-node-1
 
-# Solo k3s
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags k3s
-
-# Solo TrueNAS
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags truenas
-
-# Solo Cloudflare Tunnel
-ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags cloudflare
-
-
+# Apagar ordenadamente todo el clúster
+ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_graceful_shutdown_cluster.yml
 ```
 
-### **Utilidades Individuales**
-```bash
-# Redimensionar discos VMs
-ansible-playbook -i ansible/inventory ansible/playbooks/utils/playbook_resize_vm_disks.yml
-```
+## 📦 **Roles (`roles/`)**
 
-## ⚠️ **Requisitos Críticos**
+- **`nvidia_gpu`**: Lógica encapsulada para la instalación y configuración completa de NVIDIA (drivers, toolkit, runtime de k3s). Es utilizado por `playbook_setup_gpu_node.yml`.
 
-### **Espacio en Disco**
-- **Mínimo absoluto**: 10GB por nodo k3s
-- **Recomendado**: 20GB+ para producción
-- **Fallo garantizado**: < 8GB espacio libre
+## ⚠️ **Notas Importantes**
 
-### **Red y Conectividad**
-- Acceso SSH configurado a Proxmox
-- Internet disponible para descargas
-- IPs estáticas configuradas en inventory
-
-### **Plantillas de VM**
-- Ubuntu Cloud template (ID 9000)
-- TrueNAS template (ID 9001)
-- Cloud-init configurado correctamente
-
-## 🔍 **Troubleshooting Rápido**
-
-```bash
-# Verificar espacio en todos los nodos
-ansible k3s_nodes -i ansible/inventory -m shell -a "df -h /"
-
-# Estado del clúster
-ssh k3s-node-1 "sudo k3s kubectl get nodes -o wide"
-
-# Limpiar k3s fallido
-ansible k3s_nodes -i ansible/inventory -m shell -a "sudo /usr/local/bin/k3s-uninstall.sh || sudo /usr/local/bin/k3s-agent-uninstall.sh" --become
-
-# Conectividad básica
-ansible all -i ansible/inventory -m ping
-```
-
----
-
-## 📧 **BMad Master Framework - Organización y Calidad**
-
-Esta estructura sigue los principios del **BMad Master** para:
-- ✅ **Claridad**: Cada playbook tiene un propósito específico
-- ✅ **Mantenibilidad**: Separación entre core y utils
-- ✅ **Robustez**: Validaciones y reintentos incorporados
-- ✅ **Documentación**: Todo está documentado y tageado
-- ✅ **Escalabilidad**: Fácil añadir nuevos playbooks
+- **Idempotencia**: Los playbooks han sido refactorizados para ser lo más idempotentes posible. Puedes ejecutarlos varias veces y solo aplicarán los cambios necesarios.
+- **Variables**: Toda la configuración específica de tu entorno (IPs, nombres de pool, etc.) debe estar en `ansible/inventory` y `ansible/vars/homelab_vars.yml`.
+- **GitOps**: La configuración de aplicaciones (Deployments, Services, etc.) **NO** se gestiona con Ansible. Se encuentra en el directorio `cluster/` y debe ser aplicada vía GitOps (Flux, ArgoCD) o `kubectl apply`. Ansible se encarga de la infraestructura subyacente.

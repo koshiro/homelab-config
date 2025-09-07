@@ -1,14 +1,15 @@
+---
 # ansible/playbooks/core/playbook_configure_truenas.yml
 - name: Configurar TrueNAS
   hosts: localhost
   connection: local
-  gather_facts: no
+  gather_facts: false
   vars_files:
     - ../../vars/homelab_vars.yml
 
   tasks:
     - name: Esperar a que la API de TrueNAS esté disponible
-      uri:
+      ansible.builtin.uri:
         url: "https://{{ truenas_host }}/api/v2.0/system/info"
         method: GET
         validate_certs: false
@@ -29,7 +30,7 @@
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: [200, 422]  # 200 = creado, 422 = ya existe
+        status_code: [200, 422] # 200 = creado, 422 = ya existe
       loop: "{{ truenas_datasets }}"
       register: dataset_results
 
@@ -46,7 +47,7 @@
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: [200, 422]  # 200 = creado, 422 = ya existe
+        status_code: [200, 422] # 200 = creado, 422 = ya existe
       loop: "{{ truenas_datasets }}"
       register: nfs_results
 
@@ -84,7 +85,7 @@
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: [200, 422]  # 422 si ya existe
+        status_code: [200, 422] # 422 si ya existe
 
     - name: Crear directorio media/peliculas
       ansible.builtin.uri:
@@ -96,7 +97,7 @@
         headers:
           Authorization: "Basic {{ ('truenas_admin:' + truenas_initial_root_password) | b64encode }}"
         validate_certs: false
-        status_code: [200, 422]  # 422 si ya existe
+        status_code: [200, 422] # 422 si ya existe
 
     - name: Permisos media/series (uid/gid 1000, 775)
       ansible.builtin.uri:
