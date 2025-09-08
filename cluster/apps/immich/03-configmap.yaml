@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immich-config
+  namespace: immich
+data:
+  # Database Configuration
+  DB_URL: "postgresql://immich:OC3A3kD7Q0yaTogfuWpIpsvUFwZ1DLgQHFLoAFAOu9mij9Sb33XeauMKuCl6Xbcw@homelab-postgres-rw.postgresql.svc.cluster.local:5432/immich"
+  DB_VECTOR_EXTENSION: "pgvector"
+  
+  # Redis Configuration
+  REDIS_HOSTNAME: "immich-redis-master"
+  REDIS_PORT: "6379"
+  
+  # Machine Learning Configuration
+  IMMICH_MACHINE_LEARNING_URL: "http://immich-machine-learning.immich.svc.cluster.local:3003"
+  
+  # Application Configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: "warn"
+  
+  # URL Configuration
+  IMMICH_WEB_URL: "https://immich.danielriquelme.cl"
+  IMMICH_SERVER_URL: "http://immich-server.immich.svc.cluster.local:2283"
+  PUBLIC_IMMICH_SERVER_URL: "https://immich.danielriquelme.cl/api"
+  
+  # Media Configuration
+  IMMICH_MEDIA_LOCATION: "/usr/src/app/upload"
