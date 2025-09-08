@@ -15,6 +15,7 @@ spec:
       labels:
         app: plex
     spec:
+      runtimeClassName: nvidia
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -36,6 +37,24 @@ spec:
           value: "America/Santiago"
         - name: VERSION
           value: "docker"
+        - name: PLEX_CLAIM
+          value: ""
+        - name: ADVERTISE_IP
+          value: "https://plex.danielriquelme.cl"
+        - name: PLEX_ANNOUNCE_SERVER
+          value: "https://plex.danielriquelme.cl"
+        - name: PLEX_ANNOUNCE_SERVER_ENABLED
+          value: "true"
+        - name: PLEX_ANNOUNCE_SERVER_DISCOVERY
+          value: "true"
+        - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE
+          value: "true"
+        - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_IP
+          value: "https://plex.danielriquelme.cl"
+        - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_PORT
+          value: "443"
+        - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_HTTPS
+          value: "true"
         ports:
         - containerPort: 32400
           name: http
