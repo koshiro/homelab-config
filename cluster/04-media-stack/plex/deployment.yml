@@ -28,6 +28,11 @@ spec:
       containers:
       - name: plex
         image: lscr.io/linuxserver/plex:latest
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            nvidia.com/gpu: 1
         env:
         - name: PUID
           value: "1000"
