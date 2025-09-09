@@ -4,5 +4,9 @@ resources:
   - namespace.yml
   - deployment.yml
   - service.yml
-  - ingress.yml
   - pvc.yml
+  # Network Policies
+  - networkpolicy-deny.yml
+  - networkpolicy-dlna.yml
+  - networkpolicy-egress.yml
+  - networkpolicy-ingress.yml

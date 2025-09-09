@@ -46,6 +46,8 @@ spec:
           value: ""
         - name: ADVERTISE_IP
           value: "https://plex.danielriquelme.cl"
+        - name: PLEX_ADVERTISE_URL
+          value: "https://plex.danielriquelme.cl"
         - name: PLEX_ANNOUNCE_SERVER
           value: "https://plex.danielriquelme.cl"
         - name: PLEX_ANNOUNCE_SERVER_ENABLED
@@ -54,8 +56,10 @@ spec:
           value: "true"
         - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE
           value: "true"
+        - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_URL
+          value: "http://plex.plex.svc.cluster.local:32400"
         - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_IP
-          value: "https://plex.danielriquelme.cl"
+          value: "0.0.0.0"
         - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_PORT
           value: "443"
         - name: PLEX_ANNOUNCE_SERVER_ANNOUNCE_HTTPS

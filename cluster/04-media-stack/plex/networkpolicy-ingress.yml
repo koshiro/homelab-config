@@ -1,34 +1,27 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-traefik-ingress
+  name: allow-plex-ingress
   namespace: plex
 spec:
   podSelector:
     matchLabels:
       app: plex
   policyTypes:
-    - Ingress
+  - Ingress
   ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: traefik
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: traefik
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: traefik
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: cloudflared
-          podSelector:
-            matchLabels:
-              app: cloudflared
-      ports:
-        - protocol: TCP
-          port: 32400
+  # Allow ingress from cloudflared for external access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: cloudflared
+  # Allow ingress from the *arr suite and Overseerr for internal management
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          arr-suite: "true"
+  # Allow ingress from default namespace for testing
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: default
