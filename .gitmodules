@@ -1,0 +1,3 @@
+[submodule "mcp-tools"]
+	path = mcp-tools
+	url = ./mcp-tools
