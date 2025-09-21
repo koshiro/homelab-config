@@ -1,0 +1,82 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: homelab-postgres
+  namespace: postgresql
+spec:
+  instances: 3
+  
+  # PostgreSQL Configuration
+  postgresql:
+    parameters:
+      # Configuraciones recomendadas para Immich
+      shared_preload_libraries: "vectors.so"
+      search_path: '"$user", public, vectors'
+      logging_collector: "on"
+      log_destination: "stderr"
+      log_directory: "log"
+      log_filename: "postgres-%Y-%m-%d.log"
+      log_rotation_age: "1d"
+      log_rotation_size: "100MB"
+      log_min_duration_statement: "1000ms"
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      log_checkpoints: "on"
+      log_connections: "on"
+      log_disconnections: "on"
+      log_lock_waits: "on"
+      
+  storage:
+    storageClass: local-path
+    size: 100Gi
+    
+  # Configuración mejorada de bootstrap
+  bootstrap:
+    initdb:
+      # Base de datos principal para Immich
+      database: immich
+      owner: immich
+      # Crear extensiones necesarias para Immich
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS "vectors";
+        - CREATE EXTENSION IF NOT EXISTS "earthdistance" CASCADE;
+        - CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+      secret:
+        name: homelab-postgres-superuser
+      # Configuraciones adicionales de inicialización
+      options:
+        - "-E"
+        - "UTF8"
+        - "--locale=C"
+        
+  # Configuración de monitoreo
+  monitoring:
+    enabled: true
+    
+  # Configuración de backup (opcional)
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: "s3://postgres-backup"
+      serverName: "homelab-postgres"
+      
+  # Recursos de pods
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2"
+      
+  # Configuración de nodos
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: postgresql
+              operator: In
+              values: ["homelab-postgres"]
+          topologyKey: kubernetes.io/hostname

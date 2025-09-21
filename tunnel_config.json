@@ -3,32 +3,32 @@
     "ingress": [
       {
         "hostname": "traefik.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
 
       {
         "hostname": "sonarr.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
       {
         "hostname": "radarr.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
       {
         "hostname": "prowlarr.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
       {
         "hostname": "overseerr.danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
       {
         "hostname": "plex.danielriquelme.cl",
-        "service": "http://plex.plex.svc.cluster.local:32400"
+        "service": "http://100.71.69.21:80"
       },
       {
         "hostname": "danielriquelme.cl",
-        "service": "http://192.168.1.131:80"
+        "service": "http://100.71.69.21:80"
       },
       {
         "service": "http_status:404"

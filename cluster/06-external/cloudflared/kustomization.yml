@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yml
+  - helm-repository.yml
+  - helm-release.yml
+  - configmap.yml
+secretGenerator:
+  - name: cloudflared-tunnel-credentials
+    files:
+      - credentials.json=tunnel_config.json
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,182 @@
+---
+# ansible/playbooks/playbook_bootstrap_server.yml
+- name: Bootstrap del Servidor Proxmox
+  hosts: proxmox_host
+  gather_facts: true
+
+  tasks:
+    - name: Eliminar repositorios enterprise (formato .list)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.list
+        - /etc/apt/sources.list.d/ceph.list
+
+    - name: Eliminar repositorios enterprise (formato .sources)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+        - /etc/apt/sources.list.d/ceph.sources
+
+    - name: Configurar sources.list para Debian 13 (Trixie)
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list
+        content: |
+          deb http://deb.debian.org/debian trixie main contrib
+          deb http://deb.debian.org/debian trixie-updates main contrib
+          deb http://security.debian.org/debian-security trixie-security main contrib
+
+    - name: Deshabilitar advertencias de firmware non-free
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/no-trixie-firmware.conf
+        content: 'APT::Get::Update::SourceListWarnings::NonFreeFirmware "false";'
+
+    - name: Habilitar repositorio pve-no-subscription
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription"
+        state: present
+        filename: pve-no-subscription
+
+    - name: Añadir repositorio pvetest (deshabilitado)
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/pvetest.list
+        content: |
+          # deb http://download.proxmox.com/debian/pve trixie pvetest
+
+    - name: Deshabilitar nag de suscripción
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/no-nag-script
+        content: 'DPkg::Post-Invoke { "if [ -s /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js ] && ! grep -q -F ''NoMoreNagging'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js;
+          then echo ''Removing subscription nag from UI...''; sed -i ''/data.status/{s/!//;s/active/NoMoreNagging/}'' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js;
+          fi" };'
+
+    - name: Actualizar repositorios APT
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Instalar paquetes base
+      ansible.builtin.apt:
+        name: ["qemu-guest-agent", "git", "vim"]
+        state: present
+
+    - name: Actualizar y Dist-Upgrade Proxmox VE
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Instalar dependencias para Tailscale
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - curl
+        state: present
+
+    - name: Descargar clave GPG de Tailscale
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/debian/trixie.gpg
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: "0644"
+        force: true
+
+    - name: Añadir el repositorio de Tailscale
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian trixie main"
+        state: present
+        filename: tailscale
+        update_cache: false
+
+    - name: Instalar Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+
+    - name: Recargar systemd para reconocer el nuevo servicio Tailscale
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Esperar un momento para que systemd reconozca el servicio
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Verificar que el servicio Tailscale existe
+      ansible.builtin.command: systemctl status tailscaled
+      register: tailscale_service_check
+      failed_when: false
+      changed_when: false
+
+    - name: Mostrar estado del servicio Tailscale para debug
+      ansible.builtin.debug:
+        var: tailscale_service_check
+
+    - name: Habilitar y iniciar el servicio Tailscale (tailscaled)
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: true
+
+    # Configuración de GPU Passthrough
+    - name: Habilitar IOMMU en GRUB
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: "^GRUB_CMDLINE_LINUX_DEFAULT="
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction vfio-pci.ids={{ gpu_vendor_device_id | default("")
+          }}"'
+        backup: true
+      register: grub_config_changed
+
+    - name: Actualizar GRUB
+      ansible.builtin.command: update-grub
+      when: grub_config_changed.changed
+
+    - name: Agregar módulos VFIO al sistema
+      ansible.builtin.lineinfile:
+        path: /etc/modules
+        line: "{{ item }}"
+        create: true
+      loop:
+        - vfio
+        - vfio_iommu_type1
+        - vfio_pci
+        - vfio_virqfd
+      register: modules_config_changed
+
+    - name: Blacklist drivers NVIDIA
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/blacklist-nvidia.conf
+        content: |
+          blacklist nvidia
+          blacklist nvidia_drm
+          blacklist nvidia_modeset
+          blacklist nouveau
+        mode: "0644"
+      register: nvidia_blacklist_changed
+
+    - name: Configurar VFIO para capturar GPU específica
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/vfio.conf
+        content: |
+          options vfio-pci ids={{ gpu_vendor_device_id | default("10de:2484,10de:228b") }}
+          softdep nvidia pre: vfio-pci
+          softdep nvidia_drm pre: vfio-pci
+          softdep nvidia_modeset pre: vfio-pci
+          softdep nouveau pre: vfio-pci
+        mode: "0644"
+      register: vfio_config_changed
+      when: gpu_vendor_device_id is defined
+
+    - name: Actualizar initramfs
+      ansible.builtin.command: update-initramfs -u
+      when: modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed
+
+    - name: Verificar si necesita reinicio para GPU passthrough
+      ansible.builtin.set_fact:
+        gpu_reboot_required: "{{ grub_config_changed.changed or modules_config_changed.changed or nvidia_blacklist_changed.changed or vfio_config_changed.changed
+          }}"
+
+    - name: Reiniciar Proxmox VE (si es necesario)
+      ansible.builtin.reboot:
+        reboot_timeout: 600 # Esperar hasta 10 minutos para el reinicio
+      when: ansible_reboot_required|default(false) or gpu_reboot_required|default(false)

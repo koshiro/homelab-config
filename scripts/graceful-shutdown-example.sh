@@ -122,7 +122,7 @@ execute_graceful_shutdown() {
     # Ejecutar el playbook de apagado ordenado
     log_info "Ejecutando playbook de apagado ordenado..."
     
-    if ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml; then
+    if ansible-playbook -i inventory playbooks/maintenance/playbook_graceful_shutdown_cluster.yml; then
         log_success "✅ Apagado ordenado completado exitosamente"
         return 0
     else

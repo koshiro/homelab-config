@@ -166,7 +166,8 @@ verify_restoration() {
     info "Verificando restauración..."
     
     local errors=0
-    
+    local sops_pubkey=$(yq '.creation_rules[0].age' .sops.yaml)
+
     # Verificar clave local
     if [[ -f "$LOCAL_KEY_PATH" ]]; then
         if grep -q "AGE-SECRET-KEY-" "$LOCAL_KEY_PATH"; then
@@ -181,9 +182,21 @@ verify_restoration() {
     
     # Verificar clave del cluster
     if kubectl get secret sops-age -n argocd &> /dev/null; then
-        local cluster_key=$(kubectl get secret sops-age -n argocd -o jsonpath='{.data.keys\.txt}' | base64 -d)
+        local cluster_key_b64=$(kubectl get secret sops-age -n argocd -o jsonpath='{.data.keys\.txt}')
+        local cluster_key=$(echo "$cluster_key_b64" | base64 -d)
         if echo "$cluster_key" | grep -q "AGE-SECRET-KEY-"; then
             success "Clave del cluster: ✅"
+
+            # Nueva verificación: Coincidencia de clave pública
+            local restored_pubkey=$(echo "$cluster_key" | grep -o 'age1[a-zA-Z0-9]*' | head -1)
+            if [[ "$restored_pubkey" == "$sops_pubkey" ]]; then
+                success "Coincidencia de clave pública: ✅ (La clave restaurada coincide con .sops.yaml)"
+            else
+                error "Coincidencia de clave pública: ❌ (La clave en el cluster NO COINCIDE con .sops.yaml)"
+                warning "   Clave en .sops.yaml: ${sops_pubkey}"
+                warning "   Clave en el secret:  ${restored_pubkey}"
+                ((errors++))
+            fi
         else
             error "Clave del cluster: ❌ (formato inválido)"
             ((errors++))

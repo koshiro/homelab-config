@@ -1,0 +1,85 @@
+---
+# ansible/playbooks/provisioning/playbook_create_vms.yml
+- name: Crear o Actualizar Máquinas Virtuales en Proxmox
+  hosts: proxmox_host
+  vars_files:
+    - ../../vars/homelab_vars.yml
+
+  tasks:
+    - name: Copiar clave SSH pública al servidor Proxmox para cloud-init
+      ansible.builtin.copy:
+        src: ~/.ssh/id_rsa.pub
+        dest: /tmp/homelab_ssh_key.pub
+        mode: '0644'
+
+    - name: Provisionar VMs de forma declarativa
+      community.general.proxmox_kvm:
+        node: "{{ proxmox_node }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        state: present
+        clone: "{{ item.template }}"
+        full: true
+        cores: "{{ item.cores }}"
+        memory: "{{ item.memory }}"
+        net:
+          net0: "virtio,bridge=vmbr0"
+        disks:
+          scsi:
+            scsi0:
+              disk: "{{ item.disk_size }}G"
+              storage: "{{ proxmox_storage }}"
+        hostpci: # Para GPU passthrough
+          "0":
+            device: "{{ item.passthrough_gpu | default(omit) }}"
+        cloud_init:
+          user: ubuntu
+          password: "{{ item.initial_password | default('ubuntu') }}"
+          ipconfig:
+            ipconfig0: "ip={{ item.ip }}/24,gw={{ network_gateway }}"
+          sshkeys: "{{ lookup('file', '/tmp/homelab_ssh_key.pub') }}"
+      loop: "{{ vms }}"
+      when: "'k3s' in item.name" # Aplicar solo a nodos k3s
+
+    - name: Provisionar VM de TrueNAS (configuración específica)
+      community.general.proxmox_kvm:
+        node: "{{ proxmox_node }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).vmid }}"
+        name: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).name }}"
+        state: present
+        clone: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).template }}"
+        full: true
+        cores: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).cores }}"
+        memory: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).memory }}"
+        net:
+          net0: "virtio,bridge=vmbr0"
+        boot: "order=ide0"
+        disks:
+          ide:
+            ide0:
+              disk: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).disk_size }}G"
+              storage: "{{ proxmox_storage }}"
+          scsi:
+            "{{ 'scsi' + (ansible_loop.index | string) }}":
+              disk: "{{ disk_item }}"
+              passthrough: true
+      loop: "{{ (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks }}"
+      loop_control:
+        index_var: ansible_loop.index
+      when: (vms | selectattr('name', 'equalto', 'truenas-core') | first).passthrough_disks is defined
+
+    - name: Iniciar todas las VMs
+      community.general.proxmox_kvm:
+        node: "{{ proxmox_node }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ item.vmid }}"
+        state: started
+      loop: "{{ vms }}"

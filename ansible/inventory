@@ -1,33 +1,42 @@
-# Reemplaza las IPs con las direcciones reales de tus nodos.
-# NOTA: Solo el [proxmox_host] debe estar disponible inicialmente.
-# Las VMs se crearán y configurarán automáticamente durante el despliegue.
+# Inventario del Homelab - Arquitectura Actual
+# Master: pibot (con etcd)
+# Workers: k3s-node-1, k3s-node-2, k3s-node-3
 
 [proxmox_host]
 proxmox ansible_host=192.168.1.100
 
-# Las siguientes secciones se usarán DESPUÉS de crear las VMs
 [truenas_vm]
 truenas ansible_host=192.168.1.20
 
-[k3s_nodes] 
+[k3s_master]
+pibot ansible_host=pibot
+
+[k3s_workers]
 k3s-node-1 ansible_host=192.168.1.131
 k3s-node-2 ansible_host=192.168.1.132
 k3s-node-3 ansible_host=192.168.1.133
 
-# Variables globales para todos los hosts
+[k3s_nodes:children]
+k3s_master
+k3s_workers
+
+# --- Variables ---
+
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
-# Variables específicas para Proxmox (con claves SSH ya configuradas)
 [proxmox_host:vars]
 ansible_user=root
 ansible_ssh_private_key_file=~/.ssh/id_rsa
 
-# Variables para VMs (se configurarán claves SSH durante el despliegue)
 [truenas_vm:vars]
-ansible_user=root
-# La contraseña inicial se tomará de homelab_vars.yml
+ansible_user=ansible
+ansible_password: "{{ vault_truenas_password }}"
+ansible_connection=ssh
+ansible_ssh_pipelining=true
 
 [k3s_nodes:vars]
-ansible_user=ubuntu
-# Las claves SSH se configurarán automáticamente durante el despliegue
+ansible_user=daniel
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_become=yes
+ansible_become_method=sudo

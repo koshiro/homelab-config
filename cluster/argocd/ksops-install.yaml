@@ -1,9 +1,0 @@
-# Configuración del plugin SOPS para ArgoCD
-# NOTA: Este plugin no está funcionando correctamente
-# Se ha removido temporalmente para usar kustomize nativo
-# 
-# Problemas identificados:
-# 1. Plugin no es reconocido por ArgoCD
-# 2. Configuración correcta pero no se ejecuta
-# 3. Sintaxis corregida pero sigue sin funcionar
-# 4. Problema fundamental con la implementación del plugin CMP

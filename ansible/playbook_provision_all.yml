@@ -1,0 +1,77 @@
+---
+# ansible/playbook_provision_all.yml
+# Orquestador Maestro del Homelab - Versión Organizada y Robusta
+# Este playbook ejecuta toda la secuencia de despliegue desde cero
+
+- name: 0. Bootstrap del Servidor Proxmox
+  import_playbook: playbooks/provisioning/playbook_bootstrap_server.yml
+  tags: [bootstrap, proxmox]
+
+- name: 1. Crear Máquinas Virtuales
+  import_playbook: playbooks/provisioning/playbook_create_vms.yml
+  tags: [provision, vms]
+
+- name: 2. Esperar a que las VMs estén listas
+  hosts: truenas_vm:k3s_nodes
+  gather_facts: false
+  vars_files:
+    - vars/homelab_vars.yml
+  tags: [provision, wait]
+  tasks:
+    - name: Esperar por la conexión SSH a las VMs recién creadas
+      ansible.builtin.wait_for_connection:
+        delay: 60
+        timeout: 600
+
+- name: 3. Configuración Inicial de TrueNAS y Generación de API Key
+  import_playbook: playbooks/provisioning/playbook_initial_truenas_setup.yml
+  tags: [truenas, setup]
+
+- name: 4. Configurar TrueNAS (Datasets y NFS Shares)
+  import_playbook: playbooks/provisioning/playbook_configure_truenas.yml
+  tags: [truenas, storage]
+
+- name: 5. Configurar el Clúster de Kubernetes
+  import_playbook: playbooks/provisioning/playbook_configure_cluster.yml
+  tags: [k3s, cluster]
+
+#
+# NOTA DE REFACTORIZACIÓN: La configuración de Cloudflare Tunnel fue eliminada de este playbook.
+# Anteriormente, se usaba una lógica imperativa compleja con comandos shell para crear los recursos de k8s.
+#
+# El método moderno y preferido bajo un enfoque GitOps es tener estas configuraciones definidas
+# declarativamente en el repositorio, lo cual ya hemos hecho en:
+#   cluster/06-external/cloudflared/
+#
+# Esos manifiestos son la "verdad absoluta" y deben ser aplicados por un sistema como FluxCD o ArgoCD,
+# o manualmente con `kubectl apply -k`, en lugar de a través de Ansible.
+# Esto mejora la idempotencia, la visibilidad y se alinea con las prácticas modernas de Kubernetes.
+#
+
+- name: 6. Verificación Final del Sistema
+  hosts: k3s_master
+  gather_facts: false
+  vars_files:
+    - vars/homelab_vars.yml
+  tags: [verify, final]
+  tasks:
+    - name: Verificar estado final del clúster
+      ansible.builtin.command: "kubectl get all --all-namespaces"
+      register: final_status
+
+    - name: Mostrar resumen final del deployment
+      ansible.builtin.debug:
+        msg: |
+          🎉 HOMELAB DESPLEGADO EXITOSAMENTE
+          ================================
+          Clúster K3s: ✅ Operativo
+          TrueNAS: ✅ Configurado
+
+          Para administrar el clúster:
+          ssh ubuntu@pibot.local
+          kubectl get nodes
+
+          Interface Web:
+          - TrueNAS: https://{{ hostvars['truenas']['ansible_host'] }}
+
+          ¡Sistema listo!

@@ -1,0 +1,114 @@
+---
+# tasks file for ansible/roles/nvidia_gpu
+# Este rol consolida la configuración completa de NVIDIA para un nodo worker de k3s.
+
+- name: NVIDIA | 1. Deshabilitar driver nouveau
+  tags: nvidia, driver
+  block:
+    - name: Poner nouveau en lista negra
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/blacklist-nouveau.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          blacklist nouveau
+          options nouveau modeset=0
+      register: nouveau_blacklist
+
+    - name: Actualizar initramfs si es necesario
+      ansible.builtin.command: update-initramfs -u
+      when: nouveau_blacklist.changed
+      register: update_initramfs
+      changed_when: update_initramfs.rc == 0
+
+    - name: Reiniciar el nodo para aplicar cambios en el kernel
+      ansible.builtin.reboot:
+        msg: "Rebooting to disable nouveau driver"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when: nouveau_blacklist.changed
+
+- name: NVIDIA | 2. Instalar driver y container toolkit
+  tags: nvidia, toolkit
+  block:
+    - name: Instalar dependencias base
+      ansible.builtin.apt:
+        name:
+          - software-properties-common
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Añadir PPA de drivers de gráficos
+      ansible.builtin.apt_repository:
+        repo: ppa:graphics-drivers/ppa
+        state: present
+
+    - name: Instalar driver de NVIDIA (versión recomendada)
+      ansible.builtin.apt:
+        name: nvidia-driver-535 # Versión estable y compatible
+        state: present
+
+    - name: Configurar repositorios de NVIDIA Container Toolkit
+      ansible.builtin.shell: |
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+        curl -s -L https://nvidia.github.io/libnvidia-container/stable/ubuntu22.04/nvidia-container-toolkit.list |         sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' |         tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      args:
+        creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+    - name: Instalar NVIDIA Container Toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+        update_cache: yes
+
+- name: NVIDIA | 3. Configurar k3s para usar el runtime de NVIDIA
+  tags: nvidia, k3s, runtime
+  block:
+    - name: Crear directorio de configuración de containerd para k3s
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/config.toml.d
+        state: directory
+        mode: '0755'
+
+    - name: Crear fichero de configuración para NVIDIA runtime
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.toml.d/nvidia.toml
+        mode: '0644'
+        content: |
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+            privileged_without_host_devices = false
+            runtime_engine = ""
+            runtime_root = ""
+            runtime_type = "io.containerd.runc.v2"
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+              BinaryName = "/usr/bin/nvidia-container-runtime"
+      register: nvidia_runtime_config
+
+    - name: Reiniciar el servicio de k3s-agent para aplicar la configuración del runtime
+      ansible.builtin.systemd:
+        name: k3s-agent
+        state: restarted
+      when: nvidia_runtime_config.changed
+
+- name: NVIDIA | 4. Verificación final
+  tags: nvidia, verify
+  block:
+    - name: Esperar 15 segundos para que el agente se estabilice
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: Verificar la salida de nvidia-smi
+      ansible.builtin.command: nvidia-smi
+      register: nvsmi
+      changed_when: false
+      failed_when: nvsmi.rc != 0
+
+    - name: Mostrar salida de nvidia-smi
+      ansible.builtin.debug:
+        var: nvsmi.stdout

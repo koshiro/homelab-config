@@ -58,3 +58,7 @@ kubeconfig
 # Archivos de Docker
 .dockerignore
 docker-compose.override.yml
+
+# Backups and local state
+.cluster-backup/
+cluster-export/
