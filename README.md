@@ -137,7 +137,7 @@ Para mantenimiento de hardware o actualizaciones del sistema, **SIEMPRE** usa el
 
 ```bash
 # Apagado ordenado completo del cluster
-ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml
+ansible-playbook -i inventory ansible/playbooks/maintenance/playbook_graceful_shutdown_cluster.yml
 ```
 
 **¿Por qué es importante?**
@@ -239,6 +239,22 @@ ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster
     ```
     
     **⚠️ Importante:** Solo necesitas configurar SSH para Proxmox en este paso. Las VMs (TrueNAS, k3s nodes) se crearán y configurarán automáticamente durante el despliegue.
+
+### **Acceso Remoto al Clúster con Tailscale (CRÍTICO)**
+
+**Para gestionar el clúster desde fuera de la red local, es imprescindible usar Tailscale.**
+
+- **Conexión**: Asegúrate de que tu cliente de Tailscale esté activo. La conexión a los nodos se debe hacer usando el **MagicDNS** o la **IP de Tailscale** del nodo.
+- **Usuario**: El usuario para acceder a los nodos de k3s es `daniel`.
+
+**Ejemplo de Conexión:**
+```bash
+# Conectar al nodo maestro usando MagicDNS
+ssh daniel@pibot
+
+# O usando la IP de Tailscale
+ssh daniel@<IP_TAILSCALE_DEL_NODO>
+```
 
 6.  **Configurar el Archivo de Inventario:**
     El archivo `ansible/inventory` define cómo Ansible se conecta a tus servidores. 
@@ -360,7 +376,7 @@ ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster
 # ansible proxmox -i inventory -m shell -a "poweroff --force"
 
 # ✅ SIEMPRE usar apagado ordenado para mantenimiento
-ansible-playbook -i inventory playbooks/utils/playbook_graceful_shutdown_cluster.yml
+ansible-playbook -i inventory ansible/playbooks/maintenance/playbook_graceful_shutdown_cluster.yml
 
 # Si el apagado ordenado falla, verificar estado:
 ansible k3s_nodes -i inventory -m shell -a "sudo systemctl status k3s || sudo systemctl status k3s-agent"
@@ -378,7 +394,7 @@ ansible k3s_nodes -i ansible/inventory -m shell -a "df -h /"
 # Luego recrear VMs con el tamaño nuevo
 
 # Limpiar espacio manualmente en un nodo (temporal)
-ssh ubuntu@k3s-node-1
+ssh daniel@pibot
 sudo apt clean && sudo apt autoremove -y
 sudo journalctl --vacuum-time=3d
 ```
@@ -462,14 +478,14 @@ ansible-playbook -i ansible/inventory ansible/playbook_homelab.yml --tags k3s
 
 ### **Verificar Estado del Sistema**
 ```bash
-# Estado del clúster
-ssh k3s-node-1 "sudo k3s kubectl get nodes -o wide"
+# Estado del clúster (desde un terminal con acceso a Tailscale)
+ssh daniel@pibot "sudo k3s kubectl get nodes -o wide"
 
 # Estado de aplicaciones
-ssh k3s-node-1 "sudo k3s kubectl get all --all-namespaces"
+ssh daniel@pibot "sudo k3s kubectl get all --all-namespaces"
 
 # Logs de k3s
-ssh k3s-node-1 "sudo journalctl -u k3s -f"
+ssh daniel@pibot "sudo k3s journalctl -u k3s -f"
 ```
 
 ### **URLs de Acceso Post-Instalación**
@@ -486,7 +502,7 @@ ssh k3s-node-1 "sudo journalctl -u k3s -f"
 
 **⚠️ NOTA:** Los puertos de Traefik pueden cambiar después de reinstalaciones. Verificar con:
 ```bash
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
+ssh daniel@pibot "sudo k3s kubectl get service traefik -n kube-system"
 ```
 
 **🏠 URLs LOCALES (Solo desde la red local):**
@@ -511,11 +527,11 @@ ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
 
 nslookup traefik.tu-dominio.com
 
-# Verificar estado del túnel en k3s
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n cloudflared -o wide"
+# Verificar estado del túnel en k3s (usando Tailscale)
+ssh daniel@pibot "sudo k3s kubectl get pods -n cloudflared -o wide"
 
-# Ver logs del túnel
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl logs -n cloudflared -l app=cloudflared --tail=20"
+# Ver logs del túnel (usando Tailscale)
+ssh daniel@pibot "sudo k3s kubectl logs -n cloudflared -l app=cloudflared --tail=20"
 
 # Verificar registros DNS en Cloudflare (desde local)
 curl -X GET "https://api.cloudflare.com/client/v4/zones/TU_ZONE_ID/dns_records" \
@@ -613,10 +629,10 @@ Este script verifica:
 **Solución:**
 ```bash
 # 1. Verificar que Traefik esté funcionando
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get pods -n kube-system | grep traefik"
+ssh daniel@pibot "sudo k3s kubectl get pods -n kube-system | grep traefik"
 
 # 2. Verificar los puertos actuales
-ssh ubuntu@192.168.1.131 "sudo k3s kubectl get service traefik -n kube-system"
+ssh daniel@pibot "sudo k3s kubectl get service traefik -n kube-system"
 
 
 ```
@@ -648,8 +664,8 @@ ansible all -i ansible/inventory -m ping
 ./scripts/verify-traefik.sh
 
 # Reinstalar Traefik (si hay problemas)
-ssh ubuntu@192.168.1.131 "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm uninstall traefik -n kube-system"
-ssh ubuntu@192.168.1.131 "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm install traefik traefik/traefik --namespace kube-system --set api.dashboard=true --set api.insecure=false"
+ssh daniel@pibot "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm uninstall traefik -n kube-system"
+ssh daniel@pibot "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && helm install traefik traefik/traefik --namespace kube-system --set api.dashboard=true --set api.insecure=false"
 ```
 
 ## 🔧 Preparar Plantillas de VM (Paso Crítico)

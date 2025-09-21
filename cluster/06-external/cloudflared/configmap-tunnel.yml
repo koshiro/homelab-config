@@ -21,4 +21,9 @@ data:
         service: http://traefik.kube-system.svc.cluster.local:80
         originRequest:
           noTLSVerify: true
+      - hostname: plex.danielriquelme.cl
+        service: http://plex.plex.svc.cluster.local:32400
+        originRequest:
+          noTLSVerify: true
+          httpHostHeader: plex.danielriquelme.cl
       - service: http_status:404

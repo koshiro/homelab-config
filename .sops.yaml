@@ -1,5 +1,0 @@
-# .sops.yaml
-# Política de cifrado con age para ficheros *.sops.yml específicos.
-creation_rules:
-  - path_regex: .*\.sops\.ya?ml$
-    age: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs

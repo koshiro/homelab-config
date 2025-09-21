@@ -1,0 +1,32 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: plex-headers
+  namespace: kube-system
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-For: ""
+      X-Real-IP: ""
+      X-Forwarded-Host: "plex.danielriquelme.cl"
+      X-Forwarded-Port: "443"
+      X-Forwarded-Ssl: "on"
+    customResponseHeaders:
+      X-Frame-Options: "SAMEORIGIN"
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      - HEAD
+      - PATCH
+    accessControlAllowHeaders:
+      - "*"
+    accessControlAllowOriginList:
+      - "*"
+    accessControlMaxAge: 100
+    hostsProxyHeaders:
+      - "X-Forwarded-Host"
+    referrerPolicy: "same-origin"
