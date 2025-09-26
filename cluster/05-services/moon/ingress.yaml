@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moon-ingress
+  namespace: security-audit
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: selenoid.danielriquelme.cl
+    http:
+      paths:
+      - path: /wd/hub
+        pathType: Prefix
+        backend:
+          service:
+            name: moon
+            port:
+              number: 4444
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: moon
+            port:
+              number: 8080
+  - host: moon.danielriquelme.cl
+    http:
+      paths:
+      - path: /wd/hub
+        pathType: Prefix
+        backend:
+          service:
+            name: moon
+            port:
+              number: 4444
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: moon
+            port:
+              number: 8080

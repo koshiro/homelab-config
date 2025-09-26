@@ -361,11 +361,12 @@ ssh daniel@<IP_TAILSCALE_DEL_NODO>
     Una vez que el playbook ha terminado, el sistema está completamente operativo y se gestiona a sí mismo:
     
     - ✅ **Cloudflare Tunnel**: Tu dominio es accesible desde internet sin port forwarding
-    - ✅ **GitOps**: ArgoCD vigila el repositorio `homelab-config` en GitHub
+    - ✅ **Gestión de Configuración**: Despliegue manual con Git como fuente de verdad
 - ✅ **CI/CD**: GitHub Actions está listo para construir y desplegar tus aplicaciones
-    - ✅ **Almacenamiento**: TrueNAS proporciona storage NFS centralizado
-      - `nfs-csi` → pool `homelab-storage` (media)
-      - `nfs-ssd` → pool `homelab-ssd` (descargas)
+    - ✅ **Almacenamiento**: TrueNAS proporciona storage híbrido
+      - `nfs-csi` → pool `homelab-storage` (aplicaciones generales)
+      - `nfs-immich` → pool `homelab-storage` (biblioteca de fotos)
+      - `hostPath` → `/mnt/homelab-storage` (ARR Suite para hardlinks)
     - ✅ **Alta Disponibilidad**: k3s multi-nodo con balanceador de carga integrado
 
 ## 🚨 **Troubleshooting y Comandos Útiles**
@@ -498,6 +499,7 @@ ssh daniel@pibot "sudo k3s journalctl -u k3s -f"
 - **Prowlarr**: https://prowlarr.tu-dominio.com
 - **Overseerr**: https://overseerr.tu-dominio.com
 - **Plex**: https://plex.tu-dominio.com
+- **Kasm Workspaces**: https://kasm.tu-dominio.com
 - **Dominio Principal**: https://tu-dominio.com
 
 **⚠️ NOTA:** Los puertos de Traefik pueden cambiar después de reinstalaciones. Verificar con:

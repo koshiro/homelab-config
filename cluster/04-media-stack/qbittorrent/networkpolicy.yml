@@ -100,7 +100,6 @@ spec:
   - Egress
   egress:
   - {}
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -168,3 +167,4 @@ spec:
       port: 8089
     - protocol: TCP
       port: 8090
+
