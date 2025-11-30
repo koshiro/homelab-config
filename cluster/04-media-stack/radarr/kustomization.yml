@@ -6,3 +6,5 @@ resources:
   - service.yml
   - ingress.yml
   - pvc.yml
+  - pv-media-library.yml
+  - pvc-media-library.yml

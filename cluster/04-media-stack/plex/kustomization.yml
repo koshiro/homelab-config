@@ -5,6 +5,7 @@ resources:
   - deployment.yml
   - service.yml
   - pvc.yml
+  - pvc-media-library.yml
   # Network Policies
   - networkpolicy-deny.yml
   - networkpolicy-dlna.yml
