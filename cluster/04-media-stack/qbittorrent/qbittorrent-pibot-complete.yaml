@@ -84,11 +84,11 @@ spec:
           echo "Asegurando permisos..."
           chown -R 1000:1000 /data/downloads /config/qBittorrent
         volumeMounts:
-        - name: shared-storage
+        - name: media-library
           mountPath: /data
-        - name: shared-storage
+        - name: media-library
           mountPath: /config
-          subPath: qbittorrent-config
+          subPath: config/qbittorrent
       containers:
       - name: qbittorrent
         image: linuxserver/qbittorrent:latest
@@ -101,6 +101,8 @@ spec:
           value: "Etc/UTC"
         - name: WEBUI_PORT
           value: "8080"
+        - name: XDG_CONFIG_HOME
+          value: "/data/config/qbittorrent"
         ports:
         - containerPort: 8080
           name: webui
@@ -110,11 +112,8 @@ spec:
           name: bt-udp
           protocol: UDP
         volumeMounts:
-        - name: shared-storage
+        - name: media-library
           mountPath: /data
-        - name: shared-storage
-          mountPath: /config
-          subPath: qbittorrent-config
         resources:
           requests:
             cpu: 1000m
@@ -123,10 +122,9 @@ spec:
             cpu: 4000m
             memory: 4Gi
       volumes:
-      - name: shared-storage
-        hostPath:
-          path: /mnt/homelab-storage
-          type: DirectoryOrCreate
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library-pvc
       tolerations:
       - key: p2p
         operator: Equal

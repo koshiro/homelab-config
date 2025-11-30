@@ -8,4 +8,5 @@ resources:
   - 04-media-stack/
   - 05-services/
   - 06-external/
+  - 07-iot/
 

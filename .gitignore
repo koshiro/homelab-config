@@ -67,3 +67,4 @@ backups/
 # Temporary files
 temp-*.yaml
 temp-*.yml
+cluster-sync-report.txt
