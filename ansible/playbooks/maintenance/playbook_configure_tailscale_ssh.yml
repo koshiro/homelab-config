@@ -1,0 +1,117 @@
+---
+# ansible/playbooks/maintenance/playbook_configure_tailscale_ssh.yml
+- name: Configurar Tailscale SSH en nodos k3s
+  hosts: k3s_nodes
+  become: true
+  gather_facts: true
+  vars:
+    tailscale_auth_key: "{{ vault_tailscale_auth_key | default(omit) }}"
+
+  tasks:
+    - name: Determinar distribución y versión para repositorio Tailscale
+      ansible.builtin.set_fact:
+        distro_codename: "{{ ansible_distribution_release | default('jammy') }}"
+        distro_name: "{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }}"
+
+    - name: Verificar si Tailscale está instalado
+      ansible.builtin.command: which tailscale
+      register: tailscale_check
+      changed_when: false
+      failed_when: false
+
+    - name: Eliminar repositorio de Tailscale anterior si existe (limpieza)
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/tailscale.list
+        state: absent
+
+    - name: Eliminar clave GPG anterior si existe
+      ansible.builtin.file:
+        path: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        state: absent
+
+    - name: Instalar dependencias para Tailscale
+      ansible.builtin.apt:
+        name:
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+      when: tailscale_check.rc != 0
+
+    - name: Instalar Tailscale usando método oficial (script de instalación)
+      ansible.builtin.shell: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+      when: tailscale_check.rc != 0
+      args:
+        creates: /usr/bin/tailscale
+
+    - name: Habilitar y iniciar el servicio Tailscale (tailscaled)
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: true
+
+    - name: Esperar a que tailscaled esté listo
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Verificar estado de Tailscale
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      changed_when: false
+      failed_when: false
+
+    - name: Autenticar Tailscale con auth key
+      ansible.builtin.command: tailscale up --authkey={{ tailscale_auth_key }} --accept-routes
+      when:
+        - tailscale_auth_key is defined
+        - tailscale_auth_key != ""
+        - tailscale_status.rc != 0 or "Logged out" in tailscale_status.stdout or "not logged in" in (tailscale_status.stdout | lower | default(""))
+      register: tailscale_auth
+      no_log: true
+      changed_when: tailscale_auth.rc == 0
+
+    - name: Esperar a que Tailscale se conecte después de autenticación
+      ansible.builtin.pause:
+        seconds: 5
+      when: tailscale_auth.changed | default(false)
+
+    - name: Verificar conexión de Tailscale
+      ansible.builtin.command: tailscale status
+      register: tailscale_status_after
+      changed_when: false
+      retries: 5
+      delay: 3
+      until: tailscale_status_after.rc == 0 and "Logged out" not in tailscale_status_after.stdout
+
+    - name: Habilitar Tailscale SSH
+      ansible.builtin.command: tailscale set --ssh=true
+      register: tailscale_ssh_set
+      changed_when: "'SSH is enabled' not in tailscale_ssh_set.stdout"
+      failed_when: tailscale_ssh_set.rc != 0
+
+    - name: Obtener IP de Tailscale del nodo
+      ansible.builtin.command: tailscale ip -4
+      register: tailscale_ip
+      changed_when: false
+      failed_when: false
+
+    - name: Obtener hostname de Tailscale
+      ansible.builtin.command: tailscale status --json
+      register: tailscale_status_json
+      changed_when: false
+      failed_when: false
+
+    - name: Mostrar estado de Tailscale
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          Tailscale configurado en {{ inventory_hostname }}
+          ============================================
+          IP de Tailscale: {{ tailscale_ip.stdout | default('No disponible') }}
+          Estado: {{ tailscale_status_after.stdout | default('No disponible') }}
+          
+          Para conectarse vía SSH:
+          ssh daniel@{{ inventory_hostname }}
+          O usando la IP: ssh daniel@{{ tailscale_ip.stdout | default('IP_NO_DISPONIBLE') }}
+          ============================================

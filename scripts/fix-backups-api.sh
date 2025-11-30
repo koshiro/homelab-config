@@ -311,3 +311,4 @@ echo "Si el problema persiste, verifica:"
 echo "- La conectividad de red entre TrueNAS y el cluster"
 echo "- La configuración de kubeconfig en TrueNAS"
 echo "- Los labels de los pods (deben tener app=servicename)"
+

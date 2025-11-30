@@ -1,7 +1,3 @@
-# Inventario del Homelab - Arquitectura Actual
-# Master: pibot (con etcd)
-# Workers: k3s-node-1, k3s-node-2, k3s-node-3
-
 [proxmox_host]
 proxmox ansible_host=192.168.1.100
 
@@ -12,15 +8,13 @@ truenas ansible_host=192.168.1.20
 pibot ansible_host=pibot
 
 [k3s_workers]
-k3s-node-1 ansible_host=192.168.1.131
-k3s-node-2 ansible_host=192.168.1.132
-k3s-node-3 ansible_host=192.168.1.133
+k3s-node-1 ansible_host=k3s-node-1-k3s
+k3s-node-2 ansible_host=k3s-node-2-k3s
+k3s-node-3 ansible_host=k3s-node-3-k3s
 
 [k3s_nodes:children]
 k3s_master
 k3s_workers
-
-# --- Variables ---
 
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
@@ -31,7 +25,7 @@ ansible_ssh_private_key_file=~/.ssh/id_rsa
 
 [truenas_vm:vars]
 ansible_user=ansible
-ansible_password: "{{ vault_truenas_password }}"
+ansible_ssh_pass="{{ vault_truenas_password }}"
 ansible_connection=ssh
 ansible_ssh_pipelining=true
 

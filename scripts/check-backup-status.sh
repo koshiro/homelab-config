@@ -183,3 +183,4 @@ echo "1. Configurar SSH: ssh-copy-id root@192.168.1.20"
 echo "2. Acceder a TrueNAS: ssh root@192.168.1.20"
 echo "3. Verificar kubectl: kubectl get nodes"
 echo "4. Ejecutar respaldo manual: /root/scripts/backup-pod-configs.sh"
+

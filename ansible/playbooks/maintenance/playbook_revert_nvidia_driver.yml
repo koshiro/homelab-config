@@ -1,0 +1,155 @@
+---
+# ansible/playbooks/maintenance/playbook_revert_nvidia_driver.yml
+# Playbook para revertir driver NVIDIA de 570.x a 550.x
+# Uso: ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_revert_nvidia_driver.yml --limit k3s-node-1
+
+- name: Revertir driver NVIDIA de 570.x a 550.x
+  hosts: k3s-node-1
+  become: yes
+  gather_facts: true
+  
+  vars:
+    target_driver_version: "550"
+    
+  pre_tasks:
+    - name: Verificar que estamos en el nodo correcto
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == "k3s-node-1"
+        fail_msg: "Este playbook solo debe ejecutarse en k3s-node-1"
+        quiet: true
+    
+    - name: Verificar versión actual del driver
+      ansible.builtin.command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+      register: current_driver_version
+      changed_when: false
+      failed_when: false
+    
+    - name: Mostrar versión actual del driver
+      ansible.builtin.debug:
+        msg: "Versión actual del driver: {{ current_driver_version.stdout | default('No detectada') }}"
+    
+    - name: Advertencia sobre reinicio
+      ansible.builtin.debug:
+        msg: |
+          ⚠️  ADVERTENCIA: Este playbook reiniciará el nodo k3s-node-1
+          ⚠️  Asegúrate de que no hay trabajos críticos corriendo
+          ⚠️  El proceso tomará aproximadamente 5-10 minutos
+
+  tasks:
+    - name: Drenar el nodo de Kubernetes (desde localhost)
+      ansible.builtin.command: kubectl drain k3s-node-1 --ignore-daemonsets --delete-emptydir-data
+      delegate_to: localhost
+      changed_when: true
+      failed_when: false
+      register: drain_result
+    
+    - name: Mostrar resultado del drenado
+      ansible.builtin.debug:
+        var: drain_result.stdout_lines
+    
+    - name: Esperar 10 segundos para que los pods se terminen
+      ansible.builtin.pause:
+        seconds: 10
+    
+    - name: Desinstalar driver 570.x
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: absent
+        purge: yes
+      loop:
+        - nvidia-driver-570
+        - nvidia-driver-570-server
+        - nvidia-driver-570-open
+      ignore_errors: true
+      register: remove_570
+    
+    - name: Limpiar paquetes NVIDIA obsoletos
+      ansible.builtin.apt:
+        autoremove: yes
+        autoclean: yes
+      register: cleanup_result
+    
+    - name: Actualizar índice de paquetes
+      ansible.builtin.apt:
+        update_cache: yes
+    
+    - name: Instalar driver 550.x
+      ansible.builtin.apt:
+        name: nvidia-driver-550
+        state: present
+        update_cache: yes
+      register: install_550
+    
+    - name: Verificar que el driver se instaló correctamente
+      ansible.builtin.command: dpkg -l | grep nvidia-driver-550
+      register: verify_install
+      changed_when: false
+      failed_when: verify_install.rc != 0
+    
+    - name: Mostrar paquetes instalados
+      ansible.builtin.debug:
+        var: verify_install.stdout_lines
+    
+    - name: Reiniciar el nodo
+      ansible.builtin.reboot:
+        msg: "Rebooting after NVIDIA driver revert to 550.x"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 5
+        post_reboot_delay: 30
+        test_command: uptime
+    
+    - name: Esperar a que el sistema esté completamente listo
+      ansible.builtin.pause:
+        seconds: 30
+    
+    - name: Verificar que nvidia-smi funciona después del reinicio
+      ansible.builtin.command: nvidia-smi --query-gpu=driver_version,name --format=csv,noheader
+      register: nvidia_smi_after
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: nvidia_smi_after.rc == 0
+    
+    - name: Mostrar información de la GPU después del reinicio
+      ansible.builtin.debug:
+        var: nvidia_smi_after.stdout_lines
+    
+    - name: Verificar que k3s-agent está corriendo
+      ansible.builtin.systemd:
+        name: k3s-agent
+        state: started
+      register: k3s_status
+    
+    - name: Esperar a que k3s-agent esté completamente listo
+      ansible.builtin.pause:
+        seconds: 15
+    
+    - name: Marcar el nodo como schedulable (desde localhost)
+      ansible.builtin.command: kubectl uncordon k3s-node-1
+      delegate_to: localhost
+      changed_when: true
+      failed_when: false
+      register: uncordon_result
+    
+    - name: Mostrar resultado del uncordon
+      ansible.builtin.debug:
+        var: uncordon_result.stdout_lines
+
+  post_tasks:
+    - name: Resumen de la operación
+      ansible.builtin.debug:
+        msg: |
+          ✅ Reversión del driver completada
+          
+          Próximos pasos:
+          1. Verificar que nvidia-smi funciona en el pod de Plex:
+             kubectl exec -n plex <pod-name> -- nvidia-smi
+          
+          2. Reiniciar el deployment de Plex:
+             kubectl -n plex rollout restart deploy/plex
+          
+          3. Verificar logs de Plex para confirmar que no hay errores:
+             kubectl logs -n plex <pod-name> | grep -i nvidia
+

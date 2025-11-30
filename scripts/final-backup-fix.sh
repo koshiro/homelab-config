@@ -228,3 +228,4 @@ echo "   - kubectl instalado ✅"
 echo "   - Cronjobs configurados ✅"
 echo "   - Conectividad al cluster ⏳ (requiere configuración manual)"
 echo "   - Respaldos funcionando ⏳ (depende de conectividad)"
+

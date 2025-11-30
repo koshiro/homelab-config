@@ -128,3 +128,4 @@ echo "Para solucionar:"
 echo "1. Configurar SSH a TrueNAS: ssh-copy-id root@192.168.1.20"
 echo "2. Desplegar scripts: ./scripts/deploy-to-truenas.sh"
 echo "3. Configurar kubectl: ssh root@192.168.1.20 '/root/scripts/setup-kubectl-truenas.sh'"
+

@@ -24,6 +24,23 @@ spec:
                 operator: In
                 values:
                 - "true"
+      initContainers:
+      - name: wait-for-storage
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if test -w /data/config/prowlarr && test -d /data/media; then
+              echo "Storage ready!"; exit 0;
+            fi;
+            sleep 5;
+          done
+          exit 1
+        volumeMounts:
+        - name: media-library
+          mountPath: /data
       containers:
       - name: prowlarr
         image: linuxserver/prowlarr
@@ -37,15 +54,27 @@ spec:
         ports:
         - containerPort: 9696
         volumeMounts:
-        - name: config
+        - name: media-library
           mountPath: /config
-        - name: shared-storage
+          subPath: config/prowlarr
+        - name: media-library
           mountPath: /media
+          subPath: media
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9696
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "test -w /config && test -d /media"
+          initialDelaySeconds: 30
+          periodSeconds: 10
       volumes:
-      - name: config
+      - name: media-library
         persistentVolumeClaim:
-          claimName: prowlarr-config
-      - name: shared-storage
-        hostPath:
-          path: /mnt/homelab-storage
-          type: DirectoryOrCreate
+          claimName: media-library-pvc

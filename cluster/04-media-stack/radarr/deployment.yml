@@ -25,14 +25,14 @@ spec:
                 values:
                 - "true"
       initContainers:
-      - name: setup-hardlinks
-        image: alpine:3.20
-        command: ["sh", "/init/init-storage.sh"]
+      - name: wait-for-storage
+        image: busybox:1.35
+        command: ["sh", "-c", "for i in 1 2 3 4 5 6 7 8 9 10; do test -d /config && test -d /data/downloads && test -d /data/media/peliculas && exit 0; sleep 5; done; exit 1"]
         volumeMounts:
-        - name: shared-storage
+        - name: config
+          mountPath: /config
+        - name: media-library
           mountPath: /data
-        - name: init-scripts
-          mountPath: /init
       containers:
       - name: radarr
         image: linuxserver/radarr
@@ -48,7 +48,7 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
-        - name: shared-storage
+        - name: media-library
           mountPath: /data
         resources:
           requests:
@@ -73,11 +73,6 @@ spec:
       - name: config
         persistentVolumeClaim:
           claimName: radarr-config
-      - name: shared-storage
-        hostPath:
-          path: /mnt/homelab-storage
-          type: DirectoryOrCreate
-      - name: init-scripts
-        configMap:
-          name: radarr-init
-          defaultMode: 0755
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library-pvc

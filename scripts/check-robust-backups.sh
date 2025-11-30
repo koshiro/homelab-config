@@ -199,3 +199,4 @@ echo "   ssh root@192.168.1.20 'ls -la /mnt/homelab-storage/backups/latest-backu
 echo ""
 echo "🚨 Si necesitas recuperar:"
 echo "   ssh root@192.168.1.20 '/root/scripts-robust/robust-recovery.sh'"
+
