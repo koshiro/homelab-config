@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/media-worker
+                operator: In
+                values:
+                - "true"
+      initContainers:
+      - name: setup-qbittorrent-unified
+        image: alpine:3.20
+        command:
+        - sh
+        - -c
+        - |
+          echo "Creando directorios para qBittorrent..."
+          mkdir -p /data/downloads/completed /data/downloads/incomplete
+          mkdir -p /config/qBittorrent
+          echo "Asegurando permisos..."
+          chown -R 1000:1000 /data/downloads /config/qBittorrent
+        volumeMounts:
+        - name: media-library
+          mountPath: /data
+        - name: media-library
+          mountPath: /config
+          subPath: config/qbittorrent
+      containers:
+      - name: qbittorrent
+        image: linuxserver/qbittorrent:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Etc/UTC"
+        - name: WEBUI_PORT
+          value: "8080"
+        - name: XDG_CONFIG_HOME
+          value: "/data/config/qbittorrent"
+        ports:
+        - containerPort: 8080
+          name: webui
+        - containerPort: 6881
+          name: bt-tcp
+        - containerPort: 6881
+          name: bt-udp
+          protocol: UDP
+        volumeMounts:
+        - name: media-library
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 4000m
+            memory: 4Gi
+      volumes:
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library-pvc
+      tolerations:
+      - key: p2p
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
