@@ -4,6 +4,7 @@ resources:
   - namespace.yml
   - deployment.yml
   - service.yml
+  - service-nodeport.yml
   - pvc.yml
   - pvc-media-library.yml
   # Network Policies
