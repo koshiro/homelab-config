@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft
+  namespace: minecraft
+  labels:
+    app: minecraft
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minecraft
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      # Fijar al nodo media-worker para garantizar acceso a /mnt/homelab-storage
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/media-worker
+                operator: In
+                values: ["true"]
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:java21
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 25565
+              name: java
+              protocol: TCP
+            - containerPort: 19132
+              name: bedrock
+              protocol: UDP
+            - containerPort: 24454
+              name: voice-chat
+              protocol: UDP
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: "PAPER"
+            - name: VERSION
+              value: "1.21.1"
+            - name: ONLINE_MODE
+              value: "FALSE"
+            - name: ENABLE_WHITELIST
+              value: "TRUE"
+            - name: VIEW_DISTANCE
+              value: "10"
+            - name: MOTD
+              value: "Minecraft Daniel Riquelme"
+            - name: MEMORY
+              value: "4G" # Aumentado para soportar voice chat + geyser
+            - name: JVM_OPTS
+              value: "-Xms2G -Xmx4G"
+            # Plugins: Geyser, Floodgate, Simple Voice Chat
+            - name: PLUGINS
+              value: |
+                https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot
+                https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+                https://cdn.modrinth.com/data/9eGKb6K1/versions/d5f6AAog/voicechat-bukkit-2.6.11.jar
+            - name: SPIGET_RESOURCES
+              value: "19254,27231" # ViaVersion, ViaBackwards
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: 2000m
+            limits:
+              memory: 6Gi
+              cpu: 4000m
+          volumeMounts:
+            - name: minecraft-data
+              mountPath: /data
+        # Sidecar DDNS
+        - name: cloudflare-ddns
+          image: favonia/cloudflare-ddns:latest
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 100m
+          env:
+            - name: CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-ddns-secret
+                  key: CF_API_TOKEN
+            - name: DOMAINS
+              value: "minecraft.danielriquelme.cl"
+            - name: PROXIED
+              value: "false"
+            - name: DELETE_ON_STOP
+              value: "false"
+      volumes:
+        # Cambio crítico: Usar hostPath en lugar de PVC local-path
+        - name: minecraft-data
+          hostPath:
+            path: /mnt/homelab-storage/minecraft
+            type: DirectoryOrCreate
