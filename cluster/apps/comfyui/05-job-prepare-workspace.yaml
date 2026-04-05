@@ -1,0 +1,32 @@
+# Job one-shot: crea estructura de directorios en el PVC (ejecutar una vez si Permission denied)
+# kubectl apply -f 05-job-prepare-workspace.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: comfyui-prepare-workspace
+  namespace: comfyui
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      containers:
+      - name: prepare
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /workspace/models /workspace/input /workspace/output
+          mkdir -p /workspace/user /workspace/temp /workspace/custom_nodes /workspace/venv /workspace/venv
+          echo "Done"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: comfyui-workspace-pvc

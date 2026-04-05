@@ -4,5 +4,6 @@ kind: Kustomization
 resources:
   # Deshabilitado para no tocar el almacenamiento en producción existente
   # - nfs-csi-driver/
+  - nvidia-device-plugin-config.yaml
   - nvidia-device-plugin.yml
   - nvidia-runtimeclass.yml

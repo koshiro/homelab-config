@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: comfyui
+  namespace: comfyui
+  labels:
+    app: comfyui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: comfyui
+  template:
+    metadata:
+      labels:
+        app: comfyui
+    spec:
+      imagePullSecrets:
+      - name: ghcr-io-koshiro
+      runtimeClassName: nvidia
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/media-worker
+                  operator: In
+                  values:
+                  - "true"
+      initContainers:
+      - name: wait-for-storage
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            test -d /app && echo "Storage ready" && exit 0
+            echo "Waiting for storage... $i/10"
+            sleep 5
+          done
+          exit 1
+        volumeMounts:
+        - name: workspace
+          mountPath: /app
+      - name: ensure-app
+        image: alpine/git:latest
+        securityContext:
+          runAsUser: 0
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          git config --global --add safe.directory '*'
+          mkdir -p /app/models /app/user /app/input /app/output /app/custom_nodes
+          if [ ! -f /app/main.py ]; then
+            if [ -d /app/comfyui-app ]; then
+              echo "Migrando estructura antigua a raíz única..."
+              for f in /app/comfyui-app/* /app/comfyui-app/.[!.]*; do
+                [ -e "$f" ] && [ "$(basename "$f")" != "custom_nodes" ] && cp -a "$f" /app/ 2>/dev/null || true
+              done
+              [ -d /app/comfyui-app/.git ] && cp -a /app/comfyui-app/.git /app/
+              [ -d /app/comfyui-app/custom_nodes ] && for x in /app/comfyui-app/custom_nodes/*; do [ -e "$x" ] && cp -a "$x" /app/custom_nodes/; done
+            else
+              echo "Clonando ComfyUI..."
+              git clone https://github.com/Comfy-Org/ComfyUI.git /tmp/cfy
+              cp -a /tmp/cfy/.git /tmp/cfy/* /app/ 2>/dev/null || true
+              rm -rf /tmp/cfy
+            fi
+          fi
+          cd /app
+          if git remote get-url origin 2>/dev/null | grep -q comfyanonymous; then
+            git remote set-url origin https://github.com/Comfy-Org/ComfyUI.git
+          fi
+          [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ] && git fetch --unshallow 2>/dev/null || true
+          git fetch origin --tags
+          LATEST=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.15.0")
+          git checkout "$LATEST" 2>/dev/null || git checkout v0.15.0
+        volumeMounts:
+        - name: workspace
+          mountPath: /app
+      - name: install-manager
+        image: alpine/git:latest
+        command:
+        - sh
+        - -c
+        - |
+          git config --global --add safe.directory '*'
+          if [ ! -d /app/custom_nodes/ComfyUI-Manager ]; then
+            git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /app/custom_nodes/ComfyUI-Manager
+          else
+            cd /app/custom_nodes/ComfyUI-Manager && git fetch origin && git reset --hard origin/main
+          fi
+        volumeMounts:
+        - name: workspace
+          mountPath: /app
+      containers:
+      - name: comfyui
+        image: ghcr.io/koshiro/comfyui-homelab:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            nvidia.com/gpu: "1"
+        env:
+        - name: REFRESH_MANAGER_CACHE
+          value: "false"
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: "expandable_segments:True,max_split_size_mb:128"
+        - name: PYTHONPATH
+          value: "/venv/lib/python3.10/site-packages:${PYTHONPATH}"
+        - name: PATH
+          value: "/venv/bin:/usr/local/bin:/usr/bin:/bin"
+        - name: VIRTUAL_ENV
+          value: "/venv"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          git config --global --add safe.directory '*'
+          /venv/bin/pip install -q -r /app/requirements.txt 2>/dev/null || true
+          /venv/bin/pip install -q -r /app/custom_nodes/ComfyUI-Manager/requirements.txt 2>/dev/null || true
+          /venv/bin/pip install -q 'sqlalchemy>=2.0'
+          for cfg in /app/user/__manager/config.ini /app/user/default/ComfyUI-Manager/config.ini; do
+            [ -f "$cfg" ] && sed -i 's/^security_level = .*/security_level = weak/' "$cfg" 2>/dev/null || true
+          done
+          [ -d /app/user/__manager/.legacy-manager-backup ] && rm -rf /app/user/__manager/.legacy-manager-backup
+          [ "${REFRESH_MANAGER_CACHE:-false}" = "true" ] && [ -d /app/user/__manager/cache ] && rm -f /app/user/__manager/cache/*.json
+          exec /venv/bin/python /app/main.py --listen 0.0.0.0 --lowvram --base-directory /app
+        ports:
+        - containerPort: 8188
+          name: http
+        volumeMounts:
+        - name: workspace
+          mountPath: /app
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8188
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8188
+          initialDelaySeconds: 180
+          periodSeconds: 15
+          failureThreshold: 10
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: comfyui-workspace-pvc

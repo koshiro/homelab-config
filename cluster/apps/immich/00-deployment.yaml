@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v1.140.1
+          image: ghcr.io/immich-app/immich-server:v2.5.6
           imagePullPolicy: IfNotPresent
           env:
             - name: IMMICH_MEDIA_LOCATION
@@ -79,7 +79,7 @@ spec:
     spec:
       containers:
         - name: immich-machine-learning
-          image: ghcr.io/immich-app/immich-machine-learning:v1.140.1
+          image: ghcr.io/immich-app/immich-machine-learning:v2.5.6
           imagePullPolicy: IfNotPresent
           env:
             - name: DB_URL

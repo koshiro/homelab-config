@@ -5,8 +5,8 @@ metadata:
   namespace: ollama-stack
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: nfs-csi
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 50Gi
@@ -18,8 +18,8 @@ metadata:
   namespace: ollama-stack
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: nfs-csi
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 5Gi

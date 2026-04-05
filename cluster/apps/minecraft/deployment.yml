@@ -16,13 +16,19 @@ spec:
     metadata:
       labels:
         app: minecraft
+      # Ruta de datos: no cambiar sin backup; respaldos = snapshots TrueNAS en este dataset
+      annotations:
+        data/nfs-path: "192.168.1.20:/mnt/homelab-storage/minecraft-server"
     spec:
-      # Fijar al nodo media-worker para garantizar acceso a /mnt/homelab-storage
+      # Tiempo para guardado graceful: save-all + /stop antes de SIGKILL (evita pérdida de datos)
+      terminationGracePeriodSeconds: 90
+      # Afinidad no estricta, pero preferiblemente en media-worker por cercanía de red
       affinity:
         nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
               - key: node-role.kubernetes.io/media-worker
                 operator: In
                 values: ["true"]
@@ -50,21 +56,34 @@ spec:
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
-              value: "TRUE"
+              value: "FALSE"
+            # Forzar whitelist off al arranque (server.properties puede quedar true en mundos existentes)
+            - name: RCON_CMDS_STARTUP
+              value: "whitelist off"
             - name: VIEW_DISTANCE
               value: "10"
             - name: MOTD
               value: "Minecraft Daniel Riquelme"
+            - name: DIFFICULTY
+              value: "hard"
+            - name: MODE
+              value: "survival"
+            - name: SEED
+              value: "5134907312929138905"
             - name: MEMORY
-              value: "4G" # Aumentado para soportar voice chat + geyser
+              value: "4G"
             - name: JVM_OPTS
-              value: "-Xms2G -Xmx4G"
-            # Plugins: Geyser, Floodgate, Simple Voice Chat
+              value: "-Xms2G -Xmx4G -Dpaper.experimental.bundle=true"
+            # Habilitar datapacks experimentales al crear mundo (Bundles)
+            - name: INITIAL_ENABLED_PACKS
+              value: "bundle"
+            # Plugins: Geyser (Bedrock), Floodgate, Simple Voice Chat, SkinsRestorer — URLs "latest" para Geyser/Floodgate
             - name: PLUGINS
               value: |
                 https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot
                 https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
-                https://cdn.modrinth.com/data/9eGKb6K1/versions/d5f6AAog/voicechat-bukkit-2.6.11.jar
+                https://cdn.modrinth.com/data/9eGKb6K1/versions/FeJRj2X0/voicechat-bukkit-2.6.12.jar
+                https://github.com/SkinsRestorer/SkinsRestorer/releases/download/15.10.0/SkinsRestorer.jar
             - name: SPIGET_RESOURCES
               value: "19254,27231" # ViaVersion, ViaBackwards
           resources:
@@ -77,6 +96,11 @@ spec:
           volumeMounts:
             - name: minecraft-data
               mountPath: /data
+          # Guardar mundo explícitamente antes de que el contenedor reciba SIGTERM (evita pérdida de datos)
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rcon-cli save-all 2>/dev/null || true; sleep 3"]
         # Sidecar DDNS
         - name: cloudflare-ddns
           image: favonia/cloudflare-ddns:latest
@@ -97,8 +121,9 @@ spec:
             - name: DELETE_ON_STOP
               value: "false"
       volumes:
-        # Cambio crítico: Usar hostPath en lugar de PVC local-path
+        # CRÍTICO - ÚNICA FUENTE DE DATOS: no cambiar path ni borrar en TrueNAS sin backup.
+        # Los datos viven en 192.168.1.20:/mnt/homelab-storage/minecraft-server (snapshots en TrueNAS).
         - name: minecraft-data
-          hostPath:
-            path: /mnt/homelab-storage/minecraft
-            type: DirectoryOrCreate
+          nfs:
+            server: 192.168.1.20
+            path: /mnt/homelab-storage/minecraft-server

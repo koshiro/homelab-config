@@ -1,5 +1,6 @@
 # Archivos de credenciales y configuración sensible
 .env
+.truenas-api-key
 *.env
 .env.local
 .env.production
