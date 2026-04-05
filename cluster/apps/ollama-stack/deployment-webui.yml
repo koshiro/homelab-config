@@ -25,6 +25,12 @@ spec:
               value: "8080"
             - name: WEBUI_URL
               value: "http://192.168.1.15:30080"
+            - name: ENABLE_IMAGE_GENERATION
+              value: "True"
+            - name: IMAGE_GENERATION_ENGINE
+              value: "comfyui"
+            - name: COMFYUI_BASE_URL
+              value: "http://comfyui.comfyui.svc.cluster.local:8188"
           ports:
             - containerPort: 8080
           volumeMounts:
