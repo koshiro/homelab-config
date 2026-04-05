@@ -1,27 +1,6 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ollama-ingress
-  namespace: ollama-stack
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-spec:
-  ingressClassName: traefik
-  rules:
-  - host: ollama.danielriquelme.cl
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ollama
-            port:
-              number: 11434
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
   name: open-webui-ingress
   namespace: ollama-stack
   annotations:
