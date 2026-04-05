@@ -27,6 +27,16 @@ data:
         originRequest:
           noTLSVerify: true
           httpHostHeader: truenas.danielriquelme.cl
+      - hostname: comfyui.danielriquelme.cl
+        service: http://traefik.kube-system.svc.cluster.local:80
+        originRequest:
+          noTLSVerify: true
+          httpHostHeader: comfyui.danielriquelme.cl
+      - hostname: unsloth.danielriquelme.cl
+        service: http://traefik.kube-system.svc.cluster.local:80
+        originRequest:
+          noTLSVerify: true
+          httpHostHeader: unsloth.danielriquelme.cl
       - service: http_status:404
 kind: ConfigMap
 metadata:

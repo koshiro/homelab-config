@@ -8,4 +8,7 @@ resources:
   - 04-media-stack/
   - 05-services/
   - 06-external/
+  - apps/comfyui/
+  - apps/unsloth/
+  - apps/ollama-stack/
 

@@ -26,6 +26,13 @@ El flujo de trabajo es el siguiente:
 3.  GitHub Actions actualiza el manifiesto de la aplicación en el repositorio `homelab-config` con la nueva versión de la imagen.
 4.  ArgoCD detecta el cambio en `homelab-config` y despliega la nueva versión de la aplicación en el clúster.
 
+## 🤖 Agentes y Skills (Cursor)
+
+Para delegar tareas de mantenimiento, despliegue, TrueNAS y más, consulta **[AGENTS.md](AGENTS.md)**. Incluye:
+- **Skills** especializados (`.cursor/skills/`) para mantenimiento, TrueNAS API, despliegue de apps, Ansible, SOPS, respaldos
+- **Subagentes** (`.cursor/agents/`) para tareas específicas
+- Mapa de delegación por tipo de tarea
+
 ## 🔐 Gestión de Secretos con SOPS
 
 El homelab utiliza **SOPS (Secrets OPerationS)** con claves `age` para la gestión segura de secretos:
@@ -369,6 +376,7 @@ ssh daniel@<IP_TAILSCALE_DEL_NODO>
       - `hostPath` → `/mnt/homelab-storage` (ARR Suite para hardlinks)
     - ✅ **Alta Disponibilidad**: k3s multi-nodo con balanceador de carga integrado
 
+
 ## 🚨 **Troubleshooting y Comandos Útiles**
 
 ### **Problema: Apagado del Cluster (CRÍTICO - Siempre usar apagado ordenado)**
@@ -500,6 +508,7 @@ ssh daniel@pibot "sudo k3s journalctl -u k3s -f"
 - **Overseerr**: https://overseerr.tu-dominio.com
 - **Plex**: https://plex.tu-dominio.com
 - **Kasm Workspaces**: https://kasm.tu-dominio.com
+- **Unsloth** (Jupyter fine-tuning): https://unsloth.tu-dominio.com
 - **Dominio Principal**: https://tu-dominio.com
 
 **⚠️ NOTA:** Los puertos de Traefik pueden cambiar después de reinstalaciones. Verificar con:
