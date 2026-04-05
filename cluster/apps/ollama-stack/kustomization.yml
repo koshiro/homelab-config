@@ -7,3 +7,4 @@ resources:
   - pvcs.yml
   - deployment-ollama.yml
   - deployment-webui.yml
+  - ingress.yml

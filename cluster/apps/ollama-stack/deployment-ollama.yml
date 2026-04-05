@@ -25,6 +25,11 @@ spec:
       containers:
         - name: ollama
           image: ollama/ollama:latest
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            - name: OLLAMA_ORIGINS
+              value: "*"
           ports:
             - containerPort: 11434
           resources:
