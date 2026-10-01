@@ -20,13 +20,28 @@ spec:
     spec:
       containers:
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v2.5.6
+          image: ghcr.io/immich-app/immich-server:v3.2.4
           imagePullPolicy: IfNotPresent
           env:
             - name: IMMICH_MEDIA_LOCATION
               value: /usr/src/app/upload
-            - name: DB_URL
-              value: postgresql://immich:OC3A3kD7Q0yaTogfuWpIpsvUFwZ1DLgQHFLoAFAOu9mij9Sb33XeauMKuCl6Xbcw@homelab-postgres-rw.postgresql.svc.cluster.local:5432/immich
+            # Credenciales desde el secret (antes: contraseña en texto plano en DB_URL)
+            - name: DB_HOSTNAME
+              value: homelab-postgres-rw.postgresql.svc.cluster.local
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE_NAME
+              value: immich
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-postgres-app
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-postgres-app
+                  key: password
             - name: DB_VECTOR_EXTENSION
               value: pgvector
             - name: REDIS_HOSTNAME
@@ -77,19 +92,15 @@ spec:
         app.kubernetes.io/name: machine-learning
         app.kubernetes.io/instance: immich
     spec:
+      # Immich ML v3 requiere x86-64-v2: solo k3s-node-1 (VM 102, cpu: host) lo expone.
+      # k3s-node-2/3 usan kvm64 (pendiente cambiar a x86-64-v2-AES en mantención).
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-1
       containers:
         - name: immich-machine-learning
-          image: ghcr.io/immich-app/immich-machine-learning:v2.5.6
+          image: ghcr.io/immich-app/immich-machine-learning:v3.2.4
           imagePullPolicy: IfNotPresent
           env:
-            - name: DB_URL
-              value: postgresql://immich:OC3A3kD7Q0yaTogfuWpIpsvUFwZ1DLgQHFLoAFAOu9mij9Sb33XeauMKuCl6Xbcw@homelab-postgres-rw.postgresql.svc.cluster.local:5432/immich
-            - name: DB_VECTOR_EXTENSION
-              value: pgvector
-            - name: REDIS_HOSTNAME
-              value: immich-redis-master
-            - name: REDIS_PORT
-              value: "6379"
             - name: TRANSFORMERS_CACHE
               value: /cache
             - name: MPLCONFIGDIR

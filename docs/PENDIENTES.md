@@ -43,15 +43,15 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 
 ## 4. Seguridad
 
-- [ ] **Immich `DB_URL` con contraseña en texto plano** en `cluster/apps/immich/00-deployment.yaml` (y en git). Pasar a `DB_PASSWORD` desde secret.
-- [ ] Secret `homelab-postgres-app` (immich): la contraseña termina en salto de línea; regenerarlo sin `\n` (el CronJob de dump lo limpia mientras tanto).
+- [x] Immich: credenciales de DB desde el secret `homelab-postgres-app` (`DB_USERNAME`/`DB_PASSWORD`), sin contraseña en el manifiesto (2026-10-01).
+- [x] Secret `homelab-postgres-app` regenerado sin salto de línea (2026-10-01).
 - [ ] `/root/truenas-rescate/freenas-v1.db` en Proxmox contiene configuración y secretos cifrados de TrueNAS: borrar tras retirar TrueNAS (fase 3).
 - [ ] TrueNAS tenía un kubeconfig de admin en `/root/.kube` (zvol de la VM 101): se elimina con `qm destroy 101`.
 
 - [x] Contraseña del vault rotada (2026-10-01): `ansible-vault rekey`, nueva contraseña fuera del repo en `~/.config/homelab/ansible-vault-pass` (guardarla también en el gestor de contraseñas), `.vault_password.txt` eliminado de git e ignorado. El historial solo contiene una versión antigua del vault con `vault_truenas_password` (TrueNAS se retira).
 - [ ] `.truenas-api-key`: sigue versionado; eliminar al retirar TrueNAS (fase 3).
-- [ ] Rotar contraseñas de postgres (`homelab-postgres-superuser`, `homelab-postgres-app`) — estuvieron en texto plano en git; ya migradas a `*.sops.yaml`.
-- [ ] Rotar `WO_SECRET_KEY` de WebODM (se mostró en una sesión de trabajo el 2026-10-01; nunca se commiteó en claro, ahora en `secret.sops.yml`).
+- [x] Contraseña del rol `immich` rotada (2026-10-01); `homelab-postgres-superuser` (secret de bootstrap de CNPG) alineado con la misma.
+- [x] `WO_SECRET_KEY` de WebODM rotada (2026-10-01); `secret.sops.yml` ahora incluye `namespace: webodm`.
 - [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí**; decidir si se cifran o borran antes de commitear en ese repo.
 - [ ] **TrueNAS por tailnet:** Ingress público `truenas.danielriquelme.cl` eliminado (vivía en ns `media-stack`). Al recuperar TrueNAS: instalar Tailscale en TrueNAS (app oficial) o publicar `192.168.1.0/24` con un subnet router en pibot (`tailscale up --advertise-routes=192.168.1.0/24`).
 - [ ] **qBittorrent:** Ingress público eliminado; WebUI solo por LAN/tailnet en `http://k3s-node-0:30808`. Al reactivarlo: verificar login de la WebUI activo, y si se aplica `networkpolicy.yml`, permitir tráfico NodePort (hoy solo permite Traefik).
@@ -61,6 +61,11 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 
 Hoy: `pg_dump` diario de `immich` (164 MB → dump 33 MB) a `nvme/k8s/backups/postgres`, con snapshots, réplica a `respaldo` y offsite R2 junto a Immich.
 Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamiento S3 (R2 o MinIO local) con WAL archiving → recuperación a un punto en el tiempo (PITR) y `ScheduledBackup`. La única base es `immich` (más la de sistema `postgres`).
+
+## 4c. VMs k3s-node-2/3 con CPU kvm64
+
+VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). Immich ML v3 lo exige, por eso está fijado a k3s-node-1 (`cpu: host`).
+- [ ] En la próxima mantención: `qm set 103 --cpu x86-64-v2-AES` y `qm set 104 --cpu x86-64-v2-AES` (requiere reiniciar cada VM) y quitar el `nodeSelector` de Immich ML.
 
 ## 5. Monitoreo — plan Grafana (después de estabilizar)
 

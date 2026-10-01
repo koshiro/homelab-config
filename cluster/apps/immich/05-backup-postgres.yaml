@@ -73,7 +73,7 @@ spec:
                 - /bin/sh
                 - -ec
                 - |
-                  # el secret homelab-postgres-app trae un salto de línea al final
+                  # por si el secret trae un salto de línea al final (pasó hasta 2026-10-01)
                   export PGPASSWORD="$(printf %s "$PGPASSWORD" | tr -d "\r\n")"
                   f=/backups/immich-$(date +%Y%m%d-%H%M).dump
                   pg_dump --format=custom --compress=6 --file="$f.tmp"
