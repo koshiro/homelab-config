@@ -1,0 +1,54 @@
+# Copia los snapshots de etcd que k3s genera en pibot (cada 12 h, retiene 5 localmente)
+# a Proxmox nvme/k8s/backups/etcd (sanoid + syncoid a respaldo/k8s).
+# Restaurar: k3s server --cluster-reset --cluster-reset-restore-path=<snapshot> (ver docs de k3s).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-snapshot-copy
+  namespace: backups
+spec:
+  schedule: "30 0,12 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: pibot
+          containers:
+            - name: copy
+              image: alpine:3.22
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  cp -p -u /snapshots/etcd-snapshot-* /dest/
+                  find /dest -name 'etcd-snapshot-*' -type f -mtime +30 -delete
+                  ls -lh /dest | tail -5
+              resources:
+                requests: {cpu: 10m, memory: 16Mi}
+                limits: {memory: 64Mi}
+              volumeMounts:
+                - name: snapshots
+                  mountPath: /snapshots
+                  readOnly: true
+                - name: dest
+                  mountPath: /dest
+          volumes:
+            - name: snapshots
+              hostPath:
+                path: /var/lib/rancher/k3s/server/db/snapshots
+                type: Directory
+            - name: dest
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups/etcd

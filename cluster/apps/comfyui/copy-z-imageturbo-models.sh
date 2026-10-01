@@ -7,7 +7,7 @@
 
 set -e
 
-NFS_SERVER="192.168.1.20"
+NFS_SERVER="192.168.1.100"
 NFS_PATH="/mnt/homelab-storage/comfyui"
 MOUNT_POINT="/tmp/comfyui-nfs-mount"
 SRC="/Users/daniel/Documents/ComfyUI/models"

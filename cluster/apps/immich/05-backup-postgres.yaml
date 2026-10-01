@@ -1,0 +1,95 @@
+# Dump diario de la base de Immich (CNPG, ns postgresql) a Proxmox nvme/k8s/backups/postgres.
+# sanoid hace snapshots del dataset; syncoid lo replica a respaldo/k8s; restic lo sube a R2.
+# Restaurar: pg_restore -h homelab-postgres-rw.postgresql.svc -U immich -d immich --clean --if-exists <archivo>.dump
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-db-backups-pv
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/backups/postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-db-backups
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-proxmox
+  volumeName: immich-db-backups-pv
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-db-backup
+  namespace: immich
+spec:
+  schedule: "15 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 26
+            runAsGroup: 26
+          containers:
+            - name: pg-dump
+              image: ghcr.io/cloudnative-pg/postgresql:17.5
+              env:
+                - name: PGHOST
+                  value: homelab-postgres-rw.postgresql.svc.cluster.local
+                - name: PGDATABASE
+                  value: immich
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-postgres-app
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-postgres-app
+                      key: password
+                - name: KEEP_DAYS
+                  value: "14"
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  # el secret homelab-postgres-app trae un salto de línea al final
+                  export PGPASSWORD="$(printf %s "$PGPASSWORD" | tr -d "\r\n")"
+                  f=/backups/immich-$(date +%Y%m%d-%H%M).dump
+                  pg_dump --format=custom --compress=6 --file="$f.tmp"
+                  pg_restore --list "$f.tmp" > /dev/null
+                  mv "$f.tmp" "$f"
+                  ln -sf "$(basename "$f")" /backups/immich-latest.dump
+                  find /backups -name 'immich-*.dump' -type f -mtime +"$KEEP_DAYS" -delete
+                  find /backups -name "immich-*.dump.tmp" -type f -mmin +60 -delete
+                  ls -lh /backups
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {memory: 512Mi}
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: immich-db-backups

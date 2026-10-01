@@ -1,16 +1,19 @@
+# Biblioteca de fotos. Desde 2026-09-30 en Proxmox (dataset ZFS nvme/k8s/immich, export NFS).
+# Copia original (solo lectura) en TrueNAS: carpeta immich-library del dataset raíz de homelab-storage.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: immich-library-pv
 spec:
   capacity:
-    storage: 5Ti # Capacidad grande para la biblioteca
+    storage: 200Gi
   accessModes:
     - ReadWriteMany
-  storageClassName: nfs-immich
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
   nfs:
-    server: 192.168.1.20 # IP del servidor TrueNAS
-    path: "/mnt/homelab-storage/immich-library"
+    server: 192.168.1.100
+    path: /nvme/k8s/immich
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -20,7 +23,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: nfs-immich
+  storageClassName: nfs-proxmox
+  volumeName: immich-library-pv
   resources:
     requests:
-      storage: 5Ti
+      storage: 200Gi

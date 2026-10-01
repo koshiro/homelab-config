@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pingvin
+  namespace: pingvin
+spec:
+  type: ClusterIP
+  selector:
+    app: pingvin
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

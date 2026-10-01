@@ -6,8 +6,7 @@ Despliegue de ComfyUI en el cluster homelab usando la imagen [jemeyer/comfyui](h
 
 Revisión por agent-deploy, agent-truenas, agent-maintenance:
 
-1. **API key TrueNAS:** Crear `.truenas-api-key` en la raíz del repo con una API key válida.
-2. **Dataset y share NFS:** Ejecutar `./setup-truenas-dataset.sh` (crea `homelab-storage/comfyui` y la estructura de directorios vía API TrueNAS). Si el pod queda en Init por NFS, ajustar `mountOptions` en `02-pv-pvc.yaml` (vers=4 recomendado).
+1. **Almacenamiento:** `homelab-storage/comfyui` servido por NFS desde Proxmox (`192.168.1.100`). Estructura de directorios: `kubectl apply -f 05-job-prepare-workspace.yaml`. Si el pod queda en Init por NFS, ajustar `mountOptions` en `02-pv-pvc.yaml` (vers=4 recomendado).
 3. **Credenciales BasicAuth:** Guardar la contraseña generada por agent-deploy en tu gestor de contraseñas.
 4. **Label media-worker:** Verificar que k3s-node-1 tenga el label:
    ```bash
@@ -58,7 +57,7 @@ Si tras hacer login ves "no available server":
    kubectl logs -n comfyui -l app=comfyui --tail=50
    ```
 2. **WebSocket:** El frontend conecta a `/ws`. Si falla por proxy/Cloudflare, prueba acceso directo por Tailscale (sin túnel).
-3. **Directorios NFS:** Si el pod falla con "Permission denied" en init, ejecuta el setup: `./setup-truenas-dataset.sh`. Alternativa: `kubectl apply -f 05-job-prepare-workspace.yaml` (Job one-shot).
+3. **Directorios NFS:** Si el pod falla con "Permission denied" en init, ejecuta `kubectl apply -f 05-job-prepare-workspace.yaml` (Job one-shot).
 
 ## Copiar modelos desde tu Mac
 
@@ -78,13 +77,13 @@ Todo bajo una única raíz `/app` (un solo mount, sin subPaths):
 | Directorio     | Contenido                          |
 |----------------|------------------------------------|
 | `main.py`, etc.| Código ComfyUI (raíz)              |
-| `venv`         | Python venv + paquetes pip         |
+| `venv/`        | Python venv persistente (`/app/venv` en el pod): copia inicial desde la imagen + todo `pip install` (incl. custom nodes con `requirements.txt`). No se pierde al reiniciar el pod. |
 | `models`       | Modelos (checkpoints, VAE, etc.)   |
 | `input`/`output` | Carpetas de trabajo               |
 | `user`         | Configuración y datos del Manager  |
 | `custom_nodes` | Nodos (Manager, etc.)              |
 
-El venv se crea solo la **primera vez**; los reinicios posteriores arrancan en segundos.
+El init `ensure-venv` crea `/app/venv` en NFS la **primera vez** copiando el venv de la imagen (CUDA/torch incluido). En cada arranque se ejecuta `pip install` de forma idempotente hacia ese mismo venv; `PIP_NO_CACHE_DIR=1` evita persistir **cachés** de pip en disco, pero los **paquetes instalados** sí quedan en `venv/`. Nuevos custom nodes con `requirements.txt` se instalan solos en el siguiente arranque.
 
 ### Imagen personalizada (recomendada)
 
@@ -102,7 +101,49 @@ docker push ghcr.io/koshiro/comfyui-homelab:latest
 
 Incluido por defecto. Permite instalar nodos faltantes y actualizar ComfyUI desde la interfaz (pestaña Manager). Se instala automáticamente en el primer arranque si no existe en `custom_nodes`.
 
+## Logs de arranque (siempre visibles)
+
+El contenedor escribe mensajes con **timestamp** y prefijo `[comfyui-boot]` por fase (1/4 a 4/4), versión de Python/pip, y **cada** `requirements.txt` de extensiones con índice `[k/N]`. La fase 4 es **síncrona** (termina antes de cargar ComfyUI) para que las dependencias estén instaladas al importar nodos. El primer arranque o tras añadir muchas extensiones puede ser largo; el `startupProbe` permite hasta ~120 minutos (ajustable en el Deployment si hace falta).
+
+- **`COMFYUI_BOOT_VERBOSE`** (por defecto `true`): pip muestra salida normal (paquetes ya satisfechos, descargas, etc.). Con `false`, pip usa `-q` y solo verás las líneas `[comfyui-boot]`.
+- **`PYTHONUNBUFFERED=1`**: los logs de Python aparecen al instante.
+- El init **`ensure-venv`** imprime `[ensure-venv]` al copiar el venv a NFS.
+
+```bash
+kubectl logs -n comfyui -l app=comfyui -f --tail=100
+```
+
+## Versionado y dependencias (automático)
+
+### Última release estable
+
+El init `ensure-app` hace `git fetch --tags` y deja el árbol en el tag `v*` **más reciente** (orden semver con `git tag --sort=-version:refname`). Cada nuevo pod puede tomar una release nueva si upstream publicó un tag después del último arranque.
+
+### Pin manual (opcional)
+
+Para fijar un tag o commit concreto, edita `00-deployment.yaml` en el init `ensure-app`:
+
+```yaml
+- name: COMFYUI_REF
+  value: "v0.19.1"   # o un SHA de git
+```
+
+Si `COMFYUI_REF` está **vacío** (por defecto), se usa siempre la última release `v*`.
+
+### Huella de dependencias (`/app/.deps-fingerprint`)
+
+Las fases 1–3 de pip (core ComfyUI, ComfyUI-Manager, paquetes base opencv/gguf/sqlalchemy) solo se ejecutan cuando cambia la **huella**:
+
+- `HEAD` del repo ComfyUI en `/app`
+- SHA256 de `requirements.txt`
+- SHA256 de `custom_nodes/ComfyUI-Manager/requirements.txt` (si existe)
+
+Si la huella coincide con el fichero guardado en NFS, esas fases se omiten (arranque rápido). Tras un cambio de release o de requirements, la huella difiere y se vuelve a instalar; también se borran los marcadores `.fail` bajo `.pip-req-ready` para permitir reintentos de custom nodes.
+
+**Fase 4 (extensiones):** antes de arrancar `main.py`, el contenedor recorre **todos** los `requirements.txt` bajo `custom_nodes` (excepto `ComfyUI-Manager`, ya cubierto en la fase 2), ejecuta `pip install --upgrade` hacia `/app/venv` (NFS, **persistente**). Cada extensión tiene un marcador en `.pip-req-ready/` con la **huella SHA256 del fichero**; si cambias el `requirements.txt` de una extensión (o el Manager instala una nueva), en el siguiente arranque se vuelve a instalar/actualizar. Si pip falla con un contenido concreto, se guarda `.fail` con la misma huella; para reintentar, borra ese `.fail` o corrige el `requirements.txt`. Se aplica el **constraint** `sqlalchemy>=2.0.36` para no degradar el ORM.
+
 ## Persistencia
 
 - Todo en NFS: `/mnt/homelab-storage/comfyui`
 - Estructura unificada: todo bajo `/app` (NFS mount único).
+- `git clean` en el init `ensure-app` **excluye** datos de trabajo, `venv/`, y estado de bootstrap: `.deps-fingerprint`, `.deps-ready-v*`, `.pip-req-ready`, `.pip-constraints`, además de `models/`, `user/`, `input/`, `output/`, `custom_nodes/`.

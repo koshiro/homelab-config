@@ -1,0 +1,43 @@
+# Datos de archivos compartidos. Desde 2026-09-30 en Proxmox (dataset ZFS nvme/k8s/pingvin, export NFS).
+# Copia original (solo lectura) en TrueNAS: dataset homelab-storage/pingvin.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pingvin-data-pv
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/pingvin
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pingvin-data-pvc
+  namespace: pingvin
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-proxmox
+  volumeName: pingvin-data-pv
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pingvin-config
+  namespace: pingvin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
