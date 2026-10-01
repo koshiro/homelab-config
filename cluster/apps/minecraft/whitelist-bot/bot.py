@@ -190,11 +190,15 @@ def handle_message(m):
         elif cmd in ("/ayuda", "/help", "/start"):
             send("🤖 Whitelist de Minecraft\n"
                  "/whitelist — ver la lista\n"
-                 "/agregar <nombre> — agregar (Bedrock con prefijo «.»)\n"
-                 "/quitar <nombre> — quitar\n"
+                 "/agregar &lt;nombre&gt; — agregar (Bedrock con prefijo «.»)\n"
+                 "/quitar &lt;nombre&gt; — quitar\n"
                  "Además te aviso cuando alguien fuera de la lista intente entrar.")
     except Exception as e:  # noqa: BLE001
-        send(f"⚠️ <code>{esc(str(e))}</code>")
+        log("error en comando", repr(cmd), e)
+        try:
+            send(f"⚠️ <code>{esc(str(e))}</code>")
+        except Exception as e2:  # noqa: BLE001
+            log("no se pudo avisar del error:", e2)
 
 
 def poll_updates():
