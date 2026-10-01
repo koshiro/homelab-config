@@ -11,7 +11,7 @@ newest_snap() { zfs list -H -p -t snapshot -o creation -s creation "$1" 2>/dev/n
 
 chk "dump Postgres (immich)" "$(newest_file /nvme/k8s/backups/postgres "immich-*.dump")" 26
 chk "snapshot etcd"          "$(newest_file /nvme/k8s/backups/etcd "etcd-snapshot-*")" 14
-for d in immich minecraft pingvin backups; do
+for d in immich minecraft pingvin backups webs; do
   chk "sanoid nvme/k8s/$d"   "$(newest_snap nvme/k8s/$d)" 2
   chk "réplica respaldo/$d"  "$(newest_snap respaldo/k8s/$d)" 26
 done

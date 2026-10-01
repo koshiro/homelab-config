@@ -3,7 +3,7 @@
 set -euo pipefail
 set -a; . /root/.secrets/restic-r2.env; set +a
 SNAP=restic-offsite
-DATASETS=(nvme/k8s/immich nvme/k8s/minecraft nvme/k8s/backups)
+DATASETS=(nvme/k8s/immich nvme/k8s/minecraft nvme/k8s/backups nvme/k8s/webs)
 cleanup() { for d in "${DATASETS[@]}"; do zfs destroy "$d@$SNAP" 2>/dev/null || true; done; }
 trap cleanup EXIT
 cleanup
