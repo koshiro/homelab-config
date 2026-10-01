@@ -55,11 +55,14 @@ spec:
               value: "26.2"  # 26.3 aún BETA en Paper y sin soporte de Geyser (2026-10-01)
             - name: ONLINE_MODE
               value: "FALSE"
+            # Whitelist activa; la lista vive en /data/whitelist.json y se gestiona por RCON o el bot de
+            # Telegram (Java: whitelist add, Bedrock: fwhitelist add). No usar WHITELIST: calcularía UUIDs
+            # offline para los jugadores Bedrock (Floodgate usa UUIDs derivados del XUID).
             - name: ENABLE_WHITELIST
-              value: "FALSE"
+              value: "TRUE"
+            - name: ENFORCE_WHITELIST
+              value: "TRUE"
             # Forzar whitelist off al arranque (server.properties puede quedar true en mundos existentes)
-            - name: RCON_CMDS_STARTUP
-              value: "whitelist off"
             - name: VIEW_DISTANCE
               value: "10"
             - name: MOTD

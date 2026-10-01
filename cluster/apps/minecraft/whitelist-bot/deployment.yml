@@ -1,0 +1,82 @@
+# Bot de Telegram para la whitelist (ver bot.py). Separado del servidor: reiniciarlo no afecta el juego.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-whitelist-bot
+  namespace: minecraft
+  labels:
+    app: minecraft-whitelist-bot
+spec:
+  replicas: 1   # una sola instancia: getUpdates de Telegram no admite consumidores concurrentes
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minecraft-whitelist-bot
+  template:
+    metadata:
+      labels:
+        app: minecraft-whitelist-bot
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: bot
+          image: python:3.13-alpine
+          command: ["python3", "-u", "/app/bot.py"]
+          env:
+            - name: RCON_HOST
+              value: minecraft-rcon
+            - name: RCON_PORT
+              value: "25575"
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-whitelist-bot
+                  key: TELEGRAM_BOT_TOKEN
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-whitelist-bot
+                  key: TELEGRAM_CHAT_ID
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 96Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: app
+              mountPath: /app
+              readOnly: true
+            - name: data
+              mountPath: /data
+              readOnly: true
+      volumes:
+        - name: app
+          configMap:
+            name: minecraft-whitelist-bot
+        - name: data
+          nfs:
+            server: 192.168.1.100
+            path: /nvme/k8s/minecraft
+            readOnly: true
+---
+# RCON solo dentro del cluster (no se publica en el LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-rcon
+  namespace: minecraft
+spec:
+  type: ClusterIP
+  selector:
+    app: minecraft
+  ports:
+    - name: rcon
+      port: 25575
+      targetPort: 25575

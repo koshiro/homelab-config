@@ -27,6 +27,14 @@ spec:
       ports:
         - protocol: TCP
           port: 25575
+    # RCON desde el bot de whitelist
+    - from:
+      - podSelector:
+          matchLabels:
+            app: minecraft-whitelist-bot
+      ports:
+        - protocol: TCP
+          port: 25575
   egress:
     - ports:
         - protocol: TCP
