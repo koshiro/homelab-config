@@ -22,6 +22,8 @@ for d in "${DATASETS[@]}"; do
   mount -t zfs -o ro "$d@$SNAP" "$MNT/$d"
   PATHS+=("$MNT/$d")
 done
+# Quita solo locks huérfanos (p. ej. tras un reinicio forzado)
+restic unlock
 restic backup --host pve --tag k8s --exclude "**/thumbs/**" --exclude "**/encoded-video/**" "${PATHS[@]}"
 restic forget --host pve --tag k8s --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 # Domingo: verificar 5% de los datos
