@@ -15,8 +15,17 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/smartd.conf` | `/etc/smartd.conf` |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |
 | `etc/zed-all-telegram.sh` | `/etc/zfs/zed.d/all-telegram.sh` |
+| `etc/logind-10-boton-encendido.conf` | `/etc/systemd/logind.conf.d/10-boton-encendido.conf` (ignora pulsación corta del botón; la larga es corte por hardware) |
 | `lxc-110-nas/110.conf` | `/etc/pve/lxc/110.conf` (+ `root:1000:1`, `root:3000:3` en `/etc/subuid` y `/etc/subgid`) |
 | `lxc-110-nas/smb.conf` | `/etc/samba/smb.conf` dentro del LXC 110 |
+
+## Pools ZFS al arrancar
+
+Solo `nvme` y `respaldo` están en `/etc/zfs/zpool.cache` (`zpool set cachefile=/etc/zfs/zpool.cache <pool>`), así que `zfs-import-cache` importa exactamente esos. `homelab-storage` y el `boot-pool` de TrueNAS se ven en `zpool import` pero **no** se importan solos (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
+
+## Acceso fuera de banda
+
+KVM IP: `http://kvm-7267` (usuario `admin`, contraseña en el vault: `vault_kvm_admin_password`). Sirve para ver la consola y forzar reset si el host se cuelga (pasó el 2026-10-01 al reiniciar con snapshots bloqueados por el bug de ZFS 2.3.3).
 
 ## Secretos (no versionados)
 

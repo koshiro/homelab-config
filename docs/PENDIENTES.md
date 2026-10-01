@@ -66,8 +66,8 @@ Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamient
 
 2026-10-01 09:07: el primer respaldo restic disparó `VERIFY(avl_find(...) == NULL) failed / PANIC at avl.c:625:avl_add()` en `zfsctl_snapshot_mount` (automount de `.zfs/snapshot`, bug de OpenZFS 2.3.3). Los datos están intactos (pools sanos), pero quedan hilos del kernel colgados en estado D y el montaje/desmontaje de snapshots bloqueado hasta reiniciar.
 - [x] `restic-offsite.sh` ya no usa `.zfs/snapshot`: monta el snapshot explícitamente en solo lectura.
-- [ ] Ventana de mantención: `playbook_graceful_shutdown_cluster.yml -e apagar_proxmox=false` → `apt full-upgrade` en Proxmox (9.0.3 → 9.2, ZFS 2.3.3 → 2.4.4, kernel 6.14.11) → `reboot` → `playbook_startup_cluster.yml`. **No** ejecutar `zpool upgrade` (no es necesario y no se puede revertir).
-- [ ] Tras reiniciar: borrar snapshots `@restic-offsite` y `nvme/k8s/webs@prueba-mount`, lanzar `restic-offsite.service` y verificar en R2.
+- [x] Mantención 2026-10-01: Proxmox 9.0.3 → **9.2.21**, ZFS **2.4.4**, kernel **7.0.14** (6.14.11 queda como respaldo en el menú de arranque). El apagado ordenado funcionó; el reinicio se colgó desmontando los snapshots bloqueados y requirió reset por KVM. Tras arrancar, `respaldo` no se importó (`zpool.cache` vacío): se registraron `nvme` y `respaldo` en el cache. No se ejecutó `zpool upgrade`.
+- [x] Snapshots colgados borrados y primer respaldo restic lanzado con el script nuevo (sin PANIC).
 
 ## 4c. VMs k3s-node-2/3 con CPU kvm64
 
