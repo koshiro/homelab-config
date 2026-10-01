@@ -16,18 +16,19 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 |-------|----------------|-------------|
 | Apagado, mantenimiento, troubleshooting cluster | homelab-maintenance / agent-maintenance | Apagado ordenado, verificación estado, GPU |
 | Snapshots, NFS, cronjobs en TrueNAS | homelab-truenas-api / agent-truenas | API REST TrueNAS v2.0 |
-| Nueva aplicación, Ingress, PVC | homelab-deploy-apps / agent-deploy | Patrones de despliegue, FluxCD |
+| Nueva aplicación, Ingress, PVC | homelab-deploy-apps / agent-deploy | Patrones de despliegue (kubectl apply -k; Flux pendiente) |
 | Playbooks Ansible, provisionar VMs | homelab-ansible / agent-ansible | Inventario, tags, playbooks |
 | Secretos SOPS, age | homelab-sops-secrets | Encriptación, respaldos de claves |
 | Respaldos, cronjobs, verificación | homelab-backups / agent-backups | Sistema de respaldos en TrueNAS |
+| Pentest web sandbox, evidencias, DTPlus / intranet | security-web-pentest (stub) | Repo dedicado **`security-assessment`** junto a este monorepo; ver `docs/security-assessment-repo.md` y el `AGENTS.md` de ese repo |
 
 ## Arquitectura actual (resumen)
 
 - **Cluster**: k3s en pibot (master) + 3 workers
 - **Storage**: TrueNAS 192.168.1.20, pool homelab-storage
 - **Dominio**: danielriquelme.cl
-- **GitOps**: FluxCD (manifestos en cluster/)
-- **Acceso remoto**: Tailscale (ssh daniel@pibot)
+- **GitOps**: manifiestos en `cluster/` aplicados con kubectl; FluxCD planificado (ver docs/PENDIENTES.md)
+- **Acceso remoto**: Tailscale (`ssh daniel@k3s-node-0`, MagicDNS del master pibot; kubectl local funciona)
 
 ## Skills disponibles
 
@@ -39,6 +40,7 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 | homelab-ansible | .cursor/skills/homelab-ansible/ | Ansible, playbooks, inventario |
 | homelab-sops-secrets | .cursor/skills/homelab-sops-secrets/ | Secretos SOPS |
 | homelab-backups | .cursor/skills/homelab-backups/ | Respaldos, cronjobs |
+| security-web-pentest | .cursor/skills/security-web-pentest/ | **Stub:** redirige al repo `security-assessment` (ver `docs/security-assessment-repo.md`) |
 
 ## Referencias
 
