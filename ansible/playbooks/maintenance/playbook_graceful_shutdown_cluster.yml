@@ -1,370 +1,182 @@
 ---
-# ansible/playbooks/utils/playbook_graceful_shutdown_cluster.yml
-# APAGADO ORDENADO DEL CLUSTER COMPLETO - SIGUIENDO MEJORES PRÁCTICAS
-# 
-# SECUENCIA CORRECTA:
-# 1. Drenar nodos Kubernetes (evacuar pods)
-# 2. Apagar servicios de TrueNAS de manera ordenada
-# 3. Apagar VMs de Kubernetes
-# 4. Apagar VM de TrueNAS
-# 5. Apagar Proxmox host
+# APAGADO ORDENADO DEL HOMELAB (arquitectura 2026-10: sin TrueNAS, ZFS/NFS en el host Proxmox)
+#
+#   ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_graceful_shutdown_cluster.yml
+#
+# Secuencia:
+#   0. Confirmación interactiva (saltar con -e confirmar=si)
+#   1. pibot (control-plane): snapshot de etcd, cordon de los workers y drenado con borrado directo
+#      de pods (--disable-eviction: las PDB de Postgres no bloquean; cada pod recibe SIGTERM y su
+#      grace period, así Postgres/Immich/Minecraft cierran limpio antes de apagar las VMs)
+#   2. Proxmox: apaga LXC (nas) y VMs (k3s-node-1/2/3 y cualquier otra encendida), con timeout y
+#      apagado forzado solo si no responden
+#   3. Proxmox host: apagado (salvo -e apagar_proxmox=false, p. ej. para mantener solo VMs)
+#   4. pibot: queda encendido por defecto (control-plane en otra fuente de energía). Con
+#      -e apagar_pibot=true también se apaga.
+#
+# Al volver: Proxmox arranca VMs y LXC solos (onboot=1). Luego ejecutar
+#   ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_startup_cluster.yml
+# para desmarcar (uncordon) los workers y verificar el estado.
 
-- name: 1. APAGADO ORDENADO DEL CLUSTER KUBERNETES
-  hosts: k3s_nodes
-  become: yes
-  gather_facts: yes
-  serial: 1  # Procesar un nodo a la vez para evitar interrupciones
-  vars:
-    drain_timeout: 300  # 5 minutos para drenar cada nodo
-    pod_termination_grace_period: 60  # 1 minuto para terminar pods
-
-  tasks:
-    - name: ADVERTENCIA - Operación crítica de apagado
-      ansible.builtin.debug:
-        msg: |
-          ⚠️  OPERACIÓN CRÍTICA: APAGADO ORDENADO DEL CLUSTER
-          ===================================================
-          Este playbook apagará todo el cluster de manera ordenada:
-          
-          SECUENCIA:
-          1. Drenar nodos Kubernetes (evacuar pods)
-          2. Apagar servicios de TrueNAS
-          3. Apagar VMs de Kubernetes
-          4. Apagar VM de TrueNAS
-          5. Apagar Proxmox host
-          
-          NODO ACTUAL: {{ inventory_hostname }}
-          IP: {{ ansible_host }}
-          
-          CONTINÚA SOLO SI ESTÁS SEGURO.
-
-    - name: Verificar que k3s esté funcionando
-      ansible.builtin.systemd:
-        name: "{{ 'k3s' if inventory_hostname == groups['k3s_nodes'][0] else 'k3s-agent' }}"
-        state: started
-      register: k3s_status
-
-    - name: Verificar estado del nodo en el cluster
-      ansible.builtin.shell: |
-        if [ -f /usr/local/bin/k3s ]; then
-          /usr/local/bin/k3s kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
-        elif [ -f /usr/local/bin/k3s-agent ]; then
-          echo "agent"
-        else
-          echo "not_installed"
-        fi
-      register: node_status
-      changed_when: false
-
-    - name: Mostrar estado del nodo
-      ansible.builtin.debug:
-        msg: "Nodo {{ inventory_hostname }} - Estado: {{ node_status.stdout }}"
-
-    - name: Drenar nodo del cluster (solo si es worker)
-      ansible.builtin.shell: |
-        if [ -f /usr/local/bin/k3s ] && [ "{{ inventory_hostname }}" != "{{ groups['k3s_nodes'][0] }}" ]; then
-          echo "Drenando nodo worker {{ inventory_hostname }}..."
-          /usr/local/bin/k3s kubectl drain {{ inventory_hostname }} \
-            --ignore-daemonsets \
-            --delete-emptydir-data \
-            --force \
-            --timeout={{ drain_timeout }}s \
-            --grace-period={{ pod_termination_grace_period }}s
-        else
-          echo "Nodo maestro o no k3s instalado, saltando drenado"
-        fi
-      register: drain_result
-      failed_when: 
-        - drain_result.rc != 0 
-        - "'already cordoned' not in drain_result.stderr"
-        - "'not found' not in drain_result.stderr"
-      when: 
-        - inventory_hostname != groups['k3s_nodes'][0]
-        - k3s_status.status.ActiveState == "active"
-
-    - name: Esperar a que los pods se evacuen completamente
-      ansible.builtin.pause:
-        seconds: 30
-      when: 
-        - inventory_hostname != groups['k3s_nodes'][0]
-        - k3s_status.status.ActiveState == "active"
-
-    - name: Verificar que no hay pods corriendo en el nodo
-      ansible.builtin.shell: |
-        if [ -f /usr/local/bin/k3s ]; then
-          /usr/local/bin/k3s kubectl get pods --all-namespaces -o wide | grep {{ inventory_hostname }} | grep -v "Completed\|Error" | wc -l
-        else
-          echo "0"
-        fi
-      register: running_pods
-      changed_when: false
-
-    - name: Mostrar pods restantes
-      ansible.builtin.debug:
-        msg: "Pods restantes en {{ inventory_hostname }}: {{ running_pods.stdout }}"
-
-    - name: Apagar k3s de manera ordenada
-      ansible.builtin.systemd:
-        name: "{{ 'k3s' if inventory_hostname == groups['k3s_nodes'][0] else 'k3s-agent' }}"
-        state: stopped
-      when: k3s_status.status.ActiveState == "active"
-
-    - name: Verificar que k3s se apagó
-      ansible.builtin.systemd:
-        name: "{{ 'k3s' if inventory_hostname == groups['k3s_nodes'][0] else 'k3s-agent' }}"
-        state: stopped
-      register: k3s_stopped
-
-    - name: Confirmar apagado de k3s
-      ansible.builtin.debug:
-        msg: "✅ k3s apagado exitosamente en {{ inventory_hostname }}"
-
-- name: 2. APAGADO ORDENADO DE TRUENAS
-  hosts: truenas_vm
-  become: yes
-  gather_facts: yes
-  vars:
-    truenas_api_timeout: 120
-    truenas_shutdown_timeout: 300
-
-  tasks:
-    - name: Verificar conectividad a TrueNAS
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 443
-        timeout: 30
-        delay: 5
-
-    - name: Obtener API key de TrueNAS desde Proxmox
-      ansible.builtin.shell: |
-        # Obtener la API key desde el archivo de configuración
-        if [ -f /etc/pve/nodes/{{ inventory_hostname }}/qemu-server/{{ truenas_vmid | default('101') }}.conf ]; then
-          grep -o 'api_key=[^[:space:]]*' /etc/pve/nodes/{{ inventory_hostname }}/qemu-server/{{ truenas_vmid | default('101') }}.conf | cut -d'=' -f2
-        else
-          echo ""
-        fi
-      register: truenas_api_key
-      delegate_to: "{{ groups['proxmox_host'][0] }}"
-      changed_when: false
-
-    - name: Apagar servicios de TrueNAS de manera ordenada
-      ansible.builtin.uri:
-        url: "https://{{ ansible_host }}/api/v2.0/service"
-        method: PUT
-        body_format: json
-        body:
-          service: "{{ item }}"
-          action: "stop"
-        headers:
-          Authorization: "Bearer {{ truenas_api_key.stdout }}"
-        validate_certs: false
-        timeout: "{{ truenas_api_timeout }}"
-        status_code: [200, 400, 404]  # 400/404 = servicio ya detenido
-      loop:
-        - "nfs"      # Detener NFS primero
-        - "smb"      # Detener Samba
-        - "ssh"      # Detener SSH
-        - "http"     # Detener web UI
-      register: service_stop_results
-      ignore_errors: yes
-
-    - name: Mostrar resultados de detención de servicios
-      ansible.builtin.debug:
-        msg: "Servicio {{ item.item }} detenido: {{ 'ÉXITO' if item.status == 200 else 'YA DETENIDO' if item.status in [400, 404] else 'ERROR: ' + item.msg }}"
-      loop: "{{ service_stop_results.results }}"
-
-    - name: Esperar a que los servicios se detengan completamente
-      ansible.builtin.pause:
-        seconds: 30
-
-    - name: Verificar que no hay conexiones activas
-      ansible.builtin.shell: |
-        netstat -an | grep -E ":(80|443|22|2049|139|445)" | grep LISTEN | wc -l
-      register: active_connections
-      changed_when: false
-
-    - name: Mostrar conexiones activas restantes
-      ansible.builtin.debug:
-        msg: "Conexiones activas restantes en TrueNAS: {{ active_connections.stdout }}"
-
-    - name: Apagar TrueNAS de manera ordenada
-      ansible.builtin.uri:
-        url: "https://{{ ansible_host }}/api/v2.0/system/shutdown"
-        method: POST
-        headers:
-          Authorization: "Bearer {{ truenas_api_key.stdout }}"
-        validate_certs: false
-        timeout: "{{ truenas_shutdown_timeout }}"
-        status_code: [200, 202]
-      register: truenas_shutdown_result
-      ignore_errors: yes
-
-    - name: Confirmar apagado de TrueNAS
-      ansible.builtin.debug:
-        msg: "✅ TrueNAS apagado exitosamente"
-
-- name: 3. APAGADO DE VMs DE KUBERNETES
-  hosts: proxmox_host
-  become: yes
-  gather_facts: yes
-  vars:
-    vm_shutdown_timeout: 120
-
-  tasks:
-    - name: Verificar estado de las VMs de Kubernetes
-      ansible.builtin.shell: "qm list | grep k3s"
-      register: k3s_vms_status
-      changed_when: false
-
-    - name: Mostrar estado de VMs de Kubernetes
-      ansible.builtin.debug:
-        msg: "{{ k3s_vms_status.stdout_lines }}"
-
-    - name: Apagar VMs de Kubernetes de manera ordenada
-      ansible.builtin.shell: |
-        for vm in $(qm list | grep k3s | awk '{print $1}'); do
-          echo "Apagando VM $vm..."
-          qm shutdown $vm --timeout={{ vm_shutdown_timeout }}
-          sleep 10
-        done
-      register: k3s_vms_shutdown
-      ignore_errors: yes
-
-    - name: Esperar a que las VMs se apaguen completamente
-      ansible.builtin.pause:
-        seconds: 60
-
-    - name: Verificar que las VMs están apagadas
-      ansible.builtin.shell: "qm list | grep k3s"
-      register: k3s_vms_final_status
-      changed_when: false
-
-    - name: Mostrar estado final de VMs de Kubernetes
-      ansible.builtin.debug:
-        msg: "{{ k3s_vms_final_status.stdout_lines }}"
-
-    - name: Forzar apagado de VMs si es necesario
-      ansible.builtin.shell: |
-        for vm in $(qm list | grep k3s | awk '{print $1}'); do
-          if qm status $vm | grep -q "running"; then
-            echo "Forzando apagado de VM $vm..."
-            qm stop $vm
-          fi
-        done
-      register: force_shutdown_result
-      when: "'running' in k3s_vms_final_status.stdout"
-
-- name: 4. APAGADO DE VM DE TRUENAS
-  hosts: proxmox_host
-  become: yes
-  gather_facts: yes
-
-  tasks:
-    - name: Verificar estado de la VM de TrueNAS
-      ansible.builtin.shell: "qm list | grep truenas"
-      register: truenas_vm_status
-      changed_when: false
-
-    - name: Mostrar estado de VM de TrueNAS
-      ansible.builtin.debug:
-        msg: "{{ truenas_vm_status.stdout_lines }}"
-
-    - name: Apagar VM de TrueNAS si está corriendo
-      ansible.builtin.shell: |
-        truenas_vm=$(qm list | grep truenas | awk '{print $1}')
-        if [ ! -z "$truenas_vm" ]; then
-          echo "Apagando VM TrueNAS $truenas_vm..."
-          qm shutdown $truenas_vm --timeout=120
-          sleep 10
-          
-          # Verificar si se apagó correctamente
-          if qm status $truenas_vm | grep -q "running"; then
-            echo "Forzando apagado de VM TrueNAS $truenas_vm..."
-            qm stop $truenas_vm
-          fi
-        fi
-      register: truenas_vm_shutdown
-      ignore_errors: yes
-
-    - name: Esperar a que TrueNAS se apague completamente
-      ansible.builtin.pause:
-        seconds: 30
-
-    - name: Verificar estado final de VM de TrueNAS
-      ansible.builtin.shell: "qm list | grep truenas"
-      register: truenas_vm_final_status
-      changed_when: false
-
-    - name: Mostrar estado final de VM de TrueNAS
-      ansible.builtin.debug:
-        msg: "{{ truenas_vm_final_status.stdout_lines }}"
-
-- name: 5. APAGADO FINAL DE PROXMOX
-  hosts: proxmox_host
-  become: yes
-  gather_facts: yes
-
-  tasks:
-    - name: Verificar que todas las VMs están apagadas
-      ansible.builtin.shell: "qm list | grep -v 'stopped' | grep -v 'TASK' | wc -l"
-      register: running_vms_count
-      changed_when: false
-
-    - name: Mostrar VMs restantes
-      ansible.builtin.debug:
-        msg: "VMs corriendo restantes: {{ running_vms_count.stdout }}"
-
-    - name: ADVERTENCIA FINAL antes de apagar Proxmox
-      ansible.builtin.debug:
-        msg: |
-          🚨 APAGADO FINAL DE PROXMOX
-          ===========================
-          
-          Estado del sistema:
-          - VMs corriendo: {{ running_vms_count.stdout }}
-          - Cluster Kubernetes: APAGADO
-          - TrueNAS: APAGADO
-          
-          Proxmox se apagará en 30 segundos.
-          Presiona CTRL+C para cancelar.
-
-    - name: Pausa final para confirmación
-      ansible.builtin.pause:
-        seconds: 30
-
-    - name: Apagar Proxmox de manera segura
-      community.general.shutdown:
-        msg: "Apagando Proxmox después de apagado ordenado del cluster completo."
-        delay: 10
-      when: ansible_system == 'Linux'
-
-    - name: Confirmar apagado de Proxmox
-      ansible.builtin.debug:
-        msg: "✅ Proxmox apagándose exitosamente"
-
-- name: 6. VERIFICACIÓN FINAL
+- name: 0. Confirmación
   hosts: localhost
   connection: local
-  gather_facts: no
-
+  gather_facts: false
+  vars:
+    confirmar: "no"
   tasks:
-    - name: Resumen del apagado ordenado
+    - name: Pedir confirmación
+      ansible.builtin.pause:
+        prompt: |
+          ⚠️  Se apagará el homelab: workers k3s, LXC nas{{ ', host Proxmox' if (apagar_proxmox | default(true) | bool) else '' }}{{ ' y pibot' if (apagar_pibot | default(false) | bool) else '' }}.
+          Escribe 'apagar' para continuar
+      register: respuesta
+      when: confirmar != "si"
+
+    - name: Abortar si no se confirmó
+      ansible.builtin.fail:
+        msg: "Apagado cancelado."
+      when:
+        - confirmar != "si"
+        - respuesta.user_input | default('') != "apagar"
+
+- name: 1. Vaciar los workers de Kubernetes (desde el control-plane)
+  hosts: k3s_master
+  become: true
+  gather_facts: false
+  vars:
+    workers: "{{ groups['k3s_workers'] }}"
+    drain_timeout: 300
+    grace_period: 90
+  tasks:
+    - name: Snapshot de etcd previo al apagado
+      ansible.builtin.command: k3s etcd-snapshot save --name pre-apagado
+      register: etcd_snap
+      changed_when: true
+      failed_when: false
+
+    - name: Resultado del snapshot de etcd
+      ansible.builtin.debug:
+        msg: "{{ 'Snapshot de etcd OK' if etcd_snap.rc == 0 else 'No se pudo crear snapshot de etcd: ' ~ etcd_snap.stderr }}"
+
+    - name: Cordon de todos los workers (no se programan pods nuevos)
+      ansible.builtin.command: "k3s kubectl cordon {{ item }}"
+      loop: "{{ workers }}"
+      changed_when: true
+
+    - name: Drenar workers (borrado directo; las PDB no bloquean)
+      ansible.builtin.command: >-
+        k3s kubectl drain {{ item }}
+        --ignore-daemonsets --delete-emptydir-data --force
+        --disable-eviction --grace-period={{ grace_period }} --timeout={{ drain_timeout }}s
+      loop: "{{ workers }}"
+      register: drain
+      changed_when: true
+      failed_when: false
+
+    - name: Avisar si algún drenado no terminó
+      ansible.builtin.debug:
+        msg: "⚠️ {{ item.item }}: {{ item.stderr | default('') | trim | truncate(300) }}"
+      loop: "{{ drain.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.rc != 0
+
+    - name: Esperar a que no queden pods (salvo DaemonSets) en los workers
+      ansible.builtin.shell: |
+        set -o pipefail
+        k3s kubectl get pods -A -o json --field-selector=status.phase=Running | python3 -c '
+        import json, sys
+        workers = set(sys.argv[1].split(","))
+        n = 0
+        for p in json.load(sys.stdin)["items"]:
+            owners = [o["kind"] for o in p["metadata"].get("ownerReferences", [])]
+            if p["spec"].get("nodeName") in workers and "DaemonSet" not in owners:
+                n += 1
+        print(n)' "{{ workers | join(',') }}"
+      args:
+        executable: /bin/bash
+      register: restantes
+      until: restantes.stdout | int == 0
+      retries: 12
+      delay: 10
+      changed_when: false
+      failed_when: false
+
+    - name: Pods que siguen en los workers
+      ansible.builtin.debug:
+        msg: "Pods restantes en workers: {{ restantes.stdout }} (se detendrán al apagar las VMs)"
+
+- name: 2. Apagar LXC y VMs en Proxmox
+  hosts: proxmox_host
+  become: true
+  gather_facts: false
+  vars:
+    guest_timeout: 180
+  tasks:
+    - name: Apagar LXC encendidos
+      ansible.builtin.shell: |
+        for ct in $(pct list | awk 'NR>1 && $2=="running" {print $1}'); do
+          echo "Apagando CT $ct"; pct shutdown "$ct" --timeout {{ guest_timeout }} || pct stop "$ct"
+        done
+      register: lxc
+      changed_when: lxc.stdout | length > 0
+
+    - name: Apagar VMs encendidas (en paralelo, ACPI)
+      ansible.builtin.shell: |
+        for vm in $(qm list | awk 'NR>1 && $3=="running" {print $1}'); do
+          echo "Apagando VM $vm"; qm shutdown "$vm" --timeout {{ guest_timeout }} &
+        done
+        wait
+      register: vms
+      changed_when: vms.stdout | length > 0
+
+    - name: Forzar las VMs que no respondieron
+      ansible.builtin.shell: |
+        for vm in $(qm list | awk 'NR>1 && $3=="running" {print $1}'); do
+          echo "Forzando VM $vm"; qm stop "$vm"
+        done
+      register: forzadas
+      changed_when: forzadas.stdout | length > 0
+
+    - name: Estado de invitados y pools
+      ansible.builtin.shell: |
+        qm list; pct list; zpool list -H -o name,health,cap
+      register: estado
+      changed_when: false
+
+    - name: Mostrar estado
+      ansible.builtin.debug:
+        var: estado.stdout_lines
+
+- name: 3. Apagar el host Proxmox
+  hosts: proxmox_host
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Apagar Proxmox
+      community.general.shutdown:
+        msg: "Apagado ordenado del homelab (playbook_graceful_shutdown_cluster)"
+        delay: 5
+      when: apagar_proxmox | default(true) | bool
+
+- name: 4. pibot (control-plane)
+  hosts: k3s_master
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Apagar pibot (solo con -e apagar_pibot=true)
+      community.general.shutdown:
+        msg: "Apagado ordenado del homelab (playbook_graceful_shutdown_cluster)"
+        delay: 5
+      when: apagar_pibot | default(false) | bool
+
+    - name: Resumen
       ansible.builtin.debug:
         msg: |
-          🎉 APAGADO ORDENADO COMPLETADO EXITOSAMENTE
-          ===========================================
-          
-          ✅ Cluster Kubernetes: Apagado ordenadamente
-          ✅ TrueNAS: Servicios detenidos y VM apagada
-          ✅ VMs de Kubernetes: Apagadas
-          ✅ Proxmox: Apagándose
-          
-          📋 PRÓXIMOS PASOS:
-          1. Agrega la RAM que necesites
-          2. Enciende Proxmox
-          3. Espera a que todas las VMs arranquen
-          4. Verifica el estado del cluster:
-             ansible-playbook -i inventory playbook_homelab.yml --check
-          
-          🚨 IMPORTANTE: El cluster puede tardar varios minutos en estabilizarse
-          después del reinicio debido a la sincronización de servicios.
+          Apagado completado.
+          - Workers k3s: vaciados y apagados
+          - LXC nas y VMs: apagados
+          - Proxmox: {{ 'apagándose' if (apagar_proxmox | default(true) | bool) else 'encendido' }}
+          - pibot: {{ 'apagándose' if (apagar_pibot | default(false) | bool) else 'encendido (control-plane)' }}
+          Al encender: ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_startup_cluster.yml

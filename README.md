@@ -13,7 +13,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | **GPU** | NVIDIA en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
 | **TrueNAS** | VM 101, `192.168.1.20`, pool `homelab-storage` (1 × 12 TB, sin redundancia) servido por NFS |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
-| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**: `plex.danielriquelme.cl` directo y `*.danielriquelme.cl → Traefik`. Todo Ingress con ese dominio es público |
+| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**: `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` y `josekast.cl` → Traefik. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
 | **Base de datos** | CloudNative-PG en ns `postgresql` (`homelab-postgres-rw.postgresql.svc`) |
 | **GitOps** | Objetivo: FluxCD (**aún no instalado**). Hoy se aplica con `kubectl apply -k` |
@@ -75,11 +75,24 @@ backups/            Copias locales de configs (ignorado por git)
 
 ## Operación
 
-**Apagado — siempre ordenado** (nunca `poweroff --force`, corrompe NFS):
+**Apagado — siempre ordenado** (nunca `poweroff --force`):
 
 ```bash
 ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_graceful_shutdown_cluster.yml
+#   -e apagar_proxmox=false   solo vacía/apaga VMs y LXC, deja el host encendido
+#   -e apagar_pibot=true      apaga también el control-plane
+#   -e confirmar=si           sin pregunta interactiva
 ```
+
+Snapshot de etcd → cordon y vaciado de workers (Postgres/Immich/Minecraft cierran limpio) → apagado de LXC `nas` y VMs → host. pibot queda encendido por defecto.
+
+**Encendido** (Proxmox arranca VMs y LXC solo; luego):
+
+```bash
+ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_startup_cluster.yml
+```
+
+Verifica pools y NFS, espera workers Ready, hace `uncordon` y lista pods con problemas.
 
 **Provisionar** (Proxmox, VMs, TrueNAS, k3s):
 
