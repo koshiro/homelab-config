@@ -3,9 +3,7 @@
     "nanokvm": {
       "type": "http",
       "url": "http://kvm-7267/api/mcp",
-      "headers": {
-        "Authorization": "Bearer ${NANOKVM_MCP_KEY}"
-      }
+      "headersHelper": "printf '{\"Authorization\":\"Bearer %s\"}' \"$(security find-generic-password -s nanokvm-mcp -w)\""
     }
   }
 }

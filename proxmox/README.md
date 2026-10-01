@@ -36,7 +36,7 @@ NanoKVM **PCIe** dentro del servidor, conectado al panel frontal (botones de enc
 Login por API: el frontend cifra la contraseña con CryptoJS AES (frase `nanokvm-sipeed-2024`, formato OpenSSL `Salted__`, MD5) y la URL-codifica; equivalente:
 `printf %s "$PASS" | openssl enc -aes-256-cbc -md md5 -salt -pass pass:nanokvm-sipeed-2024 -base64 -A` → `POST /api/auth/login {"username":"admin","password":"<urlencoded>"}` → token en cookie `nano-kvm-token`.
 
-Claude Code: servidor MCP `nanokvm` en `.mcp.json` (raíz del repo) con `Bearer ${NANOKVM_MCP_KEY}`; la variable se exporta en `~/.zshrc` desde el Llavero de macOS (servicio `nanokvm-mcp`). Para rotar la clave: generar otra en el NanoKVM, actualizar el vault y `security add-generic-password -U -s nanokvm-mcp -a $USER -w`.
+Claude Code: servidor MCP `nanokvm` en `.mcp.json` (raíz del repo). La cabecera la genera `headersHelper` leyendo la clave del Llavero de macOS (servicio `nanokvm-mcp`) al conectar; no depende de variables de entorno. Para rotar la clave: generar otra en el NanoKVM, actualizar el vault y `security add-generic-password -U -s nanokvm-mcp -a $USER -w`.
 
 Uso típico: si el host se cuelga al apagar (pasó el 2026-10-01 con los snapshots bloqueados por el bug de ZFS 2.3.3), ver la consola por `cube_screenshot` y, si no responde, reset por ATX.
 
