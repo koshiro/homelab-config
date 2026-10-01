@@ -86,7 +86,7 @@ ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_gra
 ```bash
 cp ansible/vars/homelab_vars.yml.example ansible/vars/homelab_vars.yml   # ajustar
 ansible-galaxy collection install community.general community.proxmox kubernetes.core
-ansible-playbook -i ansible/inventory ansible/playbook_provision_all.yml --ask-vault-pass
+ansible-playbook -i ansible/inventory ansible/playbook_provision_all.yml   # vault: ~/.config/homelab/ansible-vault-pass
 # Tags: bootstrap, provision, truenas, k3s, verify
 ```
 

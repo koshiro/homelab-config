@@ -48,7 +48,8 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [ ] `/root/truenas-rescate/freenas-v1.db` en Proxmox contiene configuración y secretos cifrados de TrueNAS: borrar tras retirar TrueNAS (fase 3).
 - [ ] TrueNAS tenía un kubeconfig de admin en `/root/.kube` (zvol de la VM 101): se elimina con `qm destroy 101`.
 
-- [ ] **Rotar y sacar de git** (una vez estable el cluster): `.vault_password.txt` (re-cifrar `ansible/vars/vault.yml` con la nueva) y `.truenas-api-key` (generar nueva en TrueNAS). Luego `git rm --cached` y opcional `git filter-repo` para limpiar el historial.
+- [x] Contraseña del vault rotada (2026-10-01): `ansible-vault rekey`, nueva contraseña fuera del repo en `~/.config/homelab/ansible-vault-pass` (guardarla también en el gestor de contraseñas), `.vault_password.txt` eliminado de git e ignorado. El historial solo contiene una versión antigua del vault con `vault_truenas_password` (TrueNAS se retira).
+- [ ] `.truenas-api-key`: sigue versionado; eliminar al retirar TrueNAS (fase 3).
 - [ ] Rotar contraseñas de postgres (`homelab-postgres-superuser`, `homelab-postgres-app`) — estuvieron en texto plano en git; ya migradas a `*.sops.yaml`.
 - [ ] Rotar `WO_SECRET_KEY` de WebODM (se mostró en una sesión de trabajo el 2026-10-01; nunca se commiteó en claro, ahora en `secret.sops.yml`).
 - [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí**; decidir si se cifran o borran antes de commitear en ese repo.

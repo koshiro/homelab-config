@@ -68,3 +68,7 @@ cluster-sync-report.txt
 
 # Historial local del editor (extensión Local History)
 .history/
+
+# Contraseña del vault de Ansible: vive fuera del repo (~/.config/homelab/ansible-vault-pass)
+.vault_password.txt
+.vault_pass*
