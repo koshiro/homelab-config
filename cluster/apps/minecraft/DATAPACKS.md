@@ -1,6 +1,6 @@
 # Datapacks
 
-Instalados (Vanilla Tweaks, MC 26.2): AFK Display, Durability Ping, More Mob Heads, Player Head Drops, Track Raw Statistics, Track Statistics, Wandering Trades. Ubicación: `/data/world/datapacks/` en el pod.
+Instalados (Vanilla Tweaks, MC 26.2): AFK Display, Durability Ping, More Mob Heads, Player Head Drops, Track Raw Statistics, Track Statistics, Wandering Trades, Unlock All Recipes (desbloquea todas las recetas a cada jugador al entrar). Ubicación: `/data/world/datapacks/` en el pod.
 
 ## Actualizar o añadir
 

@@ -65,8 +65,12 @@ spec:
             # Forzar whitelist off al arranque (server.properties puede quedar true en mundos existentes)
             - name: VIEW_DISTANCE
               value: "10"
+            # Sin datos personales: los escáneres públicos (mcscans, etc.) guardan el MOTD
             - name: MOTD
-              value: "Minecraft Daniel Riquelme"
+              value: "Servidor familiar"
+            # La lista de servidores muestra solo la cantidad, no los nombres (evita filtrar la whitelist)
+            - name: HIDE_ONLINE_PLAYERS
+              value: "TRUE"
             - name: DIFFICULTY
               value: "hard"
             - name: MODE
