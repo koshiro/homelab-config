@@ -62,6 +62,13 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 Hoy: `pg_dump` diario de `immich` (164 MB → dump 33 MB) a `nvme/k8s/backups/postgres`, con snapshots, réplica a `respaldo` y offsite R2 junto a Immich.
 Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamiento S3 (R2 o MinIO local) con WAL archiving → recuperación a un punto en el tiempo (PITR) y `ScheduledBackup`. La única base es `immich` (más la de sistema `postgres`).
 
+## 4b2. Mantención urgente de Proxmox (bug de ZFS)
+
+2026-10-01 09:07: el primer respaldo restic disparó `VERIFY(avl_find(...) == NULL) failed / PANIC at avl.c:625:avl_add()` en `zfsctl_snapshot_mount` (automount de `.zfs/snapshot`, bug de OpenZFS 2.3.3). Los datos están intactos (pools sanos), pero quedan hilos del kernel colgados en estado D y el montaje/desmontaje de snapshots bloqueado hasta reiniciar.
+- [x] `restic-offsite.sh` ya no usa `.zfs/snapshot`: monta el snapshot explícitamente en solo lectura.
+- [ ] Ventana de mantención: `playbook_graceful_shutdown_cluster.yml -e apagar_proxmox=false` → `apt full-upgrade` en Proxmox (9.0.3 → 9.2, ZFS 2.3.3 → 2.4.4, kernel 6.14.11) → `reboot` → `playbook_startup_cluster.yml`. **No** ejecutar `zpool upgrade` (no es necesario y no se puede revertir).
+- [ ] Tras reiniciar: borrar snapshots `@restic-offsite` y `nvme/k8s/webs@prueba-mount`, lanzar `restic-offsite.service` y verificar en R2.
+
 ## 4c. VMs k3s-node-2/3 con CPU kvm64
 
 VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). Immich ML v3 lo exige, por eso está fijado a k3s-node-1 (`cpu: host`).
