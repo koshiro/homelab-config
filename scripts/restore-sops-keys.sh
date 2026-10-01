@@ -148,14 +148,14 @@ restore_cluster_key() {
     info "Restaurando clave del cluster..."
     
     # Verificar si el secret existe
-    if kubectl get secret sops-age -n argocd &> /dev/null; then
+    if kubectl get secret sops-age -n flux-system &> /dev/null; then
         warning "Secret sops-age ya existe. Será reemplazado."
-        kubectl delete secret sops-age -n argocd
+        kubectl delete secret sops-age -n flux-system
     fi
     
     # Crear el nuevo secret
     kubectl create secret generic sops-age \
-        --namespace=argocd \
+        --namespace=flux-system \
         --from-file=keys.txt="$key_file"
     
     success "Clave del cluster restaurada en secret sops-age"
@@ -181,8 +181,8 @@ verify_restoration() {
     fi
     
     # Verificar clave del cluster
-    if kubectl get secret sops-age -n argocd &> /dev/null; then
-        local cluster_key_b64=$(kubectl get secret sops-age -n argocd -o jsonpath='{.data.keys\.txt}')
+    if kubectl get secret sops-age -n flux-system &> /dev/null; then
+        local cluster_key_b64=$(kubectl get secret sops-age -n flux-system -o jsonpath='{.data.keys\.txt}')
         local cluster_key=$(echo "$cluster_key_b64" | base64 -d)
         if echo "$cluster_key" | grep -q "AGE-SECRET-KEY-"; then
             success "Clave del cluster: ✅"
@@ -307,7 +307,7 @@ main() {
     echo
     info "📋 Próximos pasos recomendados:"
     echo "  1. Verificar que SOPS puede desencriptar archivos"
-    echo "  2. Reiniciar pods de ArgoCD si es necesario"
+    echo "  2. Reconciliar Flux si es necesario (flux reconcile kustomization flux-system)"
     echo "  3. Verificar sincronización de aplicaciones"
 }
 
