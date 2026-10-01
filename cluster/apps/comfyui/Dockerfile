@@ -8,7 +8,9 @@
 FROM ghcr.io/jemeyer/comfyui:latest
 
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+# gcc/g++: Triton (p. ej. rutas SageAttention/auto) JIT-compile utilidades CUDA y fallan sin CC.
+# Sin esto: RuntimeError: Failed to find C compiler (triton/backends/nvidia/driver.py).
+RUN apt-get update && apt-get install -y --no-install-recommends git gcc g++ \
   && rm -rf /var/lib/apt/lists/*
 
 # Deps mínimas para ComfyUI-Manager (GitPython, toml, etc.) + ComfyUI app (sqlalchemy, comfy-aimdo)

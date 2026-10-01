@@ -48,6 +48,14 @@ spec:
     ports:
     - protocol: TCP
       port: 8080
+  # FlareSolverr (bypass protección Cloudflare en indexers)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: flaresolverr
+    ports:
+    - protocol: TCP
+      port: 8191
   # Permitir conexiones HTTP/HTTPS externas
   - to:
     - ipBlock:

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app.kubernetes.io/name: webodm
+    app.kubernetes.io/component: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webodm
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webodm
+        app.kubernetes.io/component: postgres
+    spec:
+      # Fijo a un nodo concreto: local-path crea el volumen como hostPath en
+      # el nodo del primer pod, y este PVC lo comparten webapp/worker (media)
+      # y este mismo pod (db) para que el reclamo quede siempre consistente.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-1
+      containers:
+        - name: postgres
+          image: webodm/webodm_db:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: webodm-db

@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: webodm
+resources:
+  - namespace.yml
+  - configmap.yml
+  - pv-pvc.yml
+  - services.yml
+  - deployment-db.yml
+  - deployment-broker.yml
+  - deployment-nodeodx.yml
+  - deployment-webapp.yml
+  - deployment-worker.yml
+# secret.sops.yml se aplica aparte: sops -d secret.sops.yml | kubectl apply -f -

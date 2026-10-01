@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: noledigasanadie
+  namespace: noledigasanadie
+  labels:
+    app: noledigasanadie
+spec:
+  type: ClusterIP
+  selector:
+    app: noledigasanadie
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

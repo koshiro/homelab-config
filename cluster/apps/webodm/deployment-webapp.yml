@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  labels:
+    app.kubernetes.io/name: webodm
+    app.kubernetes.io/component: webapp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webodm
+      app.kubernetes.io/component: webapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webodm
+        app.kubernetes.io/component: webapp
+    spec:
+      # Fijo al mismo nodo que "worker": ambos montan el PVC webodm-media
+      # (local-path), que es de un solo nodo. Si cambias el nodo aqui,
+      # cambialo tambien en deployment-worker.yml y deployment-db.yml.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-2
+      initContainers:
+        - name: wait-nodeodm
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              echo "waiting for node-odx-1:3000..."
+              until nc -z node-odx-1 3000; do sleep 2; done
+              echo "nodeodm ready"
+      containers:
+        - name: webapp
+          image: webodm/webodm_webapp:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              service cron start && chmod +x /webodm/*.sh && \
+              /bin/bash -c "/webodm/wait-for-postgres.sh db /webodm/wait-for-it.sh -t 0 broker:6379 -- /webodm/start.sh"
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: WO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: webodm-secrets
+                  key: WO_SECRET_KEY
+            - name: WO_BROKER
+              value: "redis://broker"
+            - name: WO_SSL
+              value: "NO"
+            - name: WO_DEBUG
+              value: "NO"
+            - name: WO_DEV
+              value: "NO"
+            - name: WO_DEFAULT_NODES
+              value: "1"
+            - name: WO_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: webodm-config
+                  key: WO_HOST
+            - name: WO_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: webodm-config
+                  key: WO_PORT
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          volumeMounts:
+            - name: media
+              mountPath: /webodm/app/media
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 45
+            timeoutSeconds: 10
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: webodm-media

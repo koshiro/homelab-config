@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-odx-1
+  labels:
+    app.kubernetes.io/name: webodm
+    app.kubernetes.io/component: nodeodm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webodm
+      app.kubernetes.io/component: nodeodm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webodm
+        app.kubernetes.io/component: nodeodm
+    spec:
+      # Nodo dedicado para el procesado (pide hasta 8 CPU / 16Gi): separado
+      # de db/webapp/worker para no competir por recursos. Su PVC
+      # (webodm-nodeodm) tambien es local-path, por eso queda fijo aqui.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-3
+      securityContext:
+        fsGroup: 0
+      containers:
+        - name: nodeodm
+          # webodm/nodeodx:latest fallaba en runtime (sin /usr/bin/node en la imagen actual).
+          image: opendronemap/nodeodm:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 3000
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "8"
+              memory: 16Gi
+          volumeMounts:
+            - name: nodeodm-data
+              mountPath: /var/www/data
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: nodeodm-data
+          persistentVolumeClaim:
+            claimName: webodm-nodeodm

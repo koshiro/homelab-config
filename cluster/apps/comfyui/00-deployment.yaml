@@ -6,7 +6,9 @@ metadata:
   labels:
     app: comfyui
 spec:
-  replicas: 1
+  replicas: 0  # pausado: esperando NFS (ver docs/PENDIENTES.md)
+  # Arranque: pip core + todas las extensiones en NFS puede superar 1 h.
+  progressDeadlineSeconds: 7200
   strategy:
     type: Recreate
   selector:
@@ -49,6 +51,10 @@ spec:
         image: alpine/git:latest
         securityContext:
           runAsUser: 0
+        env:
+        # Vacío = última release estable (tag v* más reciente por semver). Ej. v0.19.1 o SHA para pin manual.
+        - name: COMFYUI_REF
+          value: ""
         command:
         - sh
         - -c
@@ -72,13 +78,67 @@ spec:
             fi
           fi
           cd /app
+          # Abortar merge/rebase a medias (NFS puede dejar el repo en estado conflictivo).
+          git merge --abort 2>/dev/null || true
+          git rebase --abort 2>/dev/null || true
+          git cherry-pick --abort 2>/dev/null || true
           if git remote get-url origin 2>/dev/null | grep -q comfyanonymous; then
             git remote set-url origin https://github.com/Comfy-Org/ComfyUI.git
           fi
           [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ] && git fetch --unshallow 2>/dev/null || true
           git fetch origin --tags
-          LATEST=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.15.0")
-          git checkout "$LATEST" 2>/dev/null || git checkout v0.15.0
+          # Workspace NFS: limpiar para checkout fiable. -e preserva datos, venv y estado pip/huella en NFS.
+          git reset --hard HEAD
+          git clean -fd \
+            -e venv \
+            -e models -e user -e input -e output -e custom_nodes \
+            -e '.deps-fingerprint' \
+            -e '.deps-ready-v3' -e '.deps-ready-v5' \
+            -e '.pip-req-ready' -e '.pip-constraints'
+          if [ -n "${COMFYUI_REF:-}" ]; then
+            echo "COMFYUI_REF=${COMFYUI_REF} (pin manual)"
+            git checkout -f "${COMFYUI_REF}"
+          else
+            LATEST_TAG="$(git tag -l 'v*' --sort=-version:refname | head -1)"
+            if [ -z "$LATEST_TAG" ]; then
+              echo "ERROR: no hay tags v* tras git fetch --tags" >&2
+              exit 1
+            fi
+            echo "Última release estable: ${LATEST_TAG}"
+            git checkout -f "$LATEST_TAG"
+          fi
+        volumeMounts:
+        - name: workspace
+          mountPath: /app
+      # Python del contenedor vive en /venv (imagen). Copiamos una vez a /app/venv (NFS) para persistir pip entre reinicios.
+      - name: ensure-venv
+        image: ghcr.io/koshiro/comfyui-homelab:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          ts() { date "+%Y-%m-%dT%H:%M:%S%z" 2>/dev/null || date; }
+          if [ ! -x /app/venv/bin/python ]; then
+            echo "$(ts) [ensure-venv] Creando /app/venv en NFS desde la imagen (puede tardar varios minutos)..."
+            mkdir -p /app/venv
+            tar -C /venv -cf - . | tar -C /app/venv -xf -
+            echo "$(ts) [ensure-venv] Copia del venv completada."
+          else
+            echo "$(ts) [ensure-venv] /app/venv ya existe — omitiendo copia desde imagen."
+          fi
+          # El tar desde /venv deja pyvenv.cfg apuntando a /venv; pip entonces instala "fuera" del entorno
+          # y Python en /app/venv no ve los paquetes (ModuleNotFoundError: sqlalchemy).
+          if [ -f /app/venv/pyvenv.cfg ]; then
+            if grep -qE '(-m venv /venv|/venv/bin/python)' /app/venv/pyvenv.cfg 2>/dev/null; then
+              echo "$(ts) [ensure-venv] Corrigiendo rutas /venv -> /app/venv en pyvenv.cfg..."
+              sed -i \
+                -e 's#-m venv /venv#-m venv /app/venv#g' \
+                -e 's#/venv/bin/python#/app/venv/bin/python#g' \
+                /app/venv/pyvenv.cfg
+            fi
+          fi
         volumeMounts:
         - name: workspace
           mountPath: /app
@@ -92,7 +152,10 @@ spec:
           if [ ! -d /app/custom_nodes/ComfyUI-Manager ]; then
             git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /app/custom_nodes/ComfyUI-Manager
           else
-            cd /app/custom_nodes/ComfyUI-Manager && git fetch origin && git reset --hard origin/main
+            cd /app/custom_nodes/ComfyUI-Manager
+            git merge --abort 2>/dev/null || true
+            git rebase --abort 2>/dev/null || true
+            git fetch origin && git reset --hard origin/main
           fi
         volumeMounts:
         - name: workspace
@@ -111,27 +174,209 @@ spec:
           value: "false"
         - name: PYTORCH_CUDA_ALLOC_CONF
           value: "expandable_segments:True,max_split_size_mb:128"
+        # PIP_NO_CACHE_DIR: paquetes sí persisten en /app/venv; no llenar NFS con wheel cache.
+        - name: PIP_NO_CACHE_DIR
+          value: "1"
+        # Salida de Python sin buffer (logs visibles al instante).
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        # true: pip y el script muestran fases claras (recomendado). false: pip -q, menos ruido.
+        - name: COMFYUI_BOOT_VERBOSE
+          value: "true"
         - name: PYTHONPATH
-          value: "/venv/lib/python3.10/site-packages:${PYTHONPATH}"
+          value: "/app/venv/lib/python3.10/site-packages:${PYTHONPATH}"
         - name: PATH
-          value: "/venv/bin:/usr/local/bin:/usr/bin:/bin"
+          value: "/app/venv/bin:/usr/local/bin:/usr/bin:/bin"
         - name: VIRTUAL_ENV
-          value: "/venv"
+          value: "/app/venv"
         command:
         - /bin/bash
         - -c
         - |
-          set -e
-          git config --global --add safe.directory '*'
-          /venv/bin/pip install -q -r /app/requirements.txt 2>/dev/null || true
-          /venv/bin/pip install -q -r /app/custom_nodes/ComfyUI-Manager/requirements.txt 2>/dev/null || true
-          /venv/bin/pip install -q 'sqlalchemy>=2.0'
+          # Sin set -e en bootstrap: pip/mapfile no deben tumbar el shell (set -e + subshells falla a veces).
+          log() {
+            # Siempre a stderr para que aparezca en kubectl logs aunque stdout sea pipe.
+            printf '%s [comfyui-boot] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || date)" "$*" >&2
+          }
+          #region agent log debug-emit
+          DEBUG_RUN_ID="${DEBUG_RUN_ID:-startup-$(date +%s)}"
+          debug_emit() {
+            _hyp="$1"
+            _msg="$2"
+            _data="$3"
+            /app/venv/bin/python -c "import json,time,urllib.request;hyp='''${_hyp}''';msg='''${_msg}''';data='''${_data}''';payload={'sessionId':'d05383','runId':'comfyui-'+hyp+'-'+str(int(time.time())),'hypothesisId':hyp,'location':'cluster/apps/comfyui/00-deployment.yaml:container-command','message':msg,'data':{'raw':data},'timestamp':int(time.time()*1000)};req=urllib.request.Request('http://127.0.0.1:7843/ingest/c06d877c-081e-4742-a202-8c652eece0c0',data=json.dumps(payload).encode('utf-8'),headers={'Content-Type':'application/json','X-Debug-Session-Id':'d05383'},method='POST');urllib.request.urlopen(req,timeout=1)" 2>/dev/null || true
+          }
+          #endregion
+          export VIRTUAL_ENV=/app/venv
+          export PATH="/app/venv/bin:/usr/local/bin:/usr/bin:/bin"
+          export PYTHONPATH="/app/venv/lib/python3.10/site-packages:${PYTHONPATH:-}"
+          export PIP_NO_CACHE_DIR=1
+          export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+          #region agent log H1-H2
+          _cg_mem_cur="$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo na)"
+          _cg_mem_max="$(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo na)"
+          debug_emit "H1_H2" "inicio-bootstrap" "host=$(hostname);memory.current=${_cg_mem_cur};memory.max=${_cg_mem_max}"
+          #endregion
+          if [ "${COMFYUI_BOOT_VERBOSE:-true}" = "true" ]; then
+            PIP_Q=()
+            log "Modo verbose ON (COMFYUI_BOOT_VERBOSE=true). Para menos salida: false."
+          else
+            PIP_Q=(-q)
+            log "Modo pip silencioso (COMFYUI_BOOT_VERBOSE=false)."
+          fi
+          git config --global --add safe.directory '*' || true
+          _PYV=$(/app/venv/bin/python -V 2>&1) || _PYV="python?"
+          _PIPV=$(/app/venv/bin/python -m pip --version 2>&1) || _PIPV="pip?"
+          log "Entorno: ${_PYV} | ${_PIPV} | sys.prefix=$(/app/venv/bin/python -c 'import sys; print(sys.prefix)' 2>/dev/null)"
+          # Triton + SageAttention (auto): JIT necesita gcc en runtime. La imagen comfyui-homelab ya incluye
+          # gcc/g++ (Dockerfile). Rescate vía apt solo si usas imagen antigua sin toolchain:
+          # if ! command -v gcc >/dev/null 2>&1; then
+          #   log "Instalando gcc/g++ vía apt (necesarios para Triton + SageAttention)..."
+          #   apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc g++ >/tmp/apt-gcc-comfyui.log 2>&1 \
+          #     || log "WARN: apt gcc/g++ falló; SageAttention/Triton puede fallar. Ver /tmp/apt-gcc-comfyui.log"
+          # fi
+          # Quitar restos SQLAlchemy rotos (venv relocado + pip confundido por pyvenv.cfg antiguo).
+          strip_old_sqlalchemy() {
+            local sp="/app/venv/lib/python3.10/site-packages"
+            [ -d "$sp" ] || return 0
+            rm -rf "$sp/sqlalchemy" 2>/dev/null || true
+            find "$sp" -maxdepth 1 \( -iname 'sqlalchemy*.dist-info' -o -iname 'SQLAlchemy*.dist-info' \) -exec rm -rf {} + 2>/dev/null || true
+          }
+          # Huella = HEAD + sha256(requirements) + sha256(Manager requirements). Invalida pip base al cambiar release/deps.
+          deps_fingerprint_current() {
+            ( cd /app 2>/dev/null || exit 1
+              _h=$(git rev-parse HEAD 2>/dev/null || echo "")
+              _r=$(sha256sum requirements.txt 2>/dev/null | awk '{print $1}') || _r=""
+              _m=""
+              if [ -f custom_nodes/ComfyUI-Manager/requirements.txt ]; then
+                _m=$(sha256sum custom_nodes/ComfyUI-Manager/requirements.txt | awk '{print $1}')
+              fi
+              printf 'HEAD=%s\nREQ=%s\nMREQ=%s\n' "$_h" "$_r" "$_m"
+            )
+          }
+          DEPS_FP_FILE="/app/.deps-fingerprint"
+          CUR_FP="$(deps_fingerprint_current)"
+          STORED_FP=""
+          [ -f "$DEPS_FP_FILE" ] && STORED_FP="$(cat "$DEPS_FP_FILE")"
+          NEED_BASE_DEPS=1
+          if [ -n "$STORED_FP" ] && [ "$STORED_FP" = "$CUR_FP" ]; then
+            NEED_BASE_DEPS=0
+            log "Huella deps coincide (${DEPS_FP_FILE}). Omitiendo fases 1-3."
+          else
+            log "Huella deps nueva o distinta (o sin ${DEPS_FP_FILE}). Ejecutando fases 1-3..."
+            rm -f /app/.pip-req-ready/*.fail 2>/dev/null || true
+          fi
+          DEPS_OK="1"
+          if [ "$NEED_BASE_DEPS" = "1" ]; then
+            log "Fase 1/4: requirements ComfyUI (core)..."
+            /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir -r /app/requirements.txt \
+              || { log "WARN: pip core requirements terminó con error parcial (se continúa)."; DEPS_OK="0"; }
+
+            log "Fase 2/4: ComfyUI-Manager..."
+            /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir -r /app/custom_nodes/ComfyUI-Manager/requirements.txt \
+              || { log "WARN: pip Manager terminó con error parcial (se continúa)."; DEPS_OK="0"; }
+
+            log "Fase 3/4: paquetes base adicionales (opencv, gguf, sqlalchemy>=2.0.36 para mapped_column)..."
+            strip_old_sqlalchemy
+            /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir --upgrade opencv-python-headless gguf 'sqlalchemy>=2.0.36' \
+              || { log "WARN: pip paquetes base adicionales terminó con error parcial (se continúa)."; DEPS_OK="0"; }
+
+            if [ "$DEPS_OK" = "1" ]; then
+              if /app/venv/bin/python -c 'from sqlalchemy.orm import mapped_column' 2>/dev/null; then
+                deps_fingerprint_current > "$DEPS_FP_FILE" && log "Huella deps guardada (${DEPS_FP_FILE})." || true
+              else
+                log "WARN: SQLAlchemy no tiene mapped_column; no se guarda huella."
+              fi
+            else
+              log "WARN: fases 1-3 con errores parciales; no se guarda huella (reintentará en próximo arranque)."
+            fi
+          fi
+          # Verificación final antes de arrancar ComfyUI: asegurarnos que SQLAlchemy 2.x está realmente instalado.
+          if ! /app/venv/bin/python -c 'from sqlalchemy.orm import mapped_column' 2>/dev/null; then
+            log "WARN: SQLAlchemy sin mapped_column detectado. Forzando reinstall >=2.0.36..."
+            strip_old_sqlalchemy
+            /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir --upgrade --force-reinstall 'sqlalchemy>=2.0.36' \
+              || log "WARN: reinstall SQLAlchemy falló (igual se intenta arrancar)."
+          fi
+          # Persistir huella si quedó pendiente (p. ej. mapped_column falló tras fase 3 y se arregló arriba).
+          if /app/venv/bin/python -c 'from sqlalchemy.orm import mapped_column' 2>/dev/null; then
+            _fp_now="$(deps_fingerprint_current)"
+            if [ ! -f "$DEPS_FP_FILE" ] || [ "$(cat "$DEPS_FP_FILE" 2>/dev/null)" != "$_fp_now" ]; then
+              printf '%s\n' "$_fp_now" > "$DEPS_FP_FILE" && log "Huella deps persistida (${DEPS_FP_FILE})." || true
+            fi
+          fi
+          # Constraints: custom_nodes no deben degradar SQLAlchemy.
+          SQLA_CONSTRAINT_DIR="/app/.pip-constraints"
+          SQLA_CONSTRAINT_FILE="${SQLA_CONSTRAINT_DIR}/comfyui-constraints.txt"
+          mkdir -p "$SQLA_CONSTRAINT_DIR" 2>/dev/null || true
+          printf '%s\n' "sqlalchemy>=2.0.36" > "$SQLA_CONSTRAINT_FILE" 2>/dev/null || true
+          # Fase 4/4: TODOS los requirements.txt bajo custom_nodes (síncrono ANTES de main.py).
+          # Paquetes van a /app/venv en NFS → persistentes. Marcador .ok guarda sha256 del fichero;
+          # si el contenido cambia, se vuelve a ejecutar pip --upgrade.
+          log "Fase 4/4: dependencias de extensiones (custom_nodes), sincrónico — puede tardar mucho la primera vez..."
+          REQ_MARKER_DIR="/app/.pip-req-ready"
+          mkdir -p "$REQ_MARKER_DIR" 2>/dev/null || true
+          mapfile -t _reqs < <(find /app/custom_nodes -type f -name requirements.txt ! -path '*/ComfyUI-Manager/*' 2>/dev/null | sort)
+          _n="${#_reqs[@]}"
+          #region agent log H3
+          debug_emit "H3" "custom-node-req-count" "requirements_count=${_n}"
+          #endregion
+          log "Encontrados ${_n} requirements.txt de extensiones (excl. ComfyUI-Manager, ya cubierto en fase 2)."
+          _i=0
+          for req in "${_reqs[@]}"; do
+            _i=$((_i + 1))
+            _h="$(/app/venv/bin/python -c 'import hashlib,sys; print(hashlib.sha1(sys.argv[1].encode()).hexdigest())' "$req" 2>/dev/null || true)"
+            if [ -z "$_h" ]; then
+              _h="$(echo -n "$req" | sha256sum | awk '{print $1}')"
+            fi
+            REQ_HASH="$(sha256sum "$req" | awk '{print $1}')"
+            marker_ok="${REQ_MARKER_DIR}/${_h}.ok"
+            marker_fail="${REQ_MARKER_DIR}/${_h}.fail"
+            if [ -f "$marker_ok" ] && [ "$(cat "$marker_ok" 2>/dev/null)" = "$REQ_HASH" ]; then
+              log "custom_nodes deps al día [${_i}/${_n}] (misma huella): ${req}"
+              continue
+            fi
+            if [ -f "$marker_fail" ] && [ "$(cat "$marker_fail" 2>/dev/null)" = "$REQ_HASH" ]; then
+              log "WARN: omitiendo [${_i}/${_n}] (fallo previo mismo requirements); borra ${marker_fail} para reintentar: ${req}"
+              continue
+            fi
+            log "pip custom_nodes [${_i}/${_n}] => ${req} (install/upgrade)"
+            if /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir --upgrade --constraint "$SQLA_CONSTRAINT_FILE" -r "$req"; then
+              echo "$REQ_HASH" > "$marker_ok"
+              rm -f "$marker_fail" 2>/dev/null || true
+            else
+              echo "$REQ_HASH" > "$marker_fail"
+              log "WARN: pip falló para ${req} (marcado fail-${_h})."
+            fi
+          done
+          log "Fase 4/4 terminada."
+          #region agent log H1_H3
+          _cg_mem_cur_after_pip="$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo na)"
+          debug_emit "H1_H3" "fin-fase-4" "requirements_count=${_n};memory.current=${_cg_mem_cur_after_pip}"
+          #endregion
+          log "Config Manager (security_level)..."
           for cfg in /app/user/__manager/config.ini /app/user/default/ComfyUI-Manager/config.ini; do
             [ -f "$cfg" ] && sed -i 's/^security_level = .*/security_level = weak/' "$cfg" 2>/dev/null || true
           done
           [ -d /app/user/__manager/.legacy-manager-backup ] && rm -rf /app/user/__manager/.legacy-manager-backup
           [ "${REFRESH_MANAGER_CACHE:-false}" = "true" ] && [ -d /app/user/__manager/cache ] && rm -f /app/user/__manager/cache/*.json
-          exec /venv/bin/python /app/main.py --listen 0.0.0.0 --lowvram --base-directory /app
+          if ! /app/venv/bin/python -c 'import sqlalchemy; from sqlalchemy.orm import mapped_column' 2>/dev/null; then
+            log "ERROR: sqlalchemy no importable antes de main.py; último intento de reparación..."
+            strip_old_sqlalchemy
+            /app/venv/bin/python -m pip install "${PIP_Q[@]}" --no-cache-dir --upgrade --force-reinstall 'sqlalchemy>=2.0.36' \
+              || true
+          fi
+          if /app/venv/bin/python -c 'import sqlalchemy' 2>/dev/null; then
+            log "sqlalchemy OK: $(/app/venv/bin/python -c 'import sqlalchemy; print(sqlalchemy.__file__)' 2>/dev/null)"
+          else
+            log "ERROR: sigue sin poderse importar sqlalchemy; ComfyUI fallará al arrancar."
+          fi
+          #region agent log H4
+          _cg_mem_pre_exec="$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo na)"
+          debug_emit "H4" "pre-main-py" "memory.current=${_cg_mem_pre_exec};cmd=python -u /app/main.py --listen 0.0.0.0 --lowvram --base-directory /app"
+          #endregion
+          log "Iniciando ComfyUI (main.py) escuchando 0.0.0.0:8188 — a partir de aquí van logs de la aplicación."
+          exec /app/venv/bin/python -u /app/main.py --listen 0.0.0.0 --lowvram --base-directory /app
         ports:
         - containerPort: 8188
           name: http
@@ -142,16 +387,24 @@ spec:
           httpGet:
             path: /
             port: 8188
-          initialDelaySeconds: 300
+          # Solo cuenta tras startup exitoso; da margen tras el primer HTTP 200.
+          initialDelaySeconds: 180
           periodSeconds: 30
-          failureThreshold: 5
+          failureThreshold: 6
         readinessProbe:
           httpGet:
             path: /
             port: 8188
-          initialDelaySeconds: 180
+          initialDelaySeconds: 60
           periodSeconds: 15
           failureThreshold: 10
+        startupProbe:
+          httpGet:
+            path: /
+            port: 8188
+          # Fase 4 síncrona (pip de todas las extensiones en NFS) puede superar 60 min. 10s * 720 = 120 min máx.
+          periodSeconds: 10
+          failureThreshold: 720
       volumes:
       - name: workspace
         persistentVolumeClaim:

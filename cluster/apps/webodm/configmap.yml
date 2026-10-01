@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webodm-config
+  labels:
+    app.kubernetes.io/name: webodm
+data:
+  # Hostname o IP que uses en el navegador vía Tailscale (p. ej. k3s-node-0 o 100.x.y.z).
+  # Afecta enlaces generados por la app; debe coincidir con cómo accedes al NodePort.
+  WO_HOST: "k3s-node-0"
+  WO_PORT: "8000"

@@ -3,12 +3,13 @@ kind: Kustomization
 resources:
   - 00-infrastructure/
   - 01-networking/
-  - 02-storage/
-  - 03-monitoring/
+  # - 03-monitoring/   # pendiente: plan Grafana/Flux en docs/PENDIENTES.md
   - 04-media-stack/
   - 05-services/
   - 06-external/
   - apps/comfyui/
-  - apps/unsloth/
   - apps/ollama-stack/
+  - apps/canon-mp250-airprint/
+  - apps/webodm/
+  - apps/noledigasanadie/
 

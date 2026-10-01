@@ -8,3 +8,7 @@ resources:
   - pvc.yml
   - pv-media-library.yml
   - pvc-media-library.yml
+  - networkpolicy-deny.yml
+  - networkpolicy-ingress.yml
+  - networkpolicy-arr-ingress.yml
+  - networkpolicy-egress.yml

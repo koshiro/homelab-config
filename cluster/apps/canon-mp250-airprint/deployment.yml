@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cups-airprint
+  namespace: canon-mp250-airprint
+  labels:
+    app: cups-airprint
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cups-airprint
+  template:
+    metadata:
+      labels:
+        app: cups-airprint
+    spec:
+      # pibot = nodo con USB. hostNetwork: multicast mDNS (AirPrint) en LAN.
+      # NO montar /var/run/dbus del host: la imagen usa D-Bus interno (v2+).
+      nodeName: pibot
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - name: prepare-cups-config
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              # /config: printers.conf, cupsd.conf, ppd/ (chuckcharlie/cups-avahi-airprint)
+              if [ -f /config/cupsd.conf ]; then
+                if [ -n "${NODE_IP:-}" ]; then
+                  if grep -qE '^ServerName[[:space:]]' /config/cupsd.conf; then
+                    sed -i "s/^ServerName[[:space:]].*/ServerName ${NODE_IP}/" /config/cupsd.conf
+                  else
+                    printf '\n# homelab: URIs IPP deben usar la IP del nodo\nServerName %s\n' "${NODE_IP}" >> /config/cupsd.conf
+                  fi
+                fi
+                # IfRequested/Required: CUPS anuncia _ipps._tcp; macOS pide IPPS (TLS) y
+                # falla sin cert en 631. "Never" anuncia _ipp._tcp (IPP claro).
+                if grep -qE '^DefaultEncryption[[:space:]]' /config/cupsd.conf; then
+                  sed -i 's/^DefaultEncryption.*/DefaultEncryption Never/' /config/cupsd.conf
+                else
+                  printf '\nDefaultEncryption Never\n' >> /config/cupsd.conf
+                fi
+                if ! grep -F '  Encryption Never' /config/cupsd.conf; then
+                  awk '/^<Location \/>$/{print;print "  Encryption Never";next}1' /config/cupsd.conf > /config/c.new && mv /config/c.new /config/cupsd.conf
+                fi
+                # macOS/iOS funcionan mejor como cliente AirPrint cuando el anuncio DNS-SD
+                # enfatiza _print/_universal en vez de _cups.
+                if grep -qE '^BrowseDNSSDSubTypes[[:space:]]' /config/cupsd.conf; then
+                  sed -i 's/^BrowseDNSSDSubTypes.*/BrowseDNSSDSubTypes _print,_universal/' /config/cupsd.conf
+                else
+                  printf '\nBrowseDNSSDSubTypes _print,_universal\n' >> /config/cupsd.conf
+                fi
+                # CUPS 2.4+ no reconoce esta directiva (queda de configs antiguas) → ruido en error_log
+                if grep -qE '^[[:space:]]*IdleExitTimeout[[:space:]]' /config/cupsd.conf; then
+                  sed -i '/^[[:space:]]*IdleExitTimeout[[:space:]]/d' /config/cupsd.conf
+                fi
+                # Cola en "Accepting No" = el servidor no acepta trabajos (otro fallo, no "not-found").
+                if [ -f /config/printers.conf ] && grep -q 'Accepting No' /config/printers.conf; then
+                  sed -i 's/^Accepting No$/Accepting Yes/' /config/printers.conf
+                fi
+                echo "prepare-cups-config: listo (DefaultEncryption Never = evita _ipps._tcp sin TLS en macOS)"
+              else
+                echo "prepare-cups-config: sin cupsd.conf aún (el entrypoint del contenedor la crea)"
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: cups
+          # CUPS + Avahi (D-Bus interno); registra _ipp._tcp vía mDNS = descubrimiento AirPrint
+          # https://github.com/chuckcharlie/cups-avahi-airprint
+          image: chuckcharlie/cups-avahi-airprint:2.0.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              # Evita choques de anuncios en interfaces internas de k3s (cni/flannel/veth).
+              sed -i 's/^#allow-interfaces=.*/allow-interfaces=eth0/' /etc/avahi/avahi-daemon.conf
+              sed -i 's/^use-ipv6=.*/use-ipv6=no/' /etc/avahi/avahi-daemon.conf
+              # Si la imagen sube Gutenprint, evita quedar con PPD persistido de versión vieja.
+              # Esto previene errores tipo "PPD version X is not compatible with Gutenprint Y".
+              /usr/sbin/cups-genppdupdate -q -p /config/ppd || true
+              exec /root/run_cups.sh
+          securityContext:
+            privileged: true
+          env:
+            - name: TZ
+              value: America/Santiago
+            - name: CUPSADMIN
+              value: print
+            - name: CUPSPASSWORD
+              value: print
+          ports:
+            - name: ipp
+              containerPort: 631
+          volumeMounts:
+            - name: usb-bus
+              mountPath: /dev/bus/usb
+            - name: config
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 631
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 631
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 3
+      volumes:
+        - name: usb-bus
+          hostPath:
+            path: /dev/bus/usb
+            type: Directory
+        # Misma ruta en disco que el despliegue anterior: contenido compatible (printers.conf, cupsd.conf, ppd)
+        - name: config
+          hostPath:
+            path: /var/lib/homelab-canon-mp250-cups
+            type: DirectoryOrCreate

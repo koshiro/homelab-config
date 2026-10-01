@@ -1,0 +1,56 @@
+# Almacenamiento con local-path-provisioner (incluido por defecto en k3s).
+# Sin TrueNAS/NFS: cada PVC se aprovisiona dinamicamente como hostPath en el
+# disco del nodo Proxmox (VM) donde se agenda el PRIMER pod que lo reclama.
+#
+# IMPORTANTE: local-path es ReadWriteOnce "de nodo" -> todo pod que use el
+# mismo PVC debe fijarse (nodeSelector) al MISMO nodo, o el montaje fallara.
+# Ver deployment-db.yml, deployment-webapp.yml, deployment-worker.yml y
+# deployment-nodeodx.yml: cada uno trae un nodeSelector fijo coherente con
+# el PVC que usa.
+#
+# Verifica antes de aplicar que la StorageClass exista:
+#   kubectl get storageclass local-path
+# Si no aparece, habilita local-path-provisioner en el cluster k3s
+# (viene activado por defecto salvo que se haya deshabilitado con
+# --disable=local-storage al instalar k3s).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webodm-media
+  labels:
+    app.kubernetes.io/name: webodm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webodm-db
+  labels:
+    app.kubernetes.io/name: webodm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webodm-nodeodm
+  labels:
+    app.kubernetes.io/name: webodm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 150Gi

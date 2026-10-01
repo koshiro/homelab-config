@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app.kubernetes.io/name: webodm
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webodm
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webodm
+        app.kubernetes.io/component: worker
+    spec:
+      # Fijo al mismo nodo que "webapp": ambos montan el PVC webodm-media
+      # (local-path, un solo nodo).
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-2
+      containers:
+        - name: worker
+          image: webodm/webodm_webapp:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              /webodm/wait-for-postgres.sh db /webodm/wait-for-it.sh -t 0 broker:6379 -- \
+              /webodm/wait-for-it.sh -t 0 webapp:8000 -- /webodm/worker.sh start
+          env:
+            - name: WO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: webodm-secrets
+                  key: WO_SECRET_KEY
+            - name: WO_BROKER
+              value: "redis://broker"
+            - name: WO_DEBUG
+              value: "NO"
+            - name: WO_DEV
+              value: "NO"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: media
+              mountPath: /webodm/app/media
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: webodm-media
