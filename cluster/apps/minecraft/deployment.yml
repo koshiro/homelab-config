@@ -18,7 +18,7 @@ spec:
         app: minecraft
       # Ruta de datos: no cambiar sin backup; respaldos = snapshots TrueNAS en este dataset
       annotations:
-        data/nfs-path: "192.168.1.20:/mnt/homelab-storage/minecraft-server"
+        data/nfs-path: "192.168.1.100:/nvme/k8s/minecraft"
     spec:
       # Tiempo para guardado graceful: save-all + /stop antes de SIGKILL (evita pérdida de datos)
       terminationGracePeriodSeconds: 90
@@ -34,7 +34,7 @@ spec:
                 values: ["true"]
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:java21
+          image: itzg/minecraft-server:2026.9.2-java25  # Paper 26.x requiere Java 25
           imagePullPolicy: Always
           ports:
             - containerPort: 25565
@@ -52,7 +52,7 @@ spec:
             - name: TYPE
               value: "PAPER"
             - name: VERSION
-              value: "1.21.1"
+              value: "26.2"  # 26.3 aún BETA en Paper y sin soporte de Geyser (2026-10-01)
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
@@ -72,20 +72,29 @@ spec:
               value: "5134907312929138905"
             - name: MEMORY
               value: "4G"
-            - name: JVM_OPTS
-              value: "-Xms2G -Xmx4G -Dpaper.experimental.bundle=true"
-            # Habilitar datapacks experimentales al crear mundo (Bundles)
-            - name: INITIAL_ENABLED_PACKS
-              value: "bundle"
-            # Plugins: Geyser (Bedrock), Floodgate, Simple Voice Chat, SkinsRestorer — URLs "latest" para Geyser/Floodgate
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+            # Geyser (Bedrock) y Floodgate desde GeyserMC (Floodgate no publica builds Paper en Modrinth)
             - name: PLUGINS
               value: |
                 https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot
                 https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
-                https://cdn.modrinth.com/data/9eGKb6K1/versions/FeJRj2X0/voicechat-bukkit-2.6.12.jar
-                https://github.com/SkinsRestorer/SkinsRestorer/releases/download/15.10.0/SkinsRestorer.jar
-            - name: SPIGET_RESOURCES
-              value: "19254,27231" # ViaVersion, ViaBackwards
+            # Resto desde Modrinth: última versión release compatible con VERSION
+            - name: MODRINTH_PROJECTS
+              value: |
+                viaversion
+                viabackwards
+                simple-voice-chat
+                skinsrestorer
+            - name: MODRINTH_ALLOWED_VERSION_TYPE
+              value: "release"
+            # Borra los .jar de plugins/ antes de descargar (evita versiones acumuladas)
+            - name: REMOVE_OLD_MODS
+              value: "TRUE"
+            - name: REMOVE_OLD_MODS_INCLUDE
+              value: "*.jar"
+            - name: REMOVE_OLD_MODS_DEPTH
+              value: "1"
           resources:
             requests:
               memory: 4Gi
@@ -121,9 +130,10 @@ spec:
             - name: DELETE_ON_STOP
               value: "false"
       volumes:
-        # CRÍTICO - ÚNICA FUENTE DE DATOS: no cambiar path ni borrar en TrueNAS sin backup.
-        # Los datos viven en 192.168.1.20:/mnt/homelab-storage/minecraft-server (snapshots en TrueNAS).
+        # CRÍTICO - ÚNICA FUENTE DE DATOS: no cambiar path ni borrar sin backup.
+        # Desde 2026-09-30 los datos viven en Proxmox (dataset ZFS nvme/k8s/minecraft, export NFS).
+        # Copia original (solo lectura) en TrueNAS: carpeta minecraft-server del dataset raíz de homelab-storage.
         - name: minecraft-data
           nfs:
-            server: 192.168.1.20
-            path: /mnt/homelab-storage/minecraft-server
+            server: 192.168.1.100
+            path: /nvme/k8s/minecraft
