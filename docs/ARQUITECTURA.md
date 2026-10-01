@@ -121,10 +121,11 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 - [x] CronJob `backups/etcd-snapshot-copy` (00:30 y 12:30, en pibot) → `nvme/k8s/backups/etcd` (retención 30 días).
 - [x] Rescatado del boot-pool de TrueNAS a `/root/truenas-rescate/` en Proxmox: scripts, `freenas-v1.db`, cronjobs, shares NFS/SMB (texto).
 - [x] LXC 110 `nas` (Debian 12, `192.168.1.21`, uids 1000/3000-3002 mapeados 1:1): Samba 4.17 con shares `timemachine` (fruit idéntico a TrueNAS, cuota 1 TB), `archivo` y `prueba` (temporal en `nvme/nas-prueba`). Pendiente: contraseñas SMB y `tailscale up`.
-- [ ] Alertas: `smartd` + `zed` (falta elegir canal: ntfy / correo / Telegram).
-- [ ] Offsite R2: restic de `nvme/k8s/{immich,minecraft}` + dumps Postgres (falta crear bucket y token en Cloudflare).
+- [ ] Alertas por **Telegram**: `smartd` + `zed` + fallos de sanoid/syncoid/backups (falta token del bot y chat_id).
+- [ ] Offsite R2: restic de `nvme/k8s/{immich,minecraft}` + dumps Postgres (falta token de API de Cloudflare con permiso R2).
 - [x] Repo: PV de media y ComfyUI con `server: 192.168.1.100` (sin aplicar) + `scripts/fase1-migrar-pvs-nfs.sh` para los 10 PV vivos (incluye 3 que solo existen en el cluster).
-- [ ] Commit de todo lo hecho.
+- [x] Rama `consolidacion/fase-0` fusionada en `main` (2026-10-01, sin push).
+
 
 ### Fase 1 — Llegan los cables
 
