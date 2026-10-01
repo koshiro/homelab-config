@@ -7,7 +7,7 @@ Despliegue de ComfyUI en el cluster homelab usando la imagen [jemeyer/comfyui](h
 Revisión por agent-deploy, agent-truenas, agent-maintenance:
 
 1. **Almacenamiento:** `homelab-storage/comfyui` servido por NFS desde Proxmox (`192.168.1.100`). Estructura de directorios: `kubectl apply -f 05-job-prepare-workspace.yaml`. Si el pod queda en Init por NFS, ajustar `mountOptions` en `02-pv-pvc.yaml` (vers=4 recomendado).
-3. **Credenciales BasicAuth:** Guardar la contraseña generada por agent-deploy en tu gestor de contraseñas.
+3. **Acceso:** protegido por Cloudflare Access (app «Homelab admin»); no hay credenciales propias.
 4. **Label media-worker:** Verificar que k3s-node-1 tenga el label:
    ```bash
    ssh daniel@pibot "sudo k3s kubectl get node k3s-node-1 --show-labels | grep media-worker"
@@ -30,11 +30,9 @@ Revisión por agent-deploy, agent-truenas, agent-maintenance:
   3. En pibot (o k3s-node-1 donde corre el pod): `tailscale serve --bg 80 http://127.0.0.1:$(kubectl get svc comfyui -n comfyui -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "31234")`
   4. Acceso: https://pibot (o hostname Tailscale del nodo) - solo desde dispositivos en la tailnet.
 
-## Credenciales BasicAuth
+## Acceso
 
-La contraseña fue generada por **agent-deploy** en la revisión del plan. **Guardar en tu gestor de contraseñas** (el hash ya está aplicado en `03-ingress-domain.yaml`).
-
-Si necesitas regenerar: `htpasswd -nb comfyui 'NUEVA_PASS' | base64 | tr -d '\n'` y reemplazar `users` en el Secret.
+`comfyui.danielriquelme.cl` está detrás de **Cloudflare Access** (app «Homelab admin», política `BlockAllbyMe`): login con código enviado al correo, sesión de 24 h. El basic auth de Traefik se eliminó el 2026-10-01.
 
 ## GPU compartida con Plex (time-slicing)
 
