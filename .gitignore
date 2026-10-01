@@ -72,3 +72,7 @@ cluster-sync-report.txt
 # Contraseña del vault de Ansible: vive fuera del repo (~/.config/homelab/ansible-vault-pass)
 .vault_password.txt
 .vault_pass*
+
+# Python
+__pycache__/
+*.pyc
