@@ -16,7 +16,7 @@ spec:
     metadata:
       labels:
         app: minecraft
-      # Ruta de datos: no cambiar sin backup; respaldos = snapshots TrueNAS en este dataset
+      # Ruta de datos: no cambiar sin backup; respaldos = sanoid en Proxmox (nvme/k8s/minecraft) + syncoid + restic
       annotations:
         data/nfs-path: "192.168.1.100:/nvme/k8s/minecraft"
     spec:

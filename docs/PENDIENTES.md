@@ -1,6 +1,6 @@
 # Pendientes del homelab
 
-Última revisión: 2026-09-30. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-10-01. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
 
 Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este archivo detalla las tareas.
 
@@ -39,6 +39,9 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 ## 3. Limpieza del cluster ✅ (2026-10-01)
 
 - [x] PVs huérfanos eliminados (12).
+- [x] Recursos huérfanos eliminados (2026-10-01): Ingress `immich-manual-ingress` (el `immich-ingress` del repo pasó a entrypoint `web` sin TLS, igual que el resto), Service `immich-postgresql` (ExternalName), secret `immich-secrets`, `truenas-node-exporter` y servicios `truenas-exporter`/`truenas-node-exporter`, ns `traefik` vacío.
+- [x] Montajes NFS a TrueNAS (`/mnt/homelab-storage`, `/mnt/pool_medios`, `/mnt/pool_downloads`) comentados en `/etc/fstab` de los 3 workers (respaldo `/etc/fstab.bak-truenas-20261001`).
+- [x] Repo: manifiestos vacíos de Overseerr y namespaces/services/Ingress de la suite *arr y Plex reconstruidos desde el cluster (sin diff contra lo vivo).
 - [ ] Dataset `openclaw` en TrueNAS: borrar cuando el pool vuelva (app eliminada).
 
 ## 4. Seguridad
@@ -49,7 +52,7 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [ ] TrueNAS tenía un kubeconfig de admin en `/root/.kube` (zvol de la VM 101): se elimina con `qm destroy 101`.
 
 - [x] Contraseña del vault rotada (2026-10-01): `ansible-vault rekey`, nueva contraseña fuera del repo en `~/.config/homelab/ansible-vault-pass` (guardarla también en el gestor de contraseñas), `.vault_password.txt` eliminado de git e ignorado. El historial solo contiene una versión antigua del vault con `vault_truenas_password` (TrueNAS se retira).
-- [ ] `.truenas-api-key`: sigue versionado; eliminar al retirar TrueNAS (fase 3).
+- [x] `.truenas-api-key` fuera del índice de git (2026-10-01); sigue en el historial. Revocar la key en TrueNAS si la VM 101 vuelve a arrancar antes de `qm destroy`.
 - [x] Contraseña del rol `immich` rotada (2026-10-01); `homelab-postgres-superuser` (secret de bootstrap de CNPG) alineado con la misma.
 - [x] `WO_SECRET_KEY` de WebODM rotada (2026-10-01); `secret.sops.yml` ahora incluye `namespace: webodm`.
 - [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí**; decidir si se cifran o borran antes de commitear en ese repo.
@@ -85,9 +88,9 @@ VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). I
 1. Instalar Flux (sección 6) — el HelmRelease ya existe.
 2. kube-prometheus-stack en ns `monitoring` con Grafana incluido; valores mínimos para Raspberry + 3 workers: retención 7d, PVC `local-path` 10 Gi para Prometheus (luego NFS de Proxmox), Alertmanager desactivado al inicio.
 3. Actualizar chart a versión actual y fijar imagen de Grafana (no `latest`).
-4. Scrape configs para los exporters existentes (`additionalScrapeConfigs` o `ServiceMonitor`); reemplazar `truenas-node-exporter` según el destino de TrueNAS.
-5. Dashboards como ConfigMaps con label `grafana_dashboard: "1"` (ya hay 2 de TrueNAS en el repo).
-6. Secretos (`secret-grafana`, `secret-proxmox`, `secret-truenas-credentials`) vía SOPS con Flux (`decryption.provider: sops`), eliminar `secret-generator.yaml`.
+4. Scrape configs para los exporters existentes (`pve-exporter`, `speedtest-exporter`) vía `ServiceMonitor`; añadir `node_exporter`/`zfs_exporter`/`smartctl_exporter` en el host Proxmox.
+5. Dashboards como ConfigMaps con label `grafana_dashboard: "1"`.
+6. Secretos (`secret-grafana`, `secret-proxmox`) vía SOPS con Flux (`decryption.provider: sops`).
 7. Migrar/eliminar el Grafana manual del ns `grafana` y su Ingress.
 8. Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) junto al monitoreo si hace falta.
 
@@ -98,15 +101,16 @@ VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). I
 - [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`, `03-monitoring`.
 - [ ] Hasta entonces el flujo real es `kubectl apply -k` / `kubectl apply -f`. `kubectl kustomize cluster` compila (verificado 2026-09-30).
 
-## 7. IoT (`cluster/07-iot/`)
+## 7. IoT
 
-- [ ] Configurar y desplegar `mosquitto`, `meshtastic`, `meshtastic-dashboard` (no desplegados). Guía: `docs/guides/10_meshtastic_setup.md`.
+- [ ] Mosquitto/Meshtastic: no hay manifiestos en el repo (la carpeta `cluster/07-iot/` ya no existe). Si se retoma, partir de cero.
 
 ## 8. Documentación
 
 - [ ] Rehacer `docs/` cuando el cluster esté estable: `docs/guides` tiene numeración duplicada (09_, 10_), varias guías describen estado antiguo (ArgoCD, TrueNAS). Estructura propuesta: `docs/arquitectura.md`, `docs/operacion/` (apagado, respaldos, SOPS), `docs/apps/<app>.md`, `docs/runbooks/`.
 - [ ] Revisar `docs/RESILIENCIA-POST-APAGON-ANALISIS.md`, `docs/RESUMEN-ACCIONES-RESILIENCIA.md`, `docs/OVERSEERR-INTERMITENCIA-SOLUCION.md`, `docs/storage_optimization_audit.md` → integrar o eliminar.
-- [ ] `scripts/check-resilience-status.sh` referencia `quick-resilience-fix.sh` (eliminado).
+- [ ] Los docs de `docs/guides/` (salvo `08_plex_remote_access_setup.md`), `docs/runbooks/`, `docs/security/` y los análisis de resiliencia/Overseerr **no están versionados**: `~/.gitignore_global` ignora `docs`. Decidir qué se versiona (`git add -f`) y qué se archiva.
+- [x] Limpieza 2026-10-01: eliminados playbooks de TrueNAS/one-off (`*truenas*`, `create_vms`, `mount_nfs`, `revert_nvidia_driver`, `shutdown_proxmox`, `resize_vm_disks`), 15 scripts obsoletos (TrueNAS, resiliencia, Plex one-off), manifiestos sin uso (`nfs-csi-driver`, HelmRelease de Traefik, dashboards/exporter/secret de TrueNAS, KSOPS) y restos Helm de Immich.
 
 ## 9. Otros
 

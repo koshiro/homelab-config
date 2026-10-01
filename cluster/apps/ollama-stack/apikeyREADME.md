@@ -1,6 +1,6 @@
 # Ollama stack — acceso y API keys
 
-Referencia rápida para conectar clientes (Cursor, OpenClaw, scripts) y usar Open WebUI.
+Referencia rápida para conectar clientes (Cursor, scripts) y usar Open WebUI.
 
 ## Qué hay desplegado
 
@@ -34,7 +34,7 @@ open "http://k3s-node-0:30080"
 
 Si no usas MagicDNS, sustituye `k3s-node-0` por la IP Tailscale del nodo (`100.x.y.z`).
 
-Dentro del clúster (p. ej. OpenClaw): `http://ollama.ollama-stack.svc.cluster.local:11434`.
+Dentro del clúster: `http://ollama.ollama-stack.svc.cluster.local:11434`.
 
 ### 2. Ingress (solo Open WebUI, no la API Ollama)
 
@@ -59,7 +59,6 @@ En el deployment **no** hay `OLLAMA_API_KEY`. La instancia es de confianza en re
 | Cliente | Base URL | API Key |
 |---------|----------|---------|
 | **Cursor** (OpenAI-compatible) | `http://k3s-node-0:31434/v1` | Cualquier placeholder, p. ej. `ollama` |
-| **OpenClaw** (API nativa) | `http://k3s-node-0:31434` (sin `/v1`) | `ollama-local` (placeholder; ver `cluster/apps/openclaw/configmap.yml`) |
 | **curl / scripts** | `http://k3s-node-0:31434` | No requerida |
 
 Ejemplo Cursor:
@@ -67,18 +66,6 @@ Ejemplo Cursor:
 - **Override OpenAI Base URL:** `http://k3s-node-0:31434/v1`
 - **API Key:** `ollama`
 - **Modelo:** nombre exacto de `ollama list` en el pod (p. ej. `qwen2.5-coder:7b`)
-
-Ejemplo OpenClaw (`openclaw.json`):
-
-```json
-"ollama": {
-  "api": "ollama",
-  "apiKey": "ollama-local",
-  "baseUrl": "http://k3s-node-0:31434"
-}
-```
-
-Intra-cluster (OpenClaw en k8s): `baseUrl` = `http://ollama.ollama-stack.svc.cluster.local:11434`.
 
 ### Open WebUI
 

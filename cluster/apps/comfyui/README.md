@@ -4,8 +4,6 @@ Despliegue de ComfyUI en el cluster homelab usando la imagen [jemeyer/comfyui](h
 
 ## Pasos previos al despliegue (orden)
 
-Revisión por agent-deploy, agent-truenas, agent-maintenance:
-
 1. **Almacenamiento:** `homelab-storage/comfyui` servido por NFS desde Proxmox (`192.168.1.100`). Estructura de directorios: `kubectl apply -f 05-job-prepare-workspace.yaml`. Si el pod queda en Init por NFS, ajustar `mountOptions` en `02-pv-pvc.yaml` (vers=4 recomendado).
 3. **Acceso:** protegido por Cloudflare Access (app «Homelab admin»); no hay credenciales propias.
 4. **Label media-worker:** Verificar que k3s-node-1 tenga el label:

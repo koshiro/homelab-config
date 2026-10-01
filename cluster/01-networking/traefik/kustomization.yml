@@ -1,9 +1,5 @@
-# /cluster/traefik/kustomization.yml
+# Traefik lo provee k3s (kube-system); aquí solo van recursos adicionales.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespace.yml
   - middleware-plex.yml
-  # Deshabilitado para no interferir con Traefik de k3s ya funcionando
-  # - helm-repository.yml
-  # - helm-release.yml

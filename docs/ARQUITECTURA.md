@@ -146,7 +146,7 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 ### Fase 3 — Retirar TrueNAS y limpiar
 
 1. Con la réplica en `homelab-storage/backup/k8s` verificada: borrar las copias viejas en `homelab-storage` (`immich-library`, carpeta `minecraft-server` y su dataset vacío con snapshots, `pingvin`, `openclaw`, `photoprism`, `ollama`, `open-webui`, `plex-config`, `system-*`, `temp`, `staging`, `logs`, `config-backups`, `web-backup`, `backup_cleanup_*`, `archived-immich-redis-*`).
-2. `qm destroy 101` (libera ~57 GB en `nvme`) y quitar referencias a TrueNAS (inventario Ansible, playbooks `*truenas*`, skills `homelab-truenas-api`, scripts `setup-truenas-*`, `deploy-to-truenas.sh`, `setup-kubectl-truenas.sh`).
+2. `qm destroy 101` y plantilla 9001 `truenas-template` (libera ~57 GB en `nvme`). Referencias a TrueNAS en el repo ya eliminadas (2026-10-01: inventario, playbooks, scripts, exporters); queda la skill local `homelab-truenas-api` en `.cursor/`.
 3. vzdump semanal de VMs 102–104 → `homelab-storage/backup/vzdump` (retención 4).
 
 ### Fase 4 — Operación

@@ -4,7 +4,7 @@ Stack alineado con [WebODM docker-compose](https://github.com/OpenDroneMap/WebOD
 
 ## Acceso vía Tailscale
 
-Con el mismo patrón que OpenClaw/Ollama en el README del repo:
+Con el mismo patrón que Ollama (NodePort + tailnet):
 
 ```text
 http://k3s-node-0:31808
@@ -53,7 +53,7 @@ Primera visita: creación del usuario admin en la UI.
 
 ## Secretos
 
-`secret.yml` incluye `WO_SECRET_KEY` para evitar que Django escriba `secret_key.py` en una capa de solo lectura. En repos más expuestos conviene sustituirlo por **SOPS** (patrón `openclaw`).
+`secret.sops.yml` (SOPS) incluye `WO_SECRET_KEY` para evitar que Django escriba `secret_key.py` en una capa de solo lectura.
 
 ## Recursos y afinidad
 

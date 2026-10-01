@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overseerr
+  namespace: overseerr
+  labels:
+    app: overseerr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: overseerr
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: overseerr
+    spec:
+      containers:
+      - env:
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        - name: TZ
+          value: Etc/UTC
+        image: linuxserver/overseerr
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 10
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          successThreshold: 1
+          tcpSocket:
+            port: 5055
+          timeoutSeconds: 5
+        name: overseerr
+        ports:
+        - containerPort: 5055
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 5055
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /config
+          name: config
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: overseerr-config

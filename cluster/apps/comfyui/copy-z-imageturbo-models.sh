@@ -3,7 +3,7 @@
 # Ejecutar en tu Mac con sudo (monta NFS y copia; el mount es root, por eso cp también con sudo):
 #   cd cluster/apps/comfyui && sudo ./copy-z-imageturbo-models.sh
 #
-# Requiere: Mac en la red local (192.168.1.x) con acceso a TrueNAS.
+# Requiere: Mac en la red local (192.168.1.x) con acceso al NFS de Proxmox (192.168.1.100).
 
 set -e
 
@@ -27,7 +27,7 @@ mkdir -p "$MOUNT_POINT"
 if ! mount | grep -q "$MOUNT_POINT"; then
   echo "Montando NFS..."
   sudo mount -t nfs -o resvport,vers=4,noatime "${NFS_SERVER}:${NFS_PATH}" "$MOUNT_POINT" || {
-    echo "ERROR: No se pudo montar. ¿Estás en la red local? ¿TrueNAS accesible?"
+    echo "ERROR: No se pudo montar. ¿Estás en la red local? ¿NFS de Proxmox accesible?"
     exit 1
   }
   UNMOUNT=1

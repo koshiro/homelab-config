@@ -1,9 +1,0 @@
----
-- name: Apagar el servidor Proxmox
-  hosts: proxmox_host
-  become: true
-  tasks:
-    - name: Apagar el servidor de forma segura
-      community.general.shutdown:
-        msg: "Apagando el servidor para mantenimiento de hardware."
-      when: ansible_system == 'Linux'

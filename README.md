@@ -2,7 +2,7 @@
 
 Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de Kubernetes en `cluster/`, secretos con SOPS/age y exposición pública vía Cloudflare Tunnel.
 
-> **Estado (2026-09-30):** el pool `homelab-storage` de TrueNAS está fuera de servicio (VM 101 detenida; problema de enlace SATA/NCQ). Immich, Minecraft y Pingvin fueron rescatados a ZFS en Proxmox y se sirven por NFS desde `192.168.1.100`. El resto de apps con NFS sigue en `replicas: 0`. Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (retiro de TrueNAS, capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+> **Estado (2026-10-01):** TrueNAS se retira (VM 101 detenida). ZFS, NFS y snapshots viven en el host Proxmox (`192.168.1.100`). Immich, Minecraft y Pingvin ya corren desde `nvme/k8s`; Plex, la suite *arr y ComfyUI siguen en `replicas: 0` hasta reconectar el disco de 12 TB (`homelab-storage`, fase 1). Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (retiro de TrueNAS, capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
 ## Arquitectura
 
@@ -11,7 +11,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | **Proxmox** | `192.168.1.100` · pool ZFS `nvme` (mirror 2×512 GB) para discos de VMs |
 | **k3s** v1.33 | Master `pibot` (Raspberry Pi, `192.168.1.15`) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`) |
 | **GPU** | NVIDIA en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
-| **TrueNAS** | VM 101, `192.168.1.20`, pool `homelab-storage` (1 × 12 TB, sin redundancia) servido por NFS |
+| **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (media, pendiente de fase 1). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
 | **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**: `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` y `josekast.cl` → Traefik. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
@@ -59,16 +59,16 @@ export KUBECONFIG=~/.kube/config-homelab
 ```
 ansible/            Inventario, playbooks (provisioning/, maintenance/), rol nvidia_gpu
 cluster/
-  00-infrastructure/  NFS CSI, NVIDIA device plugin, RuntimeClass
-  01-networking/      Traefik
+  00-infrastructure/  NVIDIA device plugin, RuntimeClass, CronJob de copia de etcd
+  01-networking/      Middleware de Traefik (Traefik lo provee k3s)
   03-monitoring/      kube-prometheus-stack (HelmRelease, requiere Flux) + exporters
   04-media-stack/     Plex, *arr, qBittorrent, FlareSolverr
   05-services/        Overseerr, Pingvin
   06-external/        cloudflared
-  07-iot/             Mosquitto, Meshtastic (pendiente de desplegar)
   apps/               Immich, Minecraft, PostgreSQL, Ollama, ComfyUI, WebODM, …
   kustomization.yml   Raíz (compila con `kubectl kustomize cluster`; incompleta, ver PENDIENTES)
-docs/               PENDIENTES.md, guides/, runbooks/, security/
+docs/               ARQUITECTURA.md, PENDIENTES.md, guides/
+proxmox/            Configuración versionada del host (ZFS, NFS, sanoid, restic, LXC nas)
 scripts/            Respaldos, verificación y utilidades
 backups/            Copias locales de configs (ignorado por git)
 ```
@@ -94,14 +94,15 @@ ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_sta
 
 Verifica pools y NFS, espera workers Ready, hace `uncordon` y lista pods con problemas.
 
-**Provisionar** (Proxmox, VMs, TrueNAS, k3s):
+**Reconstruir** (bootstrap de Proxmox + k3s; las VMs se restauran desde vzdump):
 
 ```bash
-cp ansible/vars/homelab_vars.yml.example ansible/vars/homelab_vars.yml   # ajustar
-ansible-galaxy collection install community.general community.proxmox kubernetes.core
-ansible-playbook -i ansible/inventory ansible/playbook_provision_all.yml   # vault: ~/.config/homelab/ansible-vault-pass
-# Tags: bootstrap, provision, truenas, k3s, verify
+ansible-galaxy collection install community.general kubernetes.core
+ansible-playbook ansible/playbook_provision_all.yml   # vault: ~/.config/homelab/ansible-vault-pass
+# Tags: bootstrap, wait, k3s, verify
 ```
+
+Playbooks disponibles: [ansible/playbooks/README.md](ansible/playbooks/README.md).
 
 **Desplegar una app:** namespace → Deployment → Service → PVC → Ingress (`host: <app>.danielriquelme.cl`). El túnel ya enruta el comodín; no hace falta tocar Cloudflare. Para servicios privados usar NodePort fijo y acceder por tailnet. Añadir la carpeta a `cluster/kustomization.yml`.
 
@@ -113,9 +114,9 @@ sops --encrypt --age age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4ml
 sops --decrypt secret.sops.yaml | kubectl apply -f -
 ```
 
-Nunca versionar secretos sin cifrar. Respaldo de la clave: `scripts/backup-sops-keys.sh` / `restore-sops-keys.sh`. Detalle en `docs/security/`.
+Nunca versionar secretos sin cifrar. Respaldo de la clave: `scripts/backup-sops-keys.sh` / `restore-sops-keys.sh`.
 
-**Respaldos:** cronjobs en TrueNAS (`/root/scripts/`, destino `/mnt/homelab-storage/backups/`). Ver `docs/guides/05_backup_system.md`. *Detenidos mientras TrueNAS esté caído.*
+**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`.
 
 **Verificación rápida:**
 
@@ -127,4 +128,4 @@ ansible all -i ansible/inventory -m ping
 
 ## Agentes y skills
 
-Ver **[AGENTS.md](AGENTS.md)**: skills en `.cursor/skills/` (mantenimiento, TrueNAS API, despliegue, Ansible, SOPS, respaldos). Pentest y evaluaciones de seguridad viven en el repo hermano `security-assessment` (`docs/security-assessment-repo.md`).
+Ver **[AGENTS.md](AGENTS.md)**: skills locales en `.cursor/skills/` (mantenimiento, despliegue, Ansible, SOPS, respaldos). Pentest y evaluaciones de seguridad viven en el repo hermano `security-assessment`.

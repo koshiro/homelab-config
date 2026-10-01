@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plex
+  namespace: plex
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-plex-headers@kubernetescrd
+spec:
+  rules:
+  - host: plex.danielriquelme.cl
+    http:
+      paths:
+      - backend:
+          service:
+            name: plex
+            port:
+              number: 32400
+        path: /
+        pathType: Prefix

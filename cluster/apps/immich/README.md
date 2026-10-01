@@ -47,7 +47,10 @@ kubectl logs -n immich deployment/immich-machine-learning
 
 ### Verificar conectividad a la base de datos
 ```bash
-kubectl run postgres-test --image=postgres:15 --rm -it --restart=Never --env="PGPASSWORD=OC3A3kD7Q0yaTogfuWpIpsvUFwZ1DLgQHFLoAFAOu9mij9Sb33XeauMKuCl6Xbcw" -- psql -h homelab-postgres-rw.postgresql.svc.cluster.local -U immich -d immich -c "SELECT version();"
+# La contraseña se lee del secret homelab-postgres-app (nunca escribirla aquí)
+DBPASS=$(kubectl -n immich get secret homelab-postgres-app -o go-template --template '{{.data.password | base64decode}}')
+kubectl run postgres-test --image=postgres:15 --rm -it --restart=Never --env=PGPASSWORD=$DBPASS -- \
+  psql -h homelab-postgres-rw.postgresql.svc.cluster.local -U immich -d immich -c 'SELECT version();'
 ```
 
 ## Archivos de Configuración
@@ -56,4 +59,3 @@ kubectl run postgres-test --image=postgres:15 --rm -it --restart=Never --env="PG
 - `01-secret.sops.yaml`: Secretos de la base de datos (SOPS)
 - `02-ingress.yaml`: Configuración de Ingress para acceso externo
 - `03-configmap.yaml`: Variables de entorno y configuración
-- `values.yaml`: Valores de configuración (referencia)

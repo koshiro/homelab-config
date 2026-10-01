@@ -67,9 +67,9 @@ check_dependencies() {
 backup_cluster_key() {
     info "Respaldando clave del cluster..."
     
-    if kubectl get secret sops-age -n argocd &> /dev/null; then
+    if kubectl get secret sops-age -n flux-system &> /dev/null; then
         # Extraer la clave del cluster
-        kubectl get secret sops-age -n argocd -o jsonpath='{.data.keys\.txt}' | base64 -d > "$CLUSTER_BACKUP_FILE"
+        kubectl get secret sops-age -n flux-system -o go-template --template '{{index .data "keys.txt"}}' | base64 -d > "$CLUSTER_BACKUP_FILE"
         
         # Obtener la clave pública correspondiente
         PUBLIC_KEY=$(grep -o 'age1[a-zA-Z0-9]*' "$CLUSTER_BACKUP_FILE" | head -1)
@@ -79,7 +79,7 @@ backup_cluster_key() {
 # Información de la clave
 # Fecha de respaldo: $(date)
 # Clave pública: $PUBLIC_KEY
-# Namespace: argocd
+# Namespace: flux-system
 # Secret: sops-age
 EOF
         

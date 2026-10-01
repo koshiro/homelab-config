@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prowlarr-ingress
+  namespace: prowlarr
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: prowlarr.danielriquelme.cl
+    http:
+      paths:
+      - backend:
+          service:
+            name: prowlarr
+            port:
+              number: 9696
+        path: /
+        pathType: Prefix
