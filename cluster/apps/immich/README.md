@@ -53,7 +53,7 @@ kubectl run postgres-test --image=postgres:15 --rm -it --restart=Never --env="PG
 ## Archivos de Configuración
 
 - `00-deployment.yaml`: Deployment principal de Immich
-- `01-secret.yaml`: Secretos de la base de datos
+- `01-secret.sops.yaml`: Secretos de la base de datos (SOPS)
 - `02-ingress.yaml`: Configuración de Ingress para acceso externo
 - `03-configmap.yaml`: Variables de entorno y configuración
 - `values.yaml`: Valores de configuración (referencia)

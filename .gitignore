@@ -6,10 +6,6 @@
 .env.production
 .env.staging
 
-# Archivos de SOPS que no están encriptados
-*.sops.yml
-!*.sops.yml
-
 # Claves de encriptación
 .age-key
 *.age-key
@@ -63,9 +59,12 @@ docker-compose.override.yml
 # Backups and local state
 .cluster-backup/
 cluster-export/
-backups/
+/backups/
 
 # Temporary files
 temp-*.yaml
 temp-*.yml
 cluster-sync-report.txt
+
+# Historial local del editor (extensión Local History)
+.history/
