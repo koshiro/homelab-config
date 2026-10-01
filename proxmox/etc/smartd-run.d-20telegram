@@ -1,0 +1,3 @@
+#!/bin/sh
+# smartd -> Telegram (lo invoca smartd-runner con variables SMARTD_*)
+notify-telegram "💽 SMART ${SMARTD_DEVICE:-?} (${SMARTD_FAILTYPE:-?}): ${SMARTD_MESSAGE:-sin mensaje}"

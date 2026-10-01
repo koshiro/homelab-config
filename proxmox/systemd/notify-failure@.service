@@ -1,0 +1,5 @@
+[Unit]
+Description=Aviso Telegram: falló %i
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "notify-telegram \"❌ Falló %i\n$(journalctl -u %i -n 8 --no-pager -o cat | tail -c 800)\""

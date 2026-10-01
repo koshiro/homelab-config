@@ -1,0 +1,6 @@
+[Unit]
+Description=Replica nvme/k8s -> respaldo/k8s (syncoid)
+After=zfs-import.target
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation nvme/k8s respaldo/k8s

@@ -1,0 +1,9 @@
+#!/bin/sh
+# Envía un mensaje a Telegram. Uso: notify-telegram "texto"   (o por stdin)
+. /root/.secrets/telegram.env
+msg="${*:-$(cat)}"
+if [ -z "$TELEGRAM_CHAT_ID" ]; then logger -t notify-telegram "sin TELEGRAM_CHAT_ID: $msg"; exit 0; fi
+curl -s -m 20 -o /dev/null \
+  --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+  --data-urlencode "text=🖥️ pve · $msg" \
+  "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"

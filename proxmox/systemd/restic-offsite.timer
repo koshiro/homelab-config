@@ -1,0 +1,8 @@
+[Unit]
+Description=Respaldo offsite diario a R2
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=10min
+Persistent=true
+[Install]
+WantedBy=timers.target

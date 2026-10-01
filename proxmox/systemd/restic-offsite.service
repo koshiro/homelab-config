@@ -1,0 +1,11 @@
+[Unit]
+Description=Respaldo offsite restic -> Cloudflare R2
+Wants=network-online.target
+After=network-online.target
+OnFailure=notify-failure@%n.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/restic-offsite.sh
+Environment=RESTIC_CACHE_DIR=/var/cache/restic
+Nice=10
+IOSchedulingClass=idle

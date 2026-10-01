@@ -1,0 +1,7 @@
+[Unit]
+Description=Verificación diaria de respaldos
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+[Install]
+WantedBy=timers.target

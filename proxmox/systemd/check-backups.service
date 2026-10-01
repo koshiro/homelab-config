@@ -1,0 +1,5 @@
+[Unit]
+Description=Verificación de frescura de respaldos
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/check-backups.sh
