@@ -23,9 +23,20 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 Solo `nvme` y `respaldo` están en `/etc/zfs/zpool.cache` (`zpool set cachefile=/etc/zfs/zpool.cache <pool>`), así que `zfs-import-cache` importa exactamente esos. `homelab-storage` y el `boot-pool` de TrueNAS se ven en `zpool import` pero **no** se importan solos (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
 
-## Acceso fuera de banda
+## Acceso fuera de banda (NanoKVM PCIe)
 
-KVM IP: `http://kvm-7267` (usuario `admin`, contraseña en el vault: `vault_kvm_admin_password`). Sirve para ver la consola y forzar reset si el host se cuelga (pasó el 2026-10-01 al reiniciar con snapshots bloqueados por el bug de ZFS 2.3.3).
+NanoKVM **PCIe** dentro del servidor, conectado al panel frontal (botones de encendido/reset) y a la salida de video. Firmware 2.5.0.
+
+| | |
+|---|---|
+| Web | `http://kvm-7267` (tailnet) · `192.168.1.25` (cable) · usuario `admin`, contraseña `vault_kvm_admin_password` |
+| MCP | `http://kvm-7267/api/mcp`, cabecera `Authorization: Bearer <vault_kvm_mcp_key>`. Herramientas: `cube_screenshot`, `cube_type_text`, `cube_press_keys`, `cube_click_mouse`, `cube_move_mouse`, `cube_scroll_mouse` (sin control de energía) |
+| Energía (ATX) | API web: `GET /api/vm/gpio` (estado de LEDs `pwr`/`hdd`); `POST /api/vm/gpio` para pulsar power/reset. Requiere sesión web |
+
+Login por API: el frontend cifra la contraseña con CryptoJS AES (frase `nanokvm-sipeed-2024`, formato OpenSSL `Salted__`, MD5) y la URL-codifica; equivalente:
+`printf %s "$PASS" | openssl enc -aes-256-cbc -md md5 -salt -pass pass:nanokvm-sipeed-2024 -base64 -A` → `POST /api/auth/login {"username":"admin","password":"<urlencoded>"}` → token en cookie `nano-kvm-token`.
+
+Uso típico: si el host se cuelga al apagar (pasó el 2026-10-01 con los snapshots bloqueados por el bug de ZFS 2.3.3), ver la consola por `cube_screenshot` y, si no responde, reset por ATX.
 
 ## Secretos (no versionados)
 
