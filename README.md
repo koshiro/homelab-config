@@ -51,6 +51,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | WebODM | `webodm` | interno | local-path | ✅ |
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` | — | ✅ |
+| josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` (regla propia en el túnel) | NFS Proxmox `nvme/k8s/webs/josekast` (solo lectura) | ✅ |
 | Grafana | `grafana` | `grafana.danielriquelme.cl` | ninguno (efímero) | ⚠️ ver plan de monitoreo |
 
 ## Estructura del repo

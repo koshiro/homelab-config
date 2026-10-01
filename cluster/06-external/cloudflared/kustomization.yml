@@ -3,6 +3,7 @@ kind: Kustomization
 # El túnel se gestiona remotamente en Cloudflare (Zero Trust > Tunnels):
 #   plex.danielriquelme.cl -> plex.plex.svc:32400
 #   *.danielriquelme.cl    -> traefik.kube-system.svc:80
+#   josekast.cl, www.josekast.cl -> traefik.kube-system.svc:80   (zona josekast.cl, CNAME al túnel)
 # Cualquier Ingress con host *.danielriquelme.cl queda PÚBLICO.
 # El token vive en el secret cloudflared-token (secret.sops.yml, aplicar con sops -d | kubectl apply -f -).
 resources:
