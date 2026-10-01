@@ -4,7 +4,7 @@ metadata:
   name: qbittorrent
   namespace: qbittorrent
 spec:
-  replicas: 1
+  replicas: 0  # pausado: esperando NFS (ver docs/PENDIENTES.md)
   selector:
     matchLabels:
       app: qbittorrent
