@@ -21,7 +21,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 ## Pools ZFS al arrancar
 
-Solo `nvme` y `respaldo` están en `/etc/zfs/zpool.cache` (`zpool set cachefile=/etc/zfs/zpool.cache <pool>`), así que `zfs-import-cache` importa exactamente esos. `homelab-storage` y el `boot-pool` de TrueNAS se ven en `zpool import` pero **no** se importan solos (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
+`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` y el `boot-pool` de TrueNAS se ven en `zpool import` pero **no** se importan solos (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
 
 ## Acceso fuera de banda (NanoKVM PCIe)
 

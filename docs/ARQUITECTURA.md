@@ -20,7 +20,7 @@ flowchart TB
     subgraph POOLS["ZFS en el host"]
       NVME["nvme · mirror 2×512 GB<br/>discos VM + nvme/k8s/*"]
       BULK["homelab-storage · 12 TB<br/>media, *arr, Time Machine, respaldos"]
-      RESP["respaldo · 3 TB (sde)<br/>2ª copia de nvme/k8s"]
+      RESP["respaldo · 3 TB (WD30EZRX)<br/>2ª copia de nvme/k8s"]
     end
     NFS["nfs-kernel-server"]
     SAN["sanoid / syncoid"]
@@ -50,9 +50,10 @@ flowchart TB
 |---|---|---|---|
 | `nvme` | 2 × NVMe 512 GB, mirror | Discos de VMs, `nvme/k8s/<app>` (Immich, Minecraft, Pingvin, futuras apps con datos de valor) | ~260 GB libres; +57 GB al borrar los zvols de TrueNAS |
 | `homelab-storage` | Seagate 12 TB (único) | `k8s-media-library` (6.2 TB), `media` (1.7 TB, RAW), `timemachine`, `comfyui`, `backup/` (réplicas y vzdump) | Sin redundancia → solo datos reemplazables o copias. Montaje en `/mnt/homelab-storage` para no cambiar rutas de los PV |
-| `respaldo` | WD 3 TB (`sde`) | Réplica de `nvme/k8s` y de dumps de Postgres | Disco viejo (1 sector reasignado): es *copia*, nunca original |
-| — | WD 2 TB (`sdd`) | **Retirar** del pool (SLOG en HDD no aporta; 89 000 h) | Opcional: tercer destino frío |
-| — | SSD 120 GB (`sdb`) | **L2ARC solo de metadatos** de `homelab-storage` (`secondarycache=metadata`, L2ARC persistente) | Desgastado: 56.5 TB escritos sobre ~40 TBW nominales y 299 cortes de energía. Solo usos donde su falla sea inocua: **nunca** SLOG ni special vdev ni scratch de descargas |
+| `respaldo` | WD 3 TB (WD30EZRX, SATA6G_6) | Réplica de `nvme/k8s` y de dumps de Postgres | Disco viejo (1 sector reasignado): es *copia*, nunca original |
+| — | WD 2 TB (WD20EURS, SATA6G_5, enlace SATA II 3 Gbps) | **Retirar** del pool (SLOG en HDD no aporta; 89 000 h) | Opcional: tercer destino frío |
+| — | ~~SSD 120 GB~~ | **Retirado** (2026-10-01, desgastado) | Reemplazado físicamente por un WD 1 TB de 2,5" (WD10JPVX, SATA6G_4, 19 200 h, SMART limpio), aún con particiones NTFS de Windows y **sin uso asignado**. No sirve como L2ARC (es HDD) |
+| — | SSD GIGABYTE 240 GB (SATA6G_1) | Disco de arranque de Proxmox (LVM `pve`: root 38 GB, swap, `local-lvm`) | Fuera de ZFS | Desgastado: 56.5 TB escritos sobre ~40 TBW nominales y 299 cortes de energía. Solo usos donde su falla sea inocua: **nunca** SLOG ni special vdev ni scratch de descargas |
 
 **ARC:** subir `zfs_arc_max` de 1.5 GB a **8 GB** (`/etc/modprobe.d/zfs.conf`). La RAM liberada por la VM de TrueNAS (16 GB) lo permite holgadamente.
 
@@ -129,10 +130,10 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 
 ### Fase 1 — Llegan los cables
 
-1. Cambiar cable SATA + poder del 12 TB; BIOS en **AHCI**.
-2. `dmesg | grep ata4` → enlace a 6 Gbps sin resets; probar con NCQ activado (si falla, NCQ off permanente: `libata.force=4.00:noncq`).
+1. [x] Cambiar cable SATA + poder del 12 TB; BIOS en **AHCI** (2026-10-01; el 12 TB quedó en SATA6G_3 = `ata3`).
+2. [x] `dmesg | grep ata3` → enlace a **6.0 Gbps con NCQ (depth 32)** y 0 errores/resets tras el arranque. Vigilar bajo carga (scrub).
 3. `zpool import homelab-storage` **en el host, lectura-escritura**; `zfs set mountpoint=/mnt/homelab-storage homelab-storage`.
-4. `zpool remove homelab-storage <sdd>` (quitar SLOG); decidir L2ARC.
+4. `zpool remove homelab-storage <WD 2 TB>` (quitar SLOG) y el cache del SSD de 120 GB retirado (el pool lo verá como UNAVAIL).
 5. `zpool scrub` completo; revisar errores permanentes (esperados: 1 RAW con copia externa, 3 objetos de Time Machine).
 6. Exportar por NFS las rutas de media; aplicar manifiestos de *arr/Plex/ComfyUI con el servidor nuevo; escalar a 1.
 7. sanoid para `homelab-storage` (política de la tabla) y `syncoid nvme/k8s → homelab-storage/backup/k8s`.
@@ -164,11 +165,12 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 - **Un solo host físico**: si cae Proxmox cae todo salvo pibot. Mitigación: offsite (fase 4) y vzdump.
 - **pibot es único control-plane** (etcd en una Raspberry Pi): respaldo de etcd (fase 0); a futuro, control-plane en una VM.
 - **`homelab-storage` sin redundancia**: aceptado porque solo guarda datos reemplazables o copias. Si se quiere proteger media, añadir un segundo disco de 12 TB en mirror.
-- **Discos viejos** (`sdd`, `sde`): solo como copias; vigilar SMART.
+- **Discos viejos** (WD 2 TB, WD 3 TB): solo como copias; vigilar SMART.
 
 ## Decisiones abiertas
 
 - [x] Cuota de Time Machine: **1 TB** (hoy ocupa 476 GB).
 - [ ] Destino offsite: iCloud Drive (rclone) vs Cloudflare R2 (ver «Respaldo fuera de casa»).
 - [ ] ¿Qué apps de administración necesitan acceso fuera de casa sin Tailscale? (→ Cloudflare Access)
-- [x] SSD 120 GB: L2ARC solo de metadatos (desgastado; uso donde su falla no afecte datos).
+- [x] SSD 120 GB: retirado (2026-10-01). Sin L2ARC por ahora.
+- [ ] Uso del WD 1 TB de 2,5" (¿tercer destino frío de respaldo?).
