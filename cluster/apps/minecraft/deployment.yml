@@ -52,7 +52,7 @@ spec:
             - name: TYPE
               value: "PAPER"
             - name: VERSION
-              value: "26.2"  # 26.3 aún BETA en Paper y sin soporte de Geyser (2026-10-01)
+              value: "26.2"  # No subir a 26.3 hasta que Geyser soporte Java 26.3 (ver docs/PENDIENTES.md)
             - name: ONLINE_MODE
               value: "FALSE"
             # Whitelist activa; la lista vive en /data/whitelist.json y se gestiona por RCON o el bot de

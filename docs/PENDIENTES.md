@@ -43,6 +43,7 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [x] Snapshots locales con **sanoid** en Proxmox (`/etc/sanoid/sanoid.conf`): horarios 24, diarios 14, semanales 4, mensuales 6 para `nvme/k8s/*` (2026-10-01).
 - [ ] Copia fuera del mirror NVMe: `syncoid` de `nvme/k8s` hacia `homelab-storage` cuando el disco de 12 TB esté estable (ver sección 1).
 - [x] Minecraft actualizado a 26.2 + plugins y datapacks al día + terreno sin cambios regenerado (detalle en `cluster/apps/minecraft/DATA-SAFETY.md`).
+- [ ] **Minecraft → 26.3: esperar a que Geyser soporte Java 26.3.** Estado 2026-10-02: Paper 26.3 solo BETA (build 143; 26.2 STABLE build 129); Geyser 2.11.3-b1247 usa `mcprotocollib = 26.2` (ver `gradle/libs.versions.toml` en GeyserMC/Geyser); Floodgate b141, ViaVersion/ViaBackwards 5.12.0, Simple Voice Chat bukkit-2.6.24 y SkinsRestorer 15.12.6 ya soportan 26.3. Al subir: snapshot `zfs snapshot nvme/k8s/minecraft@pre-26.3` → `VERSION: "26.3"` en `deployment.yml` → aplicar → probar cliente Java y Bedrock → datapacks Vanilla Tweaks 26.3 → anotar en `DATA-SAFETY.md`.
 - [x] Base de datos de Immich en CloudNative-PG (`local-path`). `homelab-postgres-2` (k3s-node-3) divergió tras el apagado del 2026-10-01 (`pg_rewind` fallaba); recreada el 2026-10-02 borrando PVC + pod → `homelab-postgres-5`. Cluster 3/3 (primario `-4`, réplicas `-1` y `-5` en streaming).
 
 ## 3. Limpieza del cluster ✅ (2026-10-01)
