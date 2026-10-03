@@ -1,0 +1,42 @@
+# Multiverse-Inventories Groups
+  
+# To ADD, DELETE, and EDIT groups use the command /mvinv group.
+# No support will be given for those who manually edit these groups.
+groups:
+  default:
+    worlds:
+    - world
+    - world_nether
+    - world_the_end
+    shares:
+    - all
+  juegos:
+    worlds:
+    - lobby
+    shares:
+    - all
+    disabled-shares:
+    - last_location
+  parkour:
+    worlds:
+    - parkour
+    shares:
+    - all
+    disabled-shares:
+    - last_location
+  minijuegos:
+    worlds:
+    - minijuegos
+    shares:
+    - all
+    disabled-shares:
+    - last_location
+  oneblock:
+    worlds:
+    - oneblock_world
+    - oneblock_world_nether
+    - oneblock_world_the_end
+    shares:
+    - all
+    disabled-shares:
+    - last_location

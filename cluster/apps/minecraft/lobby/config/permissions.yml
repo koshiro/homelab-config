@@ -1,0 +1,6 @@
+# Permisos para todos los jugadores (gestionado en homelab-config: cluster/apps/minecraft/lobby/config/)
+homelab.lobby:
+  description: Permite usar /lobby (mvtp al mundo lobby) a cualquier jugador
+  default: true
+  children:
+    multiverse.teleport.self.w.lobby: true

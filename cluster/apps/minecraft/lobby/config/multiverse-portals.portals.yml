@@ -1,0 +1,50 @@
+# Portales del lobby (gestionado en homelab-config: cluster/apps/minecraft/lobby/)
+portals:
+  parkour_volver:
+    action:
+      type: multiverse-destination
+      value: w:lobby
+    check-destination-safety: true
+    entry-fee:
+      currency: air
+      price: 0.0
+    location: parkour:-4,102,-1:-4,104,0
+    message:
+      action-success: '@disabled'
+      no-permission: '@default'
+    owner: ''
+    safe-teleport: true
+    teleport-non-players: false
+    version: 1.3
+  parkour_meta:
+    action:
+      type: multiverse-destination
+      value: w:lobby
+    check-destination-safety: true
+    entry-fee:
+      currency: air
+      price: 0.0
+    location: parkour:83,116,163:83,118,164
+    message:
+      action-success: '@disabled'
+      no-permission: '@default'
+    owner: ''
+    safe-teleport: true
+    teleport-non-players: false
+    version: 1.3
+  familiar_lobby:
+    action:
+      type: multiverse-destination
+      value: w:lobby
+    check-destination-safety: true
+    entry-fee:
+      currency: air
+      price: 0.0
+    location: world:64,97,31:65,99,31
+    message:
+      action-success: '@disabled'
+      no-permission: '@default'
+    owner: ''
+    safe-teleport: true
+    teleport-non-players: false
+    version: 1.3

@@ -1,0 +1,5 @@
+ignore-vanilla-permissions: false
+aliases:
+  lobby:
+  - mvtp w:lobby
+  icanhasbukkit:

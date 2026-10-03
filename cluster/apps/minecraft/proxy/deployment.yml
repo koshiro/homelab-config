@@ -1,0 +1,187 @@
+# Proxy Velocity: punto de entrada único (Java 25565/TCP y Bedrock 19132/UDP vía Geyser).
+# Sin estado: la configuración viene de ConfigMaps/Secret (sincronizados desde /config por la
+# imagen itzg/mc-proxy) y el plugin /lobby se compila en el arranque desde su código fuente.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-proxy
+  namespace: minecraft
+  labels:
+    app: minecraft-proxy
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minecraft-proxy
+  template:
+    metadata:
+      labels:
+        app: minecraft-proxy
+    spec:
+      initContainers:
+        # Descarga el jar de Velocity (incluye la API) para compilar el plugin /lobby.
+        - name: fetch-velocity-api
+          image: curlimages/curl:8.16.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              curl -fsSL -o /work/velocity.jar "$VELOCITY_JAR_URL"
+              echo "$VELOCITY_JAR_SHA256  /work/velocity.jar" | sha256sum -c -
+          env:
+            - name: VELOCITY_JAR_URL
+              value: "https://fill-data.papermc.io/v1/objects/35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8/velocity-4.2.0-30.jar"
+            - name: VELOCITY_JAR_SHA256
+              value: "35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8"
+          volumeMounts:
+            - name: work
+              mountPath: /work
+        # Compila el plugin propio (proxy/plugin/): /lobby y skins de Bedrock.
+        - name: build-lobby-plugin
+          image: eclipse-temurin:25-jdk
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /tmp/out
+              javac --release 25 -proc:none -cp /work/velocity.jar -d /tmp/out /src/*.java
+              cp /src/velocity-plugin.json /tmp/out/
+              jar cf /plugins/homelab-lobby.jar -C /tmp/out .
+              ls -l /plugins
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: plugin-src
+              mountPath: /src
+            - name: plugins
+              mountPath: /plugins
+        # Configs de Geyser/Floodgate y la key.pem compartida, copiadas a su ruta final. (El sync de
+        # /config de la imagen sigue los enlaces internos de los volúmenes de ConfigMap y deja los
+        # archivos anidados en una carpeta con marca de tiempo; Floodgate generaba otra key.pem.)
+        - name: seed-plugin-configs
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /server/plugins/Geyser-Velocity /server/plugins/floodgate
+              cp /seed/geyser-config.yml /server/plugins/Geyser-Velocity/config.yml
+              cp /seed/floodgate-config.yml /server/plugins/floodgate/config.yml
+              cp /seed/floodgate-key.pem /server/plugins/floodgate/key.pem
+              # Secreto de reenvío: la imagen no interpola ${CFG_...} en archivos .secret
+              cp /seed/forwarding-secret /server/forwarding.secret
+              ls -la /server/plugins/*/
+          volumeMounts:
+            - name: plugin-seed
+              mountPath: /seed
+            - name: server
+              mountPath: /server
+      containers:
+        - name: velocity
+          image: itzg/mc-proxy:2026.10.0-java25
+          env:
+            - name: TYPE
+              value: VELOCITY
+            - name: VELOCITY_VERSION
+              value: "4.2.0"
+            - name: VELOCITY_BUILD_ID
+              value: "30"
+            - name: MEMORY
+              value: 512m
+            - name: PLUGINS
+              value: |
+                https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/velocity
+                https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/velocity
+            # Skins en modo offline: en una red con proxy SkinsRestorer debe estar en el proxy
+            # (el del Paper principal queda en proxyMode AUTO)
+            - name: MODRINTH_PROJECTS
+              value: skinsrestorer
+            - name: MINECRAFT_VERSION
+              value: "26.2"
+            # Firma de las skins de Bedrock (plugin/BedrockSkins.java); cuenta en account.mineskin.org
+            - name: MINESKIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-velocity
+                  key: mineskin-api-key
+          ports:
+            - containerPort: 25565
+              name: java
+              protocol: TCP
+            - containerPort: 19132
+              name: bedrock
+              protocol: UDP
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1Gi
+              cpu: "1"
+          readinessProbe:
+            tcpSocket:
+              port: 25565
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: plugins
+              mountPath: /plugins
+            - name: server
+              mountPath: /server
+      volumes:
+        - name: plugin-src
+          configMap:
+            name: minecraft-proxy-plugin-src
+        - name: plugins
+          emptyDir: {}
+        - name: work
+          emptyDir: {}
+        - name: server
+          emptyDir: {}
+        - name: config
+          projected:
+            sources:
+              - configMap:
+                  name: minecraft-proxy-config
+                  items:
+                    - key: velocity.toml
+                      path: velocity.toml
+        - name: plugin-seed
+          projected:
+            sources:
+              - configMap:
+                  name: minecraft-proxy-config
+                  items:
+                    - key: geyser-config.yml
+                      path: geyser-config.yml
+                    - key: floodgate-config.yml
+                      path: floodgate-config.yml
+              - secret:
+                  name: minecraft-velocity
+                  items:
+                    - key: floodgate-key.pem
+                      path: floodgate-key.pem
+                    - key: forwarding-secret
+                      path: forwarding-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-proxy
+  namespace: minecraft
+spec:
+  selector:
+    app: minecraft-proxy
+  ports:
+    - name: java
+      port: 25565
+      targetPort: 25565
+      protocol: TCP
+    - name: bedrock
+      port: 19132
+      targetPort: 19132
+      protocol: UDP

@@ -1,0 +1,65 @@
+# Velocity 4.2.x – proxy delante de los servidores de Minecraft (ver ../LOBBY.md, sección Proxy).
+# Para el jugador es un solo servidor: entra al principal (lobby) y los NPC lo mueven entre servidores.
+config-version = "2.8"
+bind = "0.0.0.0:25565"
+motd = "<gray>Servidor familiar"
+show-max-players = 20
+# Modo offline como el servidor original: mismos UUID de Java (derivados del nombre).
+# Los jugadores Bedrock entran por Geyser + Floodgate (misma key.pem que los backends).
+online-mode = false
+force-key-authentication = false
+prevent-client-proxy-connections = false
+player-info-forwarding-mode = "MODERN"
+forwarding-secret-file = "forwarding.secret"
+announce-forge = false
+kick-existing-players = false
+ping-passthrough = "DISABLED"
+# No mostrar nombres en la lista de servidores (evita filtrar la whitelist)
+sample-players-in-ping = false
+enable-player-address-logging = true
+
+[packet-limiter]
+interval = 7
+packets-per-second = -1
+bytes-per-second = -1
+decompressed-bytes-per-second = 5242880
+
+[servers]
+principal = "minecraft-backend.minecraft.svc.cluster.local:25565"
+spiral2 = "minecraft-spiral2.minecraft.svc.cluster.local:25565"
+spiral3 = "minecraft-spiral3.minecraft.svc.cluster.local:25565"
+# Solo el principal: ahí se aplica la whitelist. Si te expulsa, no hay segundo intento.
+try = [
+    "principal"
+]
+
+[forced-hosts]
+
+[advanced]
+compression-threshold = 256
+compression-level = -1
+login-ratelimit = 3000
+connection-timeout = 5000
+read-timeout = 30000
+haproxy-protocol = false
+tcp-fast-open = false
+bungee-plugin-message-channel = true
+show-ping-requests = false
+# Si un servidor de mapas se cae, el jugador vuelve al principal en vez de ser desconectado
+failover-on-unexpected-server-disconnect = true
+announce-proxy-commands = true
+log-command-executions = false
+log-player-connections = true
+accepts-transfers = false
+enable-reuse-port = false
+command-rate-limit = 50
+forward-commands-if-rate-limited = true
+kick-after-rate-limited-commands = 0
+tab-complete-rate-limit = 10
+kick-after-rate-limited-tab-completes = 0
+
+[query]
+enabled = false
+port = 25565
+map = "Velocity"
+show-plugins = false

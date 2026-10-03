@@ -6,10 +6,21 @@ resources:
   - deployment.yml
   - networkpolicy.yml
   - whitelist-bot/deployment.yml
+  - restart-cronjob.yml
+  - proxy/
+  - spirals/
 configMapGenerator:
+  # Parche de Paper para aceptar solo conexiones del proxy Velocity (principal y mapas)
+  - name: minecraft-velocity-patch
+    namespace: minecraft
+    files:
+      - velocity-patch.json
+    options:
+      disableNameSuffixHash: true
   - name: minecraft-whitelist-bot
     namespace: minecraft
     files:
       - whitelist-bot/bot.py
 # Secrets (aplicar aparte): sops -d secret-ddns.sops.yaml | kubectl apply -f -
 #                           sops -d whitelist-bot/secret.sops.yaml | kubectl apply -f -
+#                           sops -d proxy/secret-velocity.sops.yaml | kubectl apply -f -

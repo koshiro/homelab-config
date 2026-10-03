@@ -32,3 +32,4 @@
 
 - **2026-10-01**: actualizado 1.21.1 → **26.2** (Paper 26.2-129, Java 25). Plugins a última versión. Datapacks Vanilla Tweaks a versiones 26.2 (las de 1.21 quedan en `world/datapacks-old-1.21/`).
 - **2026-10-01**: regenerado el terreno sin cambios con MCA Selector 2.9: borrados los chunks con `InhabitedTime < 2 minutos` en overworld y nether (overworld 445 → 115 MB, nether 59 → 21 MB); se regeneran con la generación de 26.2 al explorarlos. End restaurado completo (portal de salida). Re-importados 2 chunks con portal del nether en x≈-288 z≈-1790.
+- **2026-10-02**: lobby de juegos (Multiverse, BentoBox AOneBlock, laberinto, parkour, minijuegos) y reinicio diario a las 05:00. Snapshot previo: `pre-lobby-20261002`. Detalle en `LOBBY.md`.

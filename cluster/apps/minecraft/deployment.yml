@@ -32,6 +32,33 @@ spec:
               - key: node-role.kubernetes.io/media-worker
                 operator: In
                 values: ["true"]
+      initContainers:
+        # Addon OneBlock de BentoBox: no es un plugin de Modrinth, va en plugins/BentoBox/addons/.
+        # Versión fijada; para actualizar cambiar AONEBLOCK_VERSION (releases en GitHub BentoBoxWorld/AOneBlock).
+        - name: aoneblock-addon
+          image: curlimages/curl:8.16.0
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          env:
+            - name: AONEBLOCK_VERSION
+              value: "1.28.0"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              dir=/data/plugins/BentoBox/addons
+              jar="$dir/AOneBlock-$AONEBLOCK_VERSION.jar"
+              mkdir -p "$dir"
+              if [ ! -s "$jar" ]; then
+                rm -f "$dir"/AOneBlock-*.jar
+                curl -fsSL -o "$jar.tmp" "https://github.com/BentoBoxWorld/AOneBlock/releases/download/$AONEBLOCK_VERSION/AOneBlock-$AONEBLOCK_VERSION.jar"
+                mv "$jar.tmp" "$jar"
+              fi
+              ls -l "$dir"
+          volumeMounts:
+            - name: minecraft-data
+              mountPath: /data
       containers:
         - name: minecraft
           image: itzg/minecraft-server:2026.9.2-java25  # Paper 26.x requiere Java 25
@@ -40,9 +67,6 @@ spec:
             - containerPort: 25565
               name: java
               protocol: TCP
-            - containerPort: 19132
-              name: bedrock
-              protocol: UDP
             - containerPort: 24454
               name: voice-chat
               protocol: UDP
@@ -81,18 +105,36 @@ spec:
               value: "4G"
             - name: USE_AIKAR_FLAGS
               value: "true"
-            # Geyser (Bedrock) y Floodgate desde GeyserMC (Floodgate no publica builds Paper en Modrinth)
+            # Detrás del proxy Velocity (proxy/): Geyser vive en el proxy; aquí queda Floodgate (misma
+            # key.pem) para la whitelist de Bedrock (fwhitelist). Solo acepta conexiones del proxy.
             - name: PLUGINS
               value: |
-                https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot
                 https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+            - name: PATCH_DEFINITIONS
+              value: /patches/velocity-patch.json
+            - name: CFG_VELOCITY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-velocity
+                  key: forwarding-secret
             # Resto desde Modrinth: última versión release compatible con VERSION
+            # Lobby de juegos (docs: cluster/apps/minecraft/LOBBY.md): Multiverse (mundos, inventarios
+            # separados y portales), BentoBox (OneBlock; el addon AOneBlock lo instala el initContainer),
+            # minijuegos y WorldEdit para construir.
             - name: MODRINTH_PROJECTS
               value: |
                 viaversion
                 viabackwards
                 simple-voice-chat
                 skinsrestorer
+                multiverse-core
+                multiverse-inventories
+                multiverse-portals
+                multiverse-commanddestination
+                bentobox
+                minigames-with-friends
+                worldedit
+                fancynpcs
             - name: MODRINTH_ALLOWED_VERSION_TYPE
               value: "release"
             # Borra los .jar de plugins/ antes de descargar (evita versiones acumuladas)
@@ -112,6 +154,8 @@ spec:
           volumeMounts:
             - name: minecraft-data
               mountPath: /data
+            - name: velocity-patch
+              mountPath: /patches
           # Guardar mundo explícitamente antes de que el contenedor reciba SIGTERM (evita pérdida de datos)
           lifecycle:
             preStop:
@@ -137,6 +181,9 @@ spec:
             - name: DELETE_ON_STOP
               value: "false"
       volumes:
+        - name: velocity-patch
+          configMap:
+            name: minecraft-velocity-patch
         # CRÍTICO - ÚNICA FUENTE DE DATOS: no cambiar path ni borrar sin backup.
         # Desde 2026-09-30 los datos viven en Proxmox (dataset ZFS nvme/k8s/minecraft, export NFS).
         # Copia original (solo lectura) en TrueNAS: carpeta minecraft-server del dataset raíz de homelab-storage.

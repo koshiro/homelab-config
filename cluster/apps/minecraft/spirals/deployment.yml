@@ -1,0 +1,254 @@
+# Servidores de mapas detrás del proxy Velocity (ver ../LOBBY.md, sección Proxy):
+# Parkour Spiral 2 y 3 de Hielke (https://hielkemaps.com), mapas 26.2 con datapacks propios, que
+# por eso necesitan ser el mundo principal de su propio Paper. No se exponen fuera del cluster:
+# solo se llega a ellos desde el proxy (NPC del lobby). El mundo se descarga en el primer arranque
+# (WORLD); el progreso (ranking, cronómetros) queda en el PVC. Para reiniciar un mapa: borrar el PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minecraft-spiral2-data
+  namespace: minecraft
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minecraft-spiral3-data
+  namespace: minecraft
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-spiral2
+  namespace: minecraft
+  labels:
+    app: minecraft-spiral2
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minecraft-spiral2
+  template:
+    metadata:
+      labels:
+        app: minecraft-spiral2
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:2026.9.2-java25
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: PAPER
+            - name: VERSION
+              value: "26.2"
+            - name: ONLINE_MODE
+              value: "FALSE"
+            - name: ENABLE_WHITELIST
+              value: "FALSE"
+            - name: MODE
+              value: adventure
+            - name: SPAWN_PROTECTION
+              value: "0"
+            - name: VIEW_DISTANCE
+              value: "10"
+            - name: MEMORY
+              value: 2G
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+            - name: PLUGINS
+              value: https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+            - name: PATCH_DEFINITIONS
+              value: /patches/velocity-patch.json
+            - name: CFG_VELOCITY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-velocity
+                  key: forwarding-secret
+            - name: MOTD
+              value: "Parkour Spiral 2"
+            - name: DIFFICULTY
+              value: normal
+            - name: WORLD
+              value: "https://hielkemaps.com/downloads/Parkour%20Spiral%202.zip"
+          ports:
+            - containerPort: 25565
+              name: java
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: 500m
+            limits:
+              memory: 3Gi
+              cpu: "2"
+          readinessProbe:
+            exec:
+              command: ["mc-health"]
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rcon-cli save-all 2>/dev/null || true; sleep 3"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: patches
+              mountPath: /patches
+            - name: floodgate-key
+              mountPath: /data/plugins/floodgate/key.pem
+              subPath: floodgate-key.pem
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minecraft-spiral2-data
+        - name: patches
+          configMap:
+            name: minecraft-velocity-patch
+        - name: floodgate-key
+          secret:
+            secretName: minecraft-velocity
+            items:
+              - key: floodgate-key.pem
+                path: floodgate-key.pem
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-spiral3
+  namespace: minecraft
+  labels:
+    app: minecraft-spiral3
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minecraft-spiral3
+  template:
+    metadata:
+      labels:
+        app: minecraft-spiral3
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:2026.9.2-java25
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: PAPER
+            - name: VERSION
+              value: "26.2"
+            - name: ONLINE_MODE
+              value: "FALSE"
+            - name: ENABLE_WHITELIST
+              value: "FALSE"
+            - name: MODE
+              value: adventure
+            - name: SPAWN_PROTECTION
+              value: "0"
+            - name: VIEW_DISTANCE
+              value: "10"
+            - name: MEMORY
+              value: 2G
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+            - name: PLUGINS
+              value: https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+            - name: PATCH_DEFINITIONS
+              value: /patches/velocity-patch.json
+            - name: CFG_VELOCITY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-velocity
+                  key: forwarding-secret
+            - name: MOTD
+              value: "Parkour Spiral 3"
+            - name: DIFFICULTY
+              value: easy
+            - name: WORLD
+              value: "https://hielkemaps.com/downloads/Parkour%20Spiral%203.zip"
+          ports:
+            - containerPort: 25565
+              name: java
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: 500m
+            limits:
+              memory: 3Gi
+              cpu: "2"
+          readinessProbe:
+            exec:
+              command: ["mc-health"]
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rcon-cli save-all 2>/dev/null || true; sleep 3"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: patches
+              mountPath: /patches
+            - name: floodgate-key
+              mountPath: /data/plugins/floodgate/key.pem
+              subPath: floodgate-key.pem
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minecraft-spiral3-data
+        - name: patches
+          configMap:
+            name: minecraft-velocity-patch
+        - name: floodgate-key
+          secret:
+            secretName: minecraft-velocity
+            items:
+              - key: floodgate-key.pem
+                path: floodgate-key.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-spiral2
+  namespace: minecraft
+spec:
+  selector:
+    app: minecraft-spiral2
+  ports:
+    - name: java
+      port: 25565
+      targetPort: 25565
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-spiral3
+  namespace: minecraft
+spec:
+  selector:
+    app: minecraft-spiral3
+  ports:
+    - name: java
+      port: 25565
+      targetPort: 25565

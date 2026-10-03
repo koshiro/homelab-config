@@ -1,3 +1,5 @@
+# Entrada pública: proxy Velocity (Java 25565/TCP y Bedrock vía Geyser 19132/UDP).
+# El jugador ve un solo servidor; el proxy reparte entre el principal y los mapas (ver LOBBY.md).
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,7 +8,7 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: minecraft
+    app: minecraft-proxy
   ports:
     - name: java
       port: 25565
@@ -16,7 +18,34 @@ spec:
       port: 19132
       targetPort: 19132
       protocol: UDP
+---
+# Simple Voice Chat va directo al servidor principal (no pasa por el proxy).
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-voice
+  namespace: minecraft
+spec:
+  type: LoadBalancer
+  selector:
+    app: minecraft
+  ports:
     - name: voice-chat
       port: 24454
       targetPort: 24454
       protocol: UDP
+---
+# Servidor principal (supervivencia, lobby, OneBlock…) visto desde el proxy.
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-backend
+  namespace: minecraft
+spec:
+  selector:
+    app: minecraft
+  ports:
+    - name: java
+      port: 25565
+      targetPort: 25565
+      protocol: TCP

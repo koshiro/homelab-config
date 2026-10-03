@@ -1,0 +1,64 @@
+# Reinicio diario del servidor de Minecraft (05:00 hora de Chile).
+# Motivo: los clientes Bedrock (celular/tablet) se actualizan solos y Geyser/Floodgate (en el proxy
+# Velocity desde 2026-10-03) solo se actualizan al arrancar (PLUGINS apunta a "latest"). Reiniciar a diario mantiene la
+# compatibilidad con la última versión de Bedrock y los plugins de Modrinth al día.
+# El preStop del deployment guarda el mundo (save-all) antes de detenerse.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: minecraft-restarter
+  namespace: minecraft
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: minecraft-restarter
+  namespace: minecraft
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["minecraft", "minecraft-proxy"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: minecraft-restarter
+  namespace: minecraft
+subjects:
+  - kind: ServiceAccount
+    name: minecraft-restarter
+    namespace: minecraft
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: minecraft-restarter
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: minecraft-restart
+  namespace: minecraft
+spec:
+  schedule: "0 5 * * *"
+  timeZone: "America/Santiago"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          serviceAccountName: minecraft-restarter
+          restartPolicy: Never
+          containers:
+            - name: restart
+              image: registry.k8s.io/kubectl:v1.33.4
+              # El proxy primero (Geyser vive ahí y debe seguir a las actualizaciones de Bedrock)
+              args: ["rollout", "restart", "deployment/minecraft-proxy", "deployment/minecraft", "-n", "minecraft"]
+              resources:
+                limits:
+                  memory: 64Mi
+                  cpu: 100m
