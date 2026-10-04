@@ -62,6 +62,7 @@ Voice chat 24454/UDP ───────────────────�
 | Services | `minecraft` (LB 25565/TCP + 19132/UDP → proxy), `minecraft-voice` (LB 24454/UDP → principal), `minecraft-backend`, `minecraft-spiral2/3` (internos) |
 | Voice chat | Solo funciona en el principal (Simple Voice Chat no pasa por el proxy) |
 | Skins | SkinsRestorer en el **proxy** (`MODRINTH_PROJECTS` + `MINECRAFT_VERSION`); el del Paper principal queda en `proxyMode: AUTO` |
+| Alias Java → Bedrock | `JAVA_ALIASES` en `proxy/deployment.yml` (`nombreJava=nombreBedrock@uuid`): ese nombre en Java entra con el UUID y nombre de Floodgate del jugador Bedrock → mismo inventario, posición, whitelist e isla. Hoy: `.ArrozK` (PC de su madre) = `.ArrozK` (tablet). No pueden estar conectados los dos a la vez (mismo UUID). Recibe la última skin traída de Bedrock desde el último reinicio del proxy |
 | Skins Bedrock | `proxy/plugin/BedrockSkins.java`: en cada conexión toma la skin que envía la tablet (datos de cliente de Geyser), la firma con **MineSkin** (clave `mineskin-api-key` del secreto, variable `MINESKIN_API_KEY`) y la pone en el perfil después de Floodgate. Motivo: la API global de GeyserMC no sube skins nuevas desde 2026-09 ([Geyser#6699](https://github.com/GeyserMC/Geyser/issues/6699)) y Floodgate mostraba una skin vieja de otra persona. Cambiar de skin en Bedrock → se ve al reconectar. Log: `Skin Bedrock de …`; copia del PNG en `plugins/homelab-lobby/bedrock-skins/`. Si Geyser arregla el error, se puede retirar |
 
 ## Parkour Spiral 2 y 3 (`spirals/`)

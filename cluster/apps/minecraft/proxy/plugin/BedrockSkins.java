@@ -43,6 +43,12 @@ import org.slf4j.Logger;
  * MineSkin y se pone en el perfil antes de entrar al servidor (después de Floodgate, que usa
  * PostOrder.EARLY). Si cambia la skin en Bedrock, basta con reconectarse.
  *
+ * Alias Java (variable JAVA_ALIASES): un jugador Java con ese nombre entra con la identidad de un
+ * jugador Bedrock (mismo UUID de Floodgate y mismo nombre), así comparte inventarios, posición y
+ * whitelist. Formato: "nombreJava=nombreBedrock@uuid" separados por espacios o comas. Recibe la
+ * última skin que ese jugador trajo de Bedrock, guardada en BEDROCK_SKIN_STATE (volumen persistente).
+ * Sin online-mode cualquiera puede usar ese nombre en Java: igual que con el resto de la whitelist.
+ *
  * Geyser y SkinsRestorer se usan por reflexión (son plugins del proxy, sin dependencia de compilación).
  */
 public class BedrockSkins {
@@ -58,14 +64,31 @@ public class BedrockSkins {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     /** sha256 del PNG → textura firmada (MineSkin también deduplica, esto solo evita la llamada). */
     private final Map<String, CompletableFuture<GameProfile.Property>> textures = new ConcurrentHashMap<>();
+    /** nombre Java (minúsculas) → identidad Bedrock que asume. */
+    private final Map<String, GameProfile> aliases = new ConcurrentHashMap<>();
+    /** UUID Bedrock → última skin firmada (para dársela también a su alias Java). */
+    private final Map<UUID, GameProfile.Property> lastTexture = new ConcurrentHashMap<>();
+    /** Archivo JSON con lastTexture (sobrevive a los reinicios del proxy); null = solo memoria. */
+    private final Path stateFile;
 
     public BedrockSkins(ProxyServer proxy, Logger logger, Path dataDir) {
         this.proxy = proxy;
         this.logger = logger;
         this.debugDir = dataDir.resolve("bedrock-skins");
         this.apiKey = Optional.ofNullable(System.getenv("MINESKIN_API_KEY")).orElse("").trim();
+        this.stateFile = Optional.ofNullable(System.getenv("BEDROCK_SKIN_STATE")).filter(v -> !v.isBlank()).map(Path::of).orElse(null);
+        loadState();
         if (apiKey.isEmpty()) {
             logger.warn("MINESKIN_API_KEY no definida: las skins de Bedrock quedan en manos de Floodgate");
+        }
+        for (String entry : Optional.ofNullable(System.getenv("JAVA_ALIASES")).orElse("").split("[\\s,]+")) {
+            String[] parts = entry.split("[=@]");
+            if (parts.length != 3) {
+                if (!entry.isBlank()) logger.warn("JAVA_ALIASES: entrada inválida '{}' (nombreJava=nombreBedrock@uuid)", entry);
+                continue;
+            }
+            aliases.put(parts[0].toLowerCase(Locale.ROOT), new GameProfile(UUID.fromString(parts[2]), parts[1], List.of()));
+            logger.info("Alias Java: {} entra como {} ({})", parts[0], parts[1], parts[2]);
         }
     }
 
@@ -74,7 +97,18 @@ public class BedrockSkins {
         GameProfile profile = event.getGameProfile();
         UUID uuid = profile.getId();
         // Floodgate: UUID 00000000-0000-0000-xxxx-xxxxxxxxxxxx con el XUID en los 64 bits bajos
-        if (apiKey.isEmpty() || uuid.getMostSignificantBits() != 0) {
+        if (uuid.getMostSignificantBits() != 0) {
+            GameProfile alias = aliases.get(profile.getName().toLowerCase(Locale.ROOT));
+            if (alias != null) {
+                GameProfile.Property skin = lastTexture.get(alias.getId());
+                event.setGameProfile(skin == null ? alias : withTexture(alias, skin));
+                logger.info("Alias Java: {} entra como {} ({}){}", profile.getName(), alias.getName(), alias.getId(),
+                        skin == null ? "" : " con su skin de Bedrock");
+            }
+            continuation.resume();
+            return;
+        }
+        if (apiKey.isEmpty()) {
             continuation.resume();
             return;
         }
@@ -93,11 +127,15 @@ public class BedrockSkins {
         }
         texture.orTimeout(LOGIN_WAIT_SECONDS, TimeUnit.SECONDS).whenComplete((property, error) -> {
             if (error == null && property != null) {
+                remember(uuid, property);
                 event.setGameProfile(withTexture(event.getGameProfile(), property));
                 logger.info("Skin Bedrock aplicada a {} al entrar", profile.getName());
             } else {
                 logger.info("MineSkin aún no responde para {}; se aplicará en vivo", profile.getName());
-                texture.thenAccept(p -> applyLive(uuid, p));
+                texture.thenAccept(p -> {
+                    remember(uuid, p);
+                    applyLive(uuid, p);
+                });
             }
             continuation.resume();
         });
@@ -118,10 +156,19 @@ public class BedrockSkins {
         String armSize = String.valueOf(call(client, "getArmSize"));
         boolean slim = "slim".equalsIgnoreCase(armSize) || patch.toLowerCase(Locale.ROOT).contains("slim");
 
+        String geometry = geometry(patch);
+        // Persona y geometrías propias usan un atlas con UVs según su geometría 3D, no la plantilla
+        // clásica escalada: la conversión directa sale rota. Se guardan los datos para analizarlos.
+        if (persona || !geometry.matches("geometry\\.humanoid(\\.custom)?(Slim)?")) {
+            logger.info("Skin Bedrock de {}: {}x{}, persona={}, geometría={} → sin conversión (se guarda para análisis)",
+                    name, width, height, persona, geometry);
+            savePersonaDebug(name, rgba, width, height, patch, (byte[]) call(client, "getGeometryData"));
+            return null;
+        }
         byte[] png = toJavaPng(rgba, width, height);
         String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(png));
         logger.info("Skin Bedrock de {}: {}x{}, persona={}, brazos={}, geometría={}, sha256={}",
-                name, width, height, persona, slim ? "slim" : "classic", geometry(patch), hash.substring(0, 12));
+                name, width, height, persona, slim ? "slim" : "classic", geometry, hash.substring(0, 12));
         saveDebug(name, png);
 
         CompletableFuture<GameProfile.Property> cached = textures.get(hash);
@@ -246,6 +293,68 @@ public class BedrockSkins {
             player.get().setGameProfileProperties(properties);
             logger.info("Skin Bedrock de {} lista; se verá al cambiar de servidor o reconectar ({})",
                     player.get().getUsername(), e.toString());
+        }
+    }
+
+    private void remember(UUID uuid, GameProfile.Property texture) {
+        GameProfile.Property previous = lastTexture.put(uuid, texture);
+        if (stateFile == null || (previous != null && previous.getValue().equals(texture.getValue()))) {
+            return;
+        }
+        JsonObject root = new JsonObject();
+        lastTexture.forEach((id, t) -> {
+            JsonObject o = new JsonObject();
+            o.addProperty("value", t.getValue());
+            o.addProperty("signature", t.getSignature());
+            root.add(id.toString(), o);
+        });
+        try {
+            Files.createDirectories(stateFile.getParent());
+            Path tmp = stateFile.resolveSibling(stateFile.getFileName() + ".tmp");
+            Files.writeString(tmp, root.toString());
+            Files.move(tmp, stateFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (Exception e) {
+            logger.warn("No se pudo guardar {}: {}", stateFile, e.toString());
+        }
+    }
+
+    private void loadState() {
+        if (stateFile == null || !Files.exists(stateFile)) {
+            return;
+        }
+        try {
+            JsonObject root = JsonParser.parseString(Files.readString(stateFile)).getAsJsonObject();
+            root.entrySet().forEach(e -> {
+                JsonObject o = e.getValue().getAsJsonObject();
+                lastTexture.put(UUID.fromString(e.getKey()),
+                        new GameProfile.Property("textures", o.get("value").getAsString(), o.get("signature").getAsString()));
+            });
+            logger.info("Skins Bedrock guardadas: {} ({})", lastTexture.size(), stateFile);
+        } catch (Exception e) {
+            logger.warn("No se pudo leer {}: {}", stateFile, e.toString());
+        }
+    }
+
+    /** Textura completa + geometría de una skin Persona, en el volumen persistente (/state/debug). */
+    private void savePersonaDebug(String name, byte[] rgba, int width, int height, String patch, byte[] geometryData) {
+        if (stateFile == null) {
+            return;
+        }
+        try {
+            Path dir = stateFile.resolveSibling("debug");
+            Files.createDirectories(dir);
+            String base = name.replaceAll("[^A-Za-z0-9_.-]", "_");
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            for (int i = 0; i < width * height; i++) {
+                int o = i * 4;
+                image.setRGB(i % width, i / width, (rgba[o + 3] & 0xff) << 24 | (rgba[o] & 0xff) << 16 | (rgba[o + 1] & 0xff) << 8 | (rgba[o + 2] & 0xff));
+            }
+            ImageIO.write(image, "png", dir.resolve(base + ".atlas.png").toFile());
+            Files.writeString(dir.resolve(base + ".resource-patch.json"), patch);
+            Files.write(dir.resolve(base + ".geometry.json"), geometryData == null ? new byte[0] : geometryData);
+            logger.info("Datos de skin Persona de {} guardados en {}", name, dir);
+        } catch (Exception e) {
+            logger.warn("No se pudieron guardar los datos de skin de {}: {}", name, e.toString());
         }
     }
 

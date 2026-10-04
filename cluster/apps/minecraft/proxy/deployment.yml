@@ -1,5 +1,5 @@
 # Proxy Velocity: punto de entrada único (Java 25565/TCP y Bedrock 19132/UDP vía Geyser).
-# Sin estado: la configuración viene de ConfigMaps/Secret (sincronizados desde /config por la
+# Casi sin estado (solo /state: skins Bedrock en NFS): la configuración viene de ConfigMaps/Secret (sincronizados desde /config por la
 # imagen itzg/mc-proxy) y el plugin /lobby se compila en el arranque desde su código fuente.
 apiVersion: apps/v1
 kind: Deployment
@@ -101,6 +101,13 @@ spec:
             - name: MINECRAFT_VERSION
               value: "26.2"
             # Firma de las skins de Bedrock (plugin/BedrockSkins.java); cuenta en account.mineskin.org
+            # Jugadores Java que entran con la identidad de un jugador Bedrock (plugin/BedrockSkins.java):
+            # .ArrozK en Java (PC de su madre) = .ArrozK en Bedrock (tablet), mismo inventario
+            - name: JAVA_ALIASES
+              value: ".ArrozK=.ArrozK@00000000-0000-0000-0009-00000e08a6f0"
+            # Última skin de cada jugador Bedrock (para sus alias Java); persiste en el NFS de Minecraft
+            - name: BEDROCK_SKIN_STATE
+              value: /state/bedrock-skins.json
             - name: MINESKIN_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -132,7 +139,14 @@ spec:
               mountPath: /plugins
             - name: server
               mountPath: /server
+            - name: state
+              mountPath: /state
       volumes:
+        # Único estado del proxy (skins Bedrock). Dataset nvme/k8s/minecraft: entra en sanoid/syncoid/restic
+        - name: state
+          nfs:
+            server: 192.168.1.100
+            path: /nvme/k8s/minecraft/proxy-state
         - name: plugin-src
           configMap:
             name: minecraft-proxy-plugin-src
