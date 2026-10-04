@@ -1,0 +1,142 @@
+# Construye (o actualiza) el entorno de Python de ComfyUI en el volumen (/app/venv), afinado para la
+# RTX 3070 (Ampere, sm_86, 8 GB):
+#   - Python 3.12 gestionado por uv dentro del volumen (/app/.python): no depende de la imagen.
+#   - PyTorch 2.11 + CUDA 12.8 (el driver 570 del nodo no soporta CUDA 13).
+#   - SageAttention 2.2 compilado para sm_86 (--use-sage-attention; el modo sageattn3 es solo Blackwell).
+#   - Extensiones: solo las que usan los workflows, en su última versión; el resto pasa a custom_nodes/.disabled.
+# Los modelos van en INT8 ConvRot (nativo desde ComfyUI 0.27): en la serie 30 rinde más que fp8 (sin fp8 por hardware).
+#
+# Uso (con el deployment en 0 réplicas):
+#   kubectl -n comfyui scale deploy/comfyui --replicas=0
+#   kubectl delete job -n comfyui comfyui-build-env --ignore-not-found && kubectl apply -f 06-job-build-env.yaml
+#   kubectl -n comfyui logs -f job/comfyui-build-env
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: comfyui-build-env
+  namespace: comfyui
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      runtimeClassName: nvidia
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/media-worker
+                    operator: In
+                    values: ["true"]
+      containers:
+        - name: build
+          image: nvidia/cuda:12.8.1-devel-ubuntu24.04
+          env:
+            - name: TORCH_VERSION
+              value: "2.11.0"
+            - name: TORCH_INDEX
+              value: https://download.pytorch.org/whl/cu128
+            - name: SAGEATTENTION_REF
+              value: v2.2.0
+            - name: TORCH_CUDA_ARCH_LIST
+              value: "8.6"
+            # Extensiones que usan los workflows (user/default/workflows); las demás se desactivan
+            - name: CUSTOM_NODES
+              value: >-
+                ComfyUI-Manager=https://github.com/Comfy-Org/ComfyUI-Manager
+                rgthree-comfy=https://github.com/rgthree/rgthree-comfy
+                comfyui-kjnodes=https://github.com/kijai/ComfyUI-KJNodes
+                ComfyUI-GGUF=https://github.com/city96/ComfyUI-GGUF
+                comfyui-inpaint-cropandstitch=https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch
+                LanPaint=https://github.com/scraed/LanPaint
+                z-image-power-nodes=https://github.com/martin-rizzo/ComfyUI-ZImagePowerNodes
+                controlaltai-nodes=https://github.com/gseth/ControlAltAI-Nodes
+            - name: UV_PYTHON_INSTALL_DIR
+              value: /app/.python
+            - name: UV_CACHE_DIR
+              value: /tmp/uv-cache
+            - name: UV_LINK_MODE
+              value: copy
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+            requests:
+              nvidia.com/gpu: "1"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              log() { echo "$(date +%H:%M:%S) [build-env] $*"; }
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq --no-install-recommends git curl ca-certificates ninja-build >/dev/null
+              curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh >/dev/null
+              git config --global --add safe.directory '*'
+              cd /app
+              [ -d .git ] || { echo "Falta /app/.git (lo deja el initContainer ensure-app del deployment)"; exit 1; }
+              git fetch -q origin --tags
+              LATEST_TAG="$(git tag -l 'v*' --sort=-version:refname | head -1)"
+              git checkout -q -f "$LATEST_TAG"
+              log "ComfyUI ${LATEST_TAG}"
+
+              log "Extensiones: activar/actualizar las usadas, desactivar el resto"
+              mkdir -p custom_nodes/.disabled
+              keep=""
+              for entry in $CUSTOM_NODES; do
+                name="${entry%%=*}"; url="${entry#*=}"; keep="$keep $name"
+                if [ -d "custom_nodes/.disabled/$name" ] && [ ! -d "custom_nodes/$name" ]; then mv "custom_nodes/.disabled/$name" custom_nodes/; fi
+                if [ -d "custom_nodes/$name/.git" ]; then
+                  git -C "custom_nodes/$name" remote set-url origin "$url"
+                  git -C "custom_nodes/$name" fetch -q --depth 1 origin HEAD
+                  git -C "custom_nodes/$name" reset -q --hard FETCH_HEAD
+                else
+                  rm -rf "custom_nodes/$name"; git clone -q --depth 1 "$url" "custom_nodes/$name"
+                fi
+                log "  $name @ $(git -C "custom_nodes/$name" log -1 --format='%h %cs')"
+              done
+              for d in custom_nodes/*/; do
+                n=$(basename "$d"); case " $keep " in *" $n "*) ;; *) log "  desactivada: $n"; rm -rf "custom_nodes/.disabled/$n"; mv "$d" custom_nodes/.disabled/ ;; esac
+              done
+
+              log "Python 3.12 + venv"
+              uv python install 3.12
+              if [ ! -x venv/bin/python ] || ! venv/bin/python -c 'import sys; assert sys.version_info[:2] == (3, 12)'; then
+                rm -rf venv; uv venv --python 3.12 --seed venv
+              fi
+              export VIRTUAL_ENV=/app/venv PATH=/app/venv/bin:$PATH
+              echo "torch==${TORCH_VERSION}" > /tmp/constraints.txt
+
+              log "PyTorch ${TORCH_VERSION} (cu128)"
+              uv pip install "torch==${TORCH_VERSION}" torchvision torchaudio --index-url "$TORCH_INDEX"
+              log "Requirements de ComfyUI y extensiones"
+              uv pip install -c /tmp/constraints.txt -r requirements.txt
+              for req in custom_nodes/*/requirements.txt; do
+                log "  $req"; uv pip install -c /tmp/constraints.txt --index-strategy unsafe-best-match --extra-index-url "$TORCH_INDEX" -r "$req"
+              done
+              uv pip install -c /tmp/constraints.txt setuptools wheel packaging ninja
+
+              log "SageAttention ${SAGEATTENTION_REF} para sm_${TORCH_CUDA_ARCH_LIST/./}"
+              if ! python -c 'import sageattention, importlib.metadata as m; assert m.version("sageattention").startswith("2.")' 2>/dev/null; then
+                rm -rf /tmp/sa && git clone -q --depth 1 --branch "$SAGEATTENTION_REF" https://github.com/thu-ml/SageAttention.git /tmp/sa
+                (cd /tmp/sa && EXT_PARALLEL=4 NVCC_APPEND_FLAGS="--threads 4" MAX_JOBS=4 uv pip install --no-build-isolation -c /tmp/constraints.txt .)
+              fi
+
+              log "Verificación"
+              python - <<'PY'
+              import torch, sageattention, importlib.metadata as m
+              print("torch", torch.__version__, "| CUDA", torch.version.cuda, "| GPU", torch.cuda.get_device_name(0), "| cap", torch.cuda.get_device_capability(0))
+              print("sageattention", m.version("sageattention"))
+              from sageattention import sageattn
+              q = torch.randn(1, 8, 1024, 64, dtype=torch.float16, device="cuda")
+              print("sageattn OK", tuple(sageattn(q, q, q).shape))
+              PY
+              uv pip freeze > /app/venv/requirements.lock
+              log "Listo. Lock en /app/venv/requirements.lock"
+          volumeMounts:
+            - name: workspace
+              mountPath: /app
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: comfyui-workspace-pvc

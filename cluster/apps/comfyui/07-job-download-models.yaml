@@ -1,0 +1,67 @@
+# Descarga los modelos que usan los workflows (inventario: models/MODELOS-COMFYUI.md, 2026-10-03).
+# Base: CyberRealistic Z-Image Turbo v9.0 en INT8 ConvRot (lo más rápido en RTX 3070, sin fp8 por hardware).
+# Uso: kubectl apply -f 07-job-download-models.yaml && kubectl -n comfyui logs -f job/comfyui-download-models
+# Idempotente: omite archivos que ya existen con el tamaño/hash correcto. Token de Civitai: secret-civitai.sops.yaml.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: comfyui-download-models
+  namespace: comfyui
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: download
+          image: curlimages/curl:8.16.0
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: CIVITAI_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: comfyui-civitai
+                  key: token
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              # carpeta | archivo | URL | sha256 (vacío = sin verificar)
+              cat > /tmp/models.tsv <<'LIST'
+              text_encoders|cyberrealisticZImage_v90_txt.safetensors|https://civitai.com/api/download/models/3331554?fileId=3217814|eec75761471d8a026a5020b21815d00ed454a57b938028ad9eeff6705f39db86
+              diffusion_models|cyberrealisticZImage_v90_int8.safetensors|https://civitai.com/api/download/models/3331554?fileId=3217815|9176342438960189eb001f9051aa9e22372c392c74d129a9adb6d539625573d1
+              loras|woman037-zimage.safetensors|https://civitai.com/api/download/models/2469215?fileId=2357832|4feda9f5ccd7d922679af6c46014a2f17b5533faedd04c5b1f8c114d5f9ca98c
+              loras|woman992-ZIT.safetensors|https://civitai.com/api/download/models/2475996?fileId=2364482|b4bb3c98ad7f1f1ba5e25309bf70c34db5638934127d719c97324ec645b89aae
+              loras|Purple_grainy_zit.safetensors|https://civitai.com/api/download/models/2619939?fileId=2508037|3dc1728902453e79be3c55e26761108bd5eccf660b485242229b6739e1a23e91
+              vae|ae.safetensors|https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors|
+              model_patches|Z-Image-Turbo-Fun-Controlnet-Union-2.1-2602-8steps.safetensors|https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.1/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union-2.1-2602-8steps.safetensors|
+              model_patches|Z-Image-Turbo-Fun-Controlnet-Union-2.1-lite-2602-8steps.safetensors|https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.1/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union-2.1-lite-2602-8steps.safetensors|
+              # Prueba: IntoRealism ZIT V10 (solo fp8; en la 3070 corre más lento que INT8)
+              diffusion_models|intorealism_zitV10.safetensors|https://civitai.com/api/download/models/3354988?fileId=3242450|cd68888ae1b792cce7871778dd436633a68c579510754e96128839ba5f496ddb
+              # Prueba: GonzaLomo ZPop Insta2 (INT8)
+              diffusion_models|gonzalomoZpop_insta2_int8.safetensors|https://civitai.com/api/download/models/2845943?fileId=3080378|cb52ecd82ab41bce95cb91b324ae3004696dfcb5e9ca31e5580c3911bc3783fb
+              LIST
+              while IFS='|' read -r dir name url sha; do
+                dir=$(echo "$dir" | tr -d ' '); case "$dir" in ''|'#'*) continue ;; esac
+                dest="/app/models/$dir/$name"; mkdir -p "/app/models/$dir"
+                if [ -s "$dest" ] && { [ -z "$sha" ] || echo "$sha  $dest" | sha256sum -c -s; }; then
+                  echo "OK (ya existe) $dir/$name"; continue
+                fi
+                echo "Descargando $dir/$name ..."
+                case "$url" in
+                  *civitai.com*) curl -fL --retry 5 --retry-delay 10 -H "Authorization: Bearer $CIVITAI_TOKEN" -o "$dest.part" "$url" ;;
+                  *) curl -fL --retry 5 --retry-delay 10 -o "$dest.part" "$url" ;;
+                esac
+                if [ -n "$sha" ]; then echo "$sha  $dest.part" | sha256sum -c - ; fi
+                mv "$dest.part" "$dest"; ls -la "$dest"
+              done < /tmp/models.tsv
+              echo "Modelos listos:"; find /app/models -type f -size +1024k | sort
+          volumeMounts:
+            - name: workspace
+              mountPath: /app
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: comfyui-workspace-pvc
