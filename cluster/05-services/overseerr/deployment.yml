@@ -1,3 +1,6 @@
+# Seerr (sucesor de Overseerr, archivado en 2026-02; migrado el 2026-10-03). Se conservan los nombres
+# de Kubernetes y el dominio overseerr.danielriquelme.cl. Seerr migra solo la BD y settings.json de
+# Overseerr en el primer arranque. Respaldo previo: nvme/k8s/backups/overseerr/.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,24 +14,24 @@ spec:
     matchLabels:
       app: overseerr
   strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+    type: Recreate  # PVC local-path RWO y BD SQLite: nunca dos instancias a la vez
   template:
     metadata:
       labels:
         app: overseerr
     spec:
+      # La imagen oficial corre como el usuario node (UID 1000) y no trae init
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - env:
-        - name: PUID
-          value: '1000'
-        - name: PGID
-          value: '1000'
         - name: TZ
-          value: Etc/UTC
-        image: linuxserver/overseerr
+          value: America/Santiago
+        - name: LOG_LEVEL
+          value: info
+        image: ghcr.io/seerr-team/seerr:latest
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 10
@@ -47,7 +50,8 @@ spec:
           initialDelaySeconds: 60
           periodSeconds: 10
           successThreshold: 1
-          tcpSocket:
+          httpGet:
+            path: /api/v1/settings/public
             port: 5055
           timeoutSeconds: 3
         resources:
@@ -58,7 +62,7 @@ spec:
             cpu: 100m
             memory: 256Mi
         volumeMounts:
-        - mountPath: /config
+        - mountPath: /app/config
           name: config
       volumes:
       - name: config
