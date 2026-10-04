@@ -6,7 +6,7 @@ metadata:
   labels:
     app: radarr
 spec:
-  replicas: 0  # pausado: esperando NFS (ver docs/PENDIENTES.md)
+  replicas: 1
   selector:
     matchLabels:
       app: radarr

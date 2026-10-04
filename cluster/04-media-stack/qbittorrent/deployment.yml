@@ -4,7 +4,7 @@ metadata:
   name: qbittorrent
   namespace: qbittorrent
 spec:
-  replicas: 0  # pausado: esperando NFS (ver docs/PENDIENTES.md)
+  replicas: 1
   selector:
     matchLabels:
       app: qbittorrent
@@ -54,6 +54,9 @@ spec:
           value: "8080"
         - name: XDG_CONFIG_HOME
           value: "/data/config/qbittorrent"
+        # Cola y datos de reanudación (BT_backup): sin esto quedaban dentro del contenedor y se perdían al reiniciar
+        - name: XDG_DATA_HOME
+          value: "/data/config/qbittorrent/data"
         ports:
         - containerPort: 8080
           name: webui

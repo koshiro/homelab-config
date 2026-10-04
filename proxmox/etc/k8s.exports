@@ -4,3 +4,6 @@
 /nvme/k8s/pingvin   192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /nvme/k8s/backups   192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /nvme/k8s/webs      192.168.1.0/24(ro,sync,no_subtree_check)
+# homelab-storage recreado en Proxmox (2026-10-03): biblioteca *arr y ComfyUI
+/mnt/homelab-storage/k8s-media-library 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+/mnt/homelab-storage/comfyui           192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
