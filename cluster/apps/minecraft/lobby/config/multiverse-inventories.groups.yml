@@ -38,5 +38,5 @@ groups:
     - oneblock_world_the_end
     shares:
     - all
-    disabled-shares:
-    - last_location
+    # last_location activo (2026-10-04): el NPC (/ob) devuelve al lugar donde salieron o se desconectaron;
+    # sin ubicación guardada (primera vez) BentoBox los lleva a su isla
