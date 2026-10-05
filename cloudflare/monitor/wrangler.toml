@@ -1,0 +1,16 @@
+name = "homelab-monitor"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[kv_namespaces]]
+binding = "MONITOR"
+id = "PENDIENTE"  # npx wrangler kv namespace create MONITOR
+
+[observability]
+enabled = true
+
+# Secretos (npx wrangler secret put <NOMBRE>): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, HEARTBEAT_TOKEN

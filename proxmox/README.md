@@ -49,6 +49,7 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 | `restic-r2.env` | Credenciales S3 de R2 (derivadas del token: ID del token y SHA-256 del token) y repositorio | `vault_cloudflare_api_token` |
 | `restic-r2.password` | Contraseña del repositorio restic. **Sin ella el respaldo offsite es ilegible** | `vault_restic_r2_password` |
 | `telegram.env` | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | `vault_telegram_bot_token` |
+| `monitor.env` | `MONITOR_URL`, `HEARTBEAT_TOKEN` del Worker `cloudflare/monitor` | `vault_monitor_heartbeat_token` |
 
 ## Tareas programadas
 
@@ -59,7 +60,7 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 | 03:15 | (k8s) dump Postgres de Immich → `nvme/k8s/backups/postgres` (5 días) |
 | 03:30 | syncoid `nvme/k8s` → `respaldo/k8s` |
 | 04:30 | restic → Cloudflare R2 (`homelab/restic`): immich, minecraft, backups, webs; sin lo regenerable; retiene 3 diarios + 2 semanales (objetivo < 10 GB, nivel gratuito) |
-| 08:00 | verificación de frescura de todos los respaldos (alerta Telegram; resumen los lunes) |
+| 08:00 | verificación de frescura de todos los respaldos (alerta Telegram; resumen los lunes) y ping al monitor externo (`cloudflare/monitor`, avisa si falta > 26 h) |
 | 00:30 / 12:30 | (k8s) copia de snapshots de etcd de pibot |
 
 Restaurar desde R2: `set -a; . /root/.secrets/restic-r2.env; set +a; restic snapshots; restic restore latest --target /tmp/restore --include /nvme/k8s/immich`.
