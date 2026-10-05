@@ -16,26 +16,33 @@ aplicación Access propia con política **Bypass** (solo responde `pong`).
 
 ## Desplegar
 
+Publicado en `https://monitor.danielriquelme.cl` (Custom Domain). Los cron triggers exigen que la
+cuenta tenga subdominio workers.dev (`danielriquelme.workers.dev`), aunque el Worker no se publica ahí.
+
+Se usa el token de administración del vault (`vault_cloudfare_full_api_token`; el de
+`vault_cloudflare_api_token` es solo R2). Node de Homebrew puede fallar: usar `bunx`.
+
 ```bash
 cd cloudflare/monitor
-npx wrangler login                                  # una vez, abre el navegador
-npx wrangler kv namespace create MONITOR            # copiar el id a wrangler.toml
-npx wrangler deploy                                 # imprime la URL *.workers.dev
-# Secretos: se leen/generan en Proxmox y van directo a wrangler (no pasan por la pantalla)
-ssh root@pve '. /root/.secrets/telegram.env; printf %s "$TELEGRAM_BOT_TOKEN"' | npx wrangler secret put TELEGRAM_BOT_TOKEN
-ssh root@pve '. /root/.secrets/telegram.env; printf %s "$TELEGRAM_CHAT_ID"'   | npx wrangler secret put TELEGRAM_CHAT_ID
-ssh root@pve 'umask 077; t=$(openssl rand -hex 32); printf "MONITOR_URL=%s\nHEARTBEAT_TOKEN=%s\n" "<URL del deploy>" "$t" > /root/.secrets/monitor.env; printf %s "$t"' \
-  | npx wrangler secret put HEARTBEAT_TOKEN
+export CLOUDFLARE_API_TOKEN=$(cd ../../ansible && ansible-vault view vars/vault.yml | sed -n 's/^vault_cloudfare_full_api_token: *//p' | tr -d "\"' ")
+bunx wrangler@latest deploy
+# Secretos: de Proxmox directo a wrangler (no pasan por la pantalla)
+ssh root@pve '. /root/.secrets/telegram.env; printf %s "$TELEGRAM_BOT_TOKEN"' | bunx wrangler@latest secret put TELEGRAM_BOT_TOKEN
+ssh root@pve '. /root/.secrets/telegram.env; printf %s "$TELEGRAM_CHAT_ID"'   | bunx wrangler@latest secret put TELEGRAM_CHAT_ID
+ssh root@pve '. /root/.secrets/monitor.env; printf %s "$HEARTBEAT_TOKEN"'     | bunx wrangler@latest secret put HEARTBEAT_TOKEN
 ```
 
-`/root/.secrets/monitor.env` (modo 600) es lo que usa `check-backups.sh` para el ping; si no
-existe, el ping se omite. Copiarlo al vault como `vault_monitor_heartbeat_token`.
+`/root/.secrets/monitor.env` (modo 600, `MONITOR_URL` y `HEARTBEAT_TOKEN`) es lo que usa
+`check-backups.sh` para el ping; si no existe, el ping se omite.
+
+Nota: KV es eventualmente consistente (una clave leída como inexistente queda en caché ~60 s en
+ese punto de presencia); con ejecuciones cada 5 min no afecta al conteo de fallos.
 
 ## Operar
 
 ```bash
-npx wrangler tail                                   # logs en vivo
+bunx wrangler@latest tail                                   # logs en vivo
 ssh root@pve '. /root/.secrets/monitor.env; curl -s -H "Authorization: Bearer $HEARTBEAT_TOKEN" $MONITOR_URL/status'   # estado guardado
 ```
 
-Para agregar un servicio: sumar una entrada a `CHECKS` en `src/index.js` y `npx wrangler deploy`.
+Para agregar un servicio: sumar una entrada a `CHECKS` en `src/index.js` y `bunx wrangler@latest deploy`.
