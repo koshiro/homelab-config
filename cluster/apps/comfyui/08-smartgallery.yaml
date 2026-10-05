@@ -1,0 +1,139 @@
+# SmartGallery: galería web de las salidas de ComfyUI (prompt/modelo/LoRA, workflow, favoritos, estrellas,
+# mover/borrar en lote). Funciona aunque ComfyUI esté apagado. Usa el mismo volumen NFS:
+#   output/ e input/ (lectura/escritura) y models/ (solo lectura, para filtrar por LoRA/checkpoint);
+#   smartgallery/ guarda la base SQLite, miniaturas y zips.
+# Corre como root (WANTED_UID=0): ComfyUI escribe como root con umask 022, así que con otro uid no se
+# podría mover ni borrar dentro de las carpetas por fecha que va creando.
+# Login propio (ADMIN_PASSWORD en secret-smartgallery.sops.yaml) además de Cloudflare Access.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartgallery
+  namespace: comfyui
+  labels:
+    app: smartgallery
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # SQLite en NFS: un solo escritor
+  selector:
+    matchLabels:
+      app: smartgallery
+  template:
+    metadata:
+      labels:
+        app: smartgallery
+    spec:
+      # NumPy de la imagen exige x86-64-v2; k3s-node-2 y -3 son VMs con CPU "Common KVM processor" (sin SSE4.2)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/media-worker
+                    operator: In
+                    values: ["true"]
+      containers:
+        - name: smartgallery
+          image: mmartial/smart-comfyui-gallery:2.24.2
+          env:
+            - name: BASE_OUTPUT_PATH
+              value: /mnt/output
+            - name: BASE_INPUT_PATH
+              value: /mnt/input
+            - name: BASE_SMARTGALLERY_PATH
+              value: /mnt/SmartGallery
+            - name: BASE_MODELS_PATH
+              value: /mnt/models
+            - name: WANTED_UID
+              value: "0"
+            - name: WANTED_GID
+              value: "0"
+            - name: COMFYUI_SERVER_URL
+              value: http://comfyui.comfyui.svc.cluster.local:8188
+            # Por defecto usa todos los núcleos al indexar; limitado para no ahogar al nodo
+            - name: MAX_PARALLEL_WORKERS
+              value: "2"
+            - name: TZ
+              value: America/Santiago
+          envFrom:
+            - secretRef:
+                name: smartgallery # ADMIN_PASSWORD, SECRET_KEY (sesiones que sobreviven reinicios)
+          ports:
+            - containerPort: 8189
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: workspace
+              mountPath: /mnt/output
+              subPath: output
+            - name: workspace
+              mountPath: /mnt/input
+              subPath: input
+            - name: workspace
+              mountPath: /mnt/models
+              subPath: models
+              readOnly: true
+            - name: workspace
+              mountPath: /mnt/SmartGallery
+              subPath: smartgallery
+          # Al arrancar indexa todo antes de abrir el puerto (~7 archivos/s: 7000 PNG ≈ 16 min la primera vez)
+          startupProbe:
+            tcpSocket:
+              port: 8189
+            periodSeconds: 10
+            failureThreshold: 180
+          livenessProbe:
+            tcpSocket:
+              port: 8189
+            periodSeconds: 30
+            failureThreshold: 6
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: comfyui-workspace-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartgallery
+  namespace: comfyui
+  labels:
+    app: smartgallery
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8189
+      targetPort: 8189
+      protocol: TCP
+      name: http
+  selector:
+    app: smartgallery
+---
+# Protegido por Cloudflare Access (app "Homelab admin") y el login de SmartGallery
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smartgallery
+  namespace: comfyui
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: galeria.danielriquelme.cl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: smartgallery
+                port:
+                  number: 8189
