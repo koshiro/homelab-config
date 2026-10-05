@@ -736,77 +736,8 @@ spec:
                 server: 192.168.1.100
                 path: /nvme/k8s/backups
 ---
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: config-backup-webodm-media
-  namespace: webodm
-  labels:
-    app.kubernetes.io/component: config-backup
-spec:
-  schedule: "46 2 * * *"
-  timeZone: America/Santiago
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 2
-  jobTemplate:
-    spec:
-      backoffLimit: 1
-      activeDeadlineSeconds: 1800
-      template:
-        spec:
-          restartPolicy: Never
-          containers:
-            - name: backup
-              image: alpine:3.22
-              env:
-                - name: APP
-                  value: webodm-media
-                - name: EXCLUDES
-                  value: |
-                    CACHE/
-                    tmp/
-                    __pycache__/
-              command:
-                - /bin/sh
-                - -ec
-                - |
-                  apk add -q --no-cache rsync sqlite
-                  d=/backups/apps/$APP
-                  mkdir -p "$d/data"
-                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
-                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
-                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
-                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
-                  cd /src
-                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
-                    [ -f "$d/data/$f" ] || continue
-                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
-                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
-                    for x in "$f-wal" "$f-shm"; do
-                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
-                    done
-                  done
-                  date -Iseconds > "$d/.last-backup"
-                  du -sh "$d/data"
-              resources:
-                requests: {cpu: 10m, memory: 32Mi}
-                limits: {memory: 256Mi}
-              volumeMounts:
-                - name: src
-                  mountPath: /src
-                - name: backups
-                  mountPath: /backups
-          volumes:
-            - name: src
-              persistentVolumeClaim:
-                claimName: webodm-media
-            - name: backups
-              nfs:
-                server: 192.168.1.100
-                path: /nvme/k8s/backups
----
-# WebODM: Postgres 9.x propio (no CNPG); pg_dump 17 sabe leer servidores antiguos.
+# WebODM: solo la DB (cuentas y ajustes); los proyectos (fotos y resultados) no se respaldan.
+# Postgres 9.x propio (no CNPG); pg_dump 17 sabe leer servidores antiguos.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
