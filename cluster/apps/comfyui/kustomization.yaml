@@ -6,3 +6,4 @@ resources:
   - 00-deployment.yaml
   - 01-service.yaml
   - 03-ingress-domain.yaml
+  - 08-smartgallery.yaml

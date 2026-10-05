@@ -11,6 +11,8 @@ Ollama también la usan). Todo el estado vive en el volumen NFS `homelab-storage
 | `06-job-build-env.yaml` | Construye/actualiza el entorno: ComfyUI a la última release `v*`, Python 3.12 (uv, en `/app/.python`), PyTorch 2.11 + CUDA 12.8, SageAttention 2.2 compilado para sm_86, extensiones usadas por los workflows (las demás a `custom_nodes/.disabled`). Lock en `venv/requirements.lock`. |
 | `07-job-download-models.yaml` | Descarga los modelos con verificación SHA256 (Civitai con el token de `secret-civitai.sops.yaml`). Idempotente. |
 | `05-job-prepare-workspace.yaml` | Estructura de carpetas (solo si hay `Permission denied`). |
+| `08-smartgallery.yaml` | Galería de las salidas (SmartGallery) en `galeria.danielriquelme.cl`. Ver [Galería](#galería). |
+| `secret-smartgallery.sops.yaml` | `ADMIN_PASSWORD` (login de la galería) y `SECRET_KEY` (sesiones). Se aplica a mano con `sops -d … \| kubectl apply -f -`. |
 
 ## Actualizar
 
@@ -40,6 +42,26 @@ controlnet_aux, no instalados). Los originales de los workflows previos al cambi
 
 `comfyui.danielriquelme.cl` está detrás de **Cloudflare Access** (app «Homelab admin», política
 `BlockAllbyMe`): login con código enviado al correo, sesión de 24 h.
+
+## Galería
+
+[SmartGallery](https://github.com/biagiomaf/smart-comfyui-gallery) (`08-smartgallery.yaml`) muestra `output/`
+con el prompt, modelo, LoRA y workflow de cada imagen; permite favoritos, estrellas, colecciones y mover o
+borrar en lote. Funciona aunque ComfyUI esté apagado. Detalles:
+
+- **Acceso:** `galeria.danielriquelme.cl`, login con usuario `admin` y la contraseña de
+  `sops -d cluster/apps/comfyui/secret-smartgallery.sops.yaml`. Debe estar además en la app «Homelab admin»
+  de Cloudflare Access (el túnel tiene comodín: sin Access, el Ingress queda público).
+- **Estado:** base SQLite, miniaturas y zips en `smartgallery/` del mismo volumen.
+- **Arranque:** indexa todo antes de abrir el puerto (~7 archivos/s); el startup probe da 30 min.
+- **Nodo:** solo `k3s-node-1`: NumPy de la imagen exige x86-64-v2 y `k3s-node-2`/`-3` son VMs con CPU
+  genérica de KVM.
+- **Borrado:** definitivo (sin `DELETE_TO`); se recupera desde los snapshots diarios de sanoid.
+
+**Carpetas por fecha:** los `SaveImage` de los workflows guardados usan `filename_prefix` =
+`%date:yyyy-MM-dd%/<nombre>`; el frontend lo reemplaza con la fecha local del navegador al encolar. En
+workflows nuevos, usar el mismo patrón. Los prefijos anteriores quedaron en
+`user/default/workflows-antes-fecha-20261005/`.
 
 ## GPU compartida
 
