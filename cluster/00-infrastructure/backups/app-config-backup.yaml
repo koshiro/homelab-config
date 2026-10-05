@@ -1,0 +1,790 @@
+# Respaldo de configuración y bases de datos de las apps con PVC local-path (disco de los workers,
+# sin vzdump). Copia solo lo que no se regenera ni se vuelve a descargar (sin MediaCover, logs,
+# Metadata/Cache de Plex, librerías/jars de Minecraft, modelos de embeddings) a
+# Proxmox nvme/k8s/backups/apps/<app>/data: espejo diario; la historia la dan sanoid (nvme),
+# syncoid (respaldo/k8s) y restic (R2). check-backups.sh vigila apps/<app>/.last-backup.
+# El pod cae en el nodo del PV (nodeAffinity de local-path); RWO permite convivir con la app.
+# Restaurar: escalar la app a 0, copiar data/ sobre el PVC (chown 1000:1000) y escalar a 1.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-plex
+  namespace: plex
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "40 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: plex
+                - name: EXCLUDES
+                  value: |
+                    /transcoding/
+                    /Library/Application Support/Plex Media Server/Metadata/
+                    /Library/Application Support/Plex Media Server/Media/
+                    /Library/Application Support/Plex Media Server/Cache/
+                    /Library/Application Support/Plex Media Server/Logs/
+                    /Library/Application Support/Plex Media Server/Codecs/
+                    /Library/Application Support/Plex Media Server/Scanners/
+                    /Library/Application Support/Plex Media Server/Updates/
+                    /Library/Application Support/Plex Media Server/Crash Reports/
+                    /Library/Application Support/Plex Media Server/Diagnostics/
+                    /Library/Application Support/Plex Media Server/Drivers/
+                    *.db-20*
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: plex-config-pvc
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-sonarr
+  namespace: sonarr
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "41 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: sonarr
+                - name: EXCLUDES
+                  value: |
+                    MediaCover/
+                    logs/
+                    logs.db
+                    Backups/
+                    Sentry/
+                    UpdateLogs/
+                    *.pid
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: sonarr-config-pvc
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-radarr
+  namespace: radarr
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "41 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: radarr
+                - name: EXCLUDES
+                  value: |
+                    MediaCover/
+                    logs/
+                    logs.db
+                    Backups/
+                    Sentry/
+                    UpdateLogs/
+                    *.pid
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: radarr-config
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-prowlarr
+  namespace: prowlarr
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "42 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: prowlarr
+                - name: EXCLUDES
+                  value: |
+                    MediaCover/
+                    logs/
+                    logs.db
+                    Backups/
+                    Sentry/
+                    UpdateLogs/
+                    *.pid
+                    Definitions/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: prowlarr-config
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-bazarr
+  namespace: bazarr
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "42 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: bazarr
+                - name: EXCLUDES
+                  value: |
+                    log/
+                    cache/
+                    backup/
+                    restore/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: bazarr-config
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-overseerr
+  namespace: overseerr
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "43 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: overseerr
+                - name: EXCLUDES
+                  value: |
+                    logs/
+                    .cache/
+                    .yarn/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: overseerr-config
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-pingvin
+  namespace: pingvin
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "43 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: pingvin
+                - name: EXCLUDES
+                  value: ""
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: pingvin-config
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-open-webui
+  namespace: ollama-stack
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "44 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: open-webui
+                - name: EXCLUDES
+                  value: |
+                    cache/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: open-webui-data
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-minecraft-spiral2
+  namespace: minecraft
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "45 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: minecraft-spiral2
+                - name: EXCLUDES
+                  value: |
+                    /libraries/
+                    /versions/
+                    /cache/
+                    /.cache/
+                    /logs/
+                    /crash-reports/
+                    *.jar
+                    /plugins/floodgate/key.pem
+                    /plugins/spark/tmp/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: minecraft-spiral2-data
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-minecraft-spiral3
+  namespace: minecraft
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "45 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: minecraft-spiral3
+                - name: EXCLUDES
+                  value: |
+                    /libraries/
+                    /versions/
+                    /cache/
+                    /.cache/
+                    /logs/
+                    /crash-reports/
+                    *.jar
+                    /plugins/floodgate/key.pem
+                    /plugins/spark/tmp/
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                    # si la app estaba detenida, sqlite3 crea -wal/-shm como root: devolverlos al dueño de la DB
+                    for x in "$f-wal" "$f-shm"; do
+                      if [ -e "$x" ]; then chown "$(stat -c %u:%g "$f")" "$x"; fi
+                    done
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: minecraft-spiral3-data
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+# WebODM: solo la DB (cuentas y ajustes); los proyectos (fotos y resultados) no se respaldan.
+# Postgres 9.x propio (no CNPG); pg_dump 17 sabe leer servidores antiguos.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-webodm-db
+  namespace: webodm
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "46 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: pg-dump
+              image: postgres:17-alpine
+              env:
+                - name: PGHOST
+                  value: db
+                - name: PGUSER
+                  value: postgres
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  d=/backups/apps/webodm-db
+                  mkdir -p "$d"
+                  pg_dump --format=custom --compress=6 --file="$d/webodm_dev.dump.tmp" webodm_dev
+                  pg_restore --list "$d/webodm_dev.dump.tmp" > /dev/null
+                  mv "$d/webodm_dev.dump.tmp" "$d/webodm_dev.dump"
+                  date -Iseconds > "$d/.last-backup"
+                  ls -lh "$d"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups

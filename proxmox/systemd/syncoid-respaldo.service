@@ -3,4 +3,6 @@ Description=Replica nvme/k8s -> respaldo/k8s (syncoid)
 After=zfs-import.target
 [Service]
 Type=oneshot
+# mbuffer avisa en cada dataset si no hay HOME
+Environment=HOME=/root
 ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation nvme/k8s respaldo/k8s
