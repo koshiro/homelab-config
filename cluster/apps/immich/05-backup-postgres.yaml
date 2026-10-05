@@ -67,8 +67,8 @@ spec:
                     secretKeyRef:
                       name: homelab-postgres-app
                       key: password
-                - name: KEEP_DAYS
-                  value: "14"
+                - name: KEEP_DAYS  # pocos días: R2 sube todos los dumps de la carpeta; más historia en ZFS
+                  value: "5"
               command:
                 - /bin/sh
                 - -ec

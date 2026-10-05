@@ -32,7 +32,7 @@ spec:
                 - -ec
                 - |
                   cp -p -u /snapshots/etcd-snapshot-* /dest/
-                  find /dest -name 'etcd-snapshot-*' -type f -mtime +30 -delete
+                  find /dest -name 'etcd-snapshot-*' -type f -mtime +7 -delete
                   ls -lh /dest | tail -5
               resources:
                 requests: {cpu: 10m, memory: 16Mi}

@@ -24,8 +24,19 @@ for d in "${DATASETS[@]}"; do
 done
 # Quita solo locks huérfanos (p. ej. tras un reinicio forzado)
 restic unlock
-restic backup --host pve --tag k8s --exclude "**/thumbs/**" --exclude "**/encoded-video/**" "${PATHS[@]}"
-restic forget --host pve --tag k8s --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+# A R2 solo va lo que no se regenera ni se vuelve a descargar (objetivo: < 10 GB del nivel gratuito).
+# Fuera: miniaturas/transcodificados de Immich, sus dumps internos (ya está backups/postgres) y
+# los binarios/librerías/caché de Minecraft. La historia larga queda en ZFS (nvme y respaldo).
+EXCLUDES=(
+  "**/thumbs/**" "**/encoded-video/**"
+  "$MNT/nvme/k8s/immich/backups"
+  "$MNT/nvme/k8s/minecraft/libraries" "$MNT/nvme/k8s/minecraft/versions"
+  "$MNT/nvme/k8s/minecraft/cache" "$MNT/nvme/k8s/minecraft/.cache"
+  "$MNT/nvme/k8s/minecraft/logs" "$MNT/nvme/k8s/minecraft/*.jar"
+)
+restic backup --host pve --tag k8s "${EXCLUDES[@]/#/--exclude=}" "${PATHS[@]}"
+# Pocas copias: el dedup hace que cada una cueste solo lo que cambió
+restic forget --host pve --tag k8s --keep-daily 3 --keep-weekly 2 --prune
 # Domingo: verificar 5% de los datos
 if [ "$(date +%u)" = 7 ]; then restic check --read-data-subset=5%; fi
 restic snapshots --latest 1 --compact
