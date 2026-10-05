@@ -11,8 +11,8 @@ Monitor externo: corre en Cloudflare, así que avisa aunque el homelab entero es
 - Todo dentro del plan Workers Free (288 ejecuciones/día de 100.000; KV ~600 lecturas y unas pocas
   escrituras al día). Si algún día se pasara un límite, la operación falla: no hay cobro.
 
-Immich está detrás de Cloudflare Access; el monitor usa `/api/server/ping`, que tiene una
-aplicación Access propia con política **Bypass** (solo responde `pong`).
+Si algún servicio revisado se pone detrás de Cloudflare Access, su URL de chequeo necesita una
+aplicación Access con política Bypass (si no, el monitor recibe el 302 al login y lo da por caído).
 
 ## Desplegar
 

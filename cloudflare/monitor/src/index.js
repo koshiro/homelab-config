@@ -5,7 +5,6 @@
 // Estado en KV (MONITOR): se escribe solo cuando algo cambia, para quedar lejos de 1.000 escrituras/día.
 
 const CHECKS = [
-  // Ruta con política Bypass en Access: el resto de immich.* exige login
   { name: "Immich", url: "https://immich.danielriquelme.cl/api/server/ping", expect: "pong" },
   { name: "Seerr", url: "https://seerr.danielriquelme.cl/api/v1/status", expect: "version" },
   { name: "Pingvin", url: "https://pingvin.danielriquelme.cl/api/health", expect: "OK" },
