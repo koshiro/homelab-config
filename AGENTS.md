@@ -30,6 +30,18 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 - **GitOps**: manifiestos en `cluster/` aplicados con kubectl; FluxCD planificado (ver docs/PENDIENTES.md)
 - **Acceso remoto**: Tailscale (`ssh daniel@k3s-node-0`, MagicDNS del master pibot; kubectl local funciona)
 
+## Flujo de ramas (GitHub Flow)
+
+`main` es el estado del cluster: lo que está en `main` es lo que debe estar aplicado.
+
+1. Cada cambio en una rama corta desde `main`, con el prefijo del tipo de commit: `feat/`, `fix/`, `chore/`, `docs/` (p. ej. `feat/qbittorrent-seed-limits`).
+2. Commits con Conventional Commits en español: `tipo(ámbito): descripción` (`feat(comfyui): …`).
+3. PR a `main` con `gh pr create`; merge con `gh pr merge --merge`. GitHub borra la rama remota sola (`deleteBranchOnMerge`); la local se borra con `git switch main && git pull && git branch -d <rama>`.
+4. No hay `develop`, `release/` ni `hotfix/`: un arreglo urgente es una rama `fix/` más.
+5. Si un cambio se aplica al cluster antes del merge (para probarlo), el PR se mergea apenas se confirma que funciona, para que `main` no quede detrás del cluster.
+
+El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así que el flujo se cumple por convención. Nada de push directo a `main` ni `--force`.
+
 ## Skills disponibles
 
 | Skill | Ubicación | Cuándo usar |
