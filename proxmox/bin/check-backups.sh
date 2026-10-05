@@ -39,6 +39,13 @@ for p in $(zpool list -H -o name); do
 done
 for p in nvme respaldo; do zpool list "$p" >/dev/null 2>&1 || fails+=("pool $p: no importado"); done
 
+# Dead-man's switch del monitor externo (cloudflare/monitor): avisa si este script deja de correr
+if [ -z "${DRY_RUN:-}" ] && [ -r /root/.secrets/monitor.env ]; then
+  ( . /root/.secrets/monitor.env
+    curl -fsS -m 15 -X POST -H "Authorization: Bearer $HEARTBEAT_TOKEN" "$MONITOR_URL/ping/check-backups" >/dev/null ) \
+    || echo "aviso: no se pudo hacer ping al monitor externo" >&2
+fi
+
 if [ ${#fails[@]} -gt 0 ]; then
   notify "$(printf "🚨 Respaldos con problemas:\n"; printf "• %s\n" "${fails[@]}")"; exit 1
 elif [ "$(date +%u)" = 1 ]; then
