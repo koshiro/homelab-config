@@ -1,0 +1,64 @@
+# Validador de semillas: Paper 26.2 efímero (mismo que el principal) para comprobar con /locate
+# lo que predicen los buscadores. Sin jugadores, sin Service público, mundo en emptyDir.
+# Cambiar la semilla: editar SEED y volver a aplicar (el pod se recrea con un mundo nuevo).
+#   kubectl apply -f validator.yaml
+#   kubectl -n minecraft exec deploy/seed-validator -- rcon-cli "execute positioned 0 64 0 run locate structure minecraft:village_plains"
+#   kubectl -n minecraft delete -f validator.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seed-validator
+  namespace: minecraft
+  labels:
+    app: seed-validator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seed-validator
+  template:
+    metadata:
+      labels:
+        app: seed-validator
+    spec:
+      containers:
+        - name: paper
+          image: itzg/minecraft-server:2026.9.2-java25
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: PAPER
+            - name: VERSION
+              value: "26.2"
+            - name: SEED
+              value: "5134907312929138905"  # mundo familiar actual (referencia conocida)
+            - name: ONLINE_MODE
+              value: "FALSE"
+            - name: ENABLE_WHITELIST
+              value: "TRUE"
+            - name: MEMORY
+              value: 3G
+            - name: VIEW_DISTANCE
+              value: "4"
+            - name: SPAWN_PROTECTION
+              value: "0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 3Gi
+            limits:
+              memory: 4Gi
+          readinessProbe:
+            exec:
+              command: ["mc-health"]
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}

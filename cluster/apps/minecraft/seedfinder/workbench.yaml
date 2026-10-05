@@ -1,0 +1,59 @@
+# Banco de trabajo para buscar semillas del próximo mundo familiar (ver README.md de esta carpeta).
+# Pod con la RTX 3070 (time-slicing, compartida con ComfyUI/Plex/Ollama) y el dataset
+# homelab-storage/seedfinder (NFS desde Proxmox, sin snapshots: todo es regenerable).
+# Rust, el código de MCSeedFinder, binarios y resultados viven en /work, no en la imagen.
+#   kubectl apply -f workbench.yaml && kubectl -n minecraft exec -it seedfinder -- bash
+#   kubectl -n minecraft delete pod seedfinder   # al terminar (libera la GPU)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: seedfinder
+  namespace: minecraft
+  labels:
+    app: seedfinder
+spec:
+  runtimeClassName: nvidia
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/media-worker
+                operator: In
+                values: ["true"]
+  containers:
+    - name: work
+      # Misma imagen que ComfyUI (ya en caché en el nodo): nvcc 13.0 para el build --features cuda
+      image: nvidia/cuda:13.0.3-devel-ubuntu24.04
+      # Paquetes del sistema (no persisten en /work): Python para los scripts, clang/git para compilar
+      command: ["/bin/sh", "-c"]
+      args:
+        - >-
+          export DEBIAN_FRONTEND=noninteractive;
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends
+          python3 git curl ca-certificates clang libclang-dev pkg-config >/dev/null;
+          exec sleep infinity
+      env:
+        - name: RUSTUP_HOME
+          value: /work/.rustup
+        - name: CARGO_HOME
+          value: /work/.cargo
+        - name: PATH
+          value: /work/.cargo/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      resources:
+        requests:
+          cpu: 100m  # el nodo de la GPU tiene la CPU reservada casi entera; sin límite usa la libre
+          memory: 2Gi
+          nvidia.com/gpu: "1"
+        limits:
+          memory: 12Gi
+          nvidia.com/gpu: "1"
+      volumeMounts:
+        - name: work
+          mountPath: /work
+  volumes:
+    - name: work
+      nfs:
+        server: 192.168.1.100
+        path: /mnt/homelab-storage/seedfinder

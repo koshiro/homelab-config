@@ -1,0 +1,9 @@
+{"version":"26.2","search":{"random":true,"results":100000000,"batch_size":40000},"conditions":[
+ {"type":"structure_near","any_of":["village"],"radius":250,"anchor":"origin"},
+ {"type":"structure_near","any_of":["trial_chambers"],"radius":400,"anchor":"origin"},
+ {"type":"structure_near","any_of":["village"],"radius":500,"anchor":"origin","min_count":2},
+ {"type":"any","conditions":[
+ {"type":"structure_near","any_of":["pillager_outpost"],"radius":800,"anchor":"origin"},
+ {"type":"structure_near","any_of":["mansion"],"radius":1500,"anchor":"origin"}]},
+ {"type":"biome_near","dimension":"overworld","any_of":["ocean","deep_ocean","cold_ocean","deep_cold_ocean","lukewarm_ocean","deep_lukewarm_ocean","warm_ocean","frozen_ocean","deep_frozen_ocean"],"radius":64,"anchor":"origin","y":63,"min_count":0,"max_count":0},
+ {"type":"structure_near","any_of":["desert_pyramid","jungle_pyramid","igloo","swamp_hut"],"radius":700,"anchor":"origin"}]}

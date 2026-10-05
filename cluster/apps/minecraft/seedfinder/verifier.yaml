@@ -1,0 +1,100 @@
+# Etapa 3 del buscador: spawners reales de los finalistas (tools/spawners.py). Paper 26.2 efímero con
+# Multiverse + Chunky; el sidecar crea un mundo por semilla, pregenera 400 m alrededor del origen, busca
+# spawners en los .mca y escribe /work/runs/<run>/spawners.jsonl. Sin jugadores ni Service; mundos en emptyDir.
+#   kubectl apply -f verifier.yaml
+#   kubectl -n minecraft logs deploy/seed-verifier -c verifier -f
+#   kubectl -n minecraft delete -f verifier.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seed-verifier
+  namespace: minecraft
+  labels:
+    app: seed-verifier
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seed-verifier
+  template:
+    metadata:
+      labels:
+        app: seed-verifier
+    spec:
+      # Fuera de k3s-node-1: ahí corre la búsqueda (runner2) y usa toda la CPU libre
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["k3s-node-1", "pibot"]
+      containers:
+        - name: paper
+          image: itzg/minecraft-server:2026.9.2-java25
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: TYPE
+              value: PAPER
+            - name: VERSION
+              value: "26.2"
+            - name: LEVEL_TYPE
+              value: minecraft:flat   # el mundo principal no se usa; plano arranca rápido
+            - name: ONLINE_MODE
+              value: "FALSE"
+            - name: ENABLE_WHITELIST
+              value: "TRUE"
+            - name: MEMORY
+              value: 4G
+            - name: VIEW_DISTANCE
+              value: "2"
+            - name: RCON_PASSWORD
+              value: seed-verifier    # solo accesible dentro del pod (sin Service)
+            - name: MODRINTH_PROJECTS
+              value: |
+                multiverse-core
+                chunky
+            - name: MODRINTH_ALLOWED_VERSION_TYPE
+              value: release
+          resources:
+            requests:
+              cpu: 500m
+              memory: 4Gi
+            limits:
+              memory: 5Gi
+          readinessProbe:
+            exec:
+              command: ["mc-health"]
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        - name: verifier
+          image: python:3.13-slim
+          command: ["python3", "-u", "/work/spawners.py", "--run", "/work/runs/r2", "--top", "100"]
+          env:
+            - name: RCON_PASSWORD
+              value: seed-verifier
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: work
+              mountPath: /work
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: work
+          nfs:
+            server: 192.168.1.100
+            path: /mnt/homelab-storage/seedfinder
