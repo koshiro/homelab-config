@@ -17,10 +17,12 @@ las 1.000 mejores; del resto quedan contadores en `stats.json`.
    (`check` con `HIT_CAPACITY=4096`) + biomas (`tools/biomefeat2.c`) → `tools/scoring2.py`. Pasa todos los
    filtros ~2 %.
 3. **Spawners reales** (`verifier.yaml` + `tools/spawners.py`): Paper 26.2 con Multiverse y Chunky, fuera de
-   k3s-node-1. Por cada finalista pregenera 400 m alrededor del origen (~800×800 bloques), lee los `.mca` y busca
-   grupos de 2 o 3 spawners activables a la vez (existe un punto a ≤ 16 bloques de todos). Dungeons y spawners de
-   minas no se pueden predecir sin generar el terreno.
-4. **Ranking** (`tools/ranking.py`): puntaje v2 + bonus de spawners (triple 25, doble 12; baja con la distancia).
+   k3s-node-1, ~5 min por semilla. Por cada finalista pregenera 400 m alrededor del origen (~800×800 bloques),
+   lee los `.mca` (en 26.x el block entity es `minecraft:mob_spawner`) y busca grupos de 2 o 3 spawners de
+   dungeon activables a la vez (existe un punto a ≤ 16 bloques de todos). Las arañas de cueva de las minas se
+   descartan (comunes y malas para granjas de XP). Los dungeons no se pueden predecir sin generar el terreno.
+4. **Ranking** (`tools/ranking.py`): puntaje v2 + bonus del mejor grupo de spawners: triple 25, doble 12,
+   × peso promedio del mob (esqueleto 1, zombi 0,75, araña 0,4) × distancia (1 hasta 150 m, 0,4 a 400 m).
 
 ### Puntaje v2 (`tools/scoring2.py`)
 

@@ -3,8 +3,8 @@
 
 Corre como sidecar del Paper de seed-verifier.yaml (comparte /data, habla por RCON). Para cada semilla del top de
 la corrida que aún no esté verificada: crea el mundo con Multiverse, pregenera RADIO bloques con Chunky, lo
-descarga, lee los .mca y busca block entities `minecraft:mob_spawner` (nombre en 26.x) (dungeons: zombie/esqueleto/araña; minas: araña de
-cueva). Los trial spawners no cuentan (no sirven para granjas). Luego borra el mundo.
+descarga, lee los .mca y busca block entities `minecraft:mob_spawner` (nombre en 26.x). Solo cuentan los de
+dungeons (esqueleto > zombi > araña); arañas de cueva y trial spawners no. Luego borra el mundo.
 
 Grupo activable: un jugador activa un spawner a <= 16 bloques (esfera). Dos o tres spawners forman grupo si existe
 un punto a <= 16 de todos (radio de la esfera mínima que los contiene <= 16). Resultado en <run>/spawners.jsonl.
@@ -13,6 +13,12 @@ import argparse, glob, itertools, json, math, os, shutil, socket, struct, time, 
 
 RADIO = 400
 ACTIVACION = 16.0
+# Valor del grupo = BASE[tamaño] × promedio del peso de sus mobs × factor_dist. Esqueletos primero (huesos,
+# flechas, más fáciles de juntar en granja), luego zombis; arañas valen poco (miden 2x1 y escalan paredes).
+# Las arañas de cueva (minas) se descartan: muy comunes y malas para granjas de XP.
+BASE = {3: 25, 2: 12}
+MOB = {"skeleton": 1.0, "zombie": 0.75, "spider": 0.4}
+DESCARTAR = {"cave_spider"}
 
 
 # --- RCON mínimo ---
@@ -121,34 +127,35 @@ def radio_esfera(pts):
     return la * lb * lc / (4 * area)      # circunradio
 
 
+def factor_dist(d):
+    """1 hasta 150 m del origen; baja lineal hasta 40 % en RADIO."""
+    return 1.0 if d <= 150 else max(0.4, 1 - 0.6 * (d - 150) / (RADIO - 150))
+
+
 def grupos(sp):
-    """Mejor grupo de 3 y de 2 (el más cercano al origen) entre spawners activables a la vez."""
+    """Grupo de 3 y de 2 de mayor valor (mob × distancia) entre spawners activables a la vez."""
     res = {}
     for k in (3, 2):
         mejor = None
-        cerca = [s for s in sp if math.hypot(s[0], s[2]) <= RADIO + 32]
-        for comb in itertools.combinations(cerca, k):
+        for comb in itertools.combinations(sp, k):
             if any(math.dist(p[:3], q[:3]) > 2 * ACTIVACION for p, q in itertools.combinations(comb, 2)):
                 continue
             if radio_esfera([p[:3] for p in comb]) <= ACTIVACION:
                 cx = sum(p[0] for p in comb) / k; cz = sum(p[2] for p in comb) / k
                 d = math.hypot(cx, cz)
-                if mejor is None or d < mejor["dist"]:
-                    mejor = {"dist": round(d), "centro": [round(cx), round(sum(p[1] for p in comb) / k), round(cz)],
-                             "mobs": [p[3] for p in comb]}
+                mobs = [p[3] for p in comb]
+                v = BASE[k] * sum(MOB.get(m, 0.4) for m in mobs) / k * factor_dist(d)
+                if mejor is None or v > mejor["valor"]:
+                    mejor = {"valor": round(v, 1), "dist": round(d), "mobs": mobs,
+                             "centro": [round(cx), round(sum(p[1] for p in comb) / k), round(cz)]}
         if mejor:
             res[f"x{k}"] = mejor
     return res
 
 
 def bonus(g):
-    """Puntos que suma al puntaje v2: triple 25, doble 12; más lejos de 150 m baja hasta 40 % a 400 m."""
-    pts = 0.0
-    for k, v in (("x3", 25), ("x2", 12)):
-        if k in g:
-            d = g[k]["dist"]
-            pts = max(pts, v * (1.0 if d <= 150 else max(0.4, 1 - 0.6 * (d - 150) / (RADIO - 150))))
-    return round(pts, 1)
+    """Puntos que suma al puntaje v2: el grupo de mayor valor."""
+    return max((v["valor"] for v in g.values()), default=0.0)
 
 
 def esperar_chunky(rc, mundo, limite=1800):
@@ -177,10 +184,11 @@ def verificar(rc, seed, data):
     rc.cmd(f"mv remove {mundo}")
     shutil.rmtree(carpeta, ignore_errors=True)
     sp = [s for s in sp if math.hypot(s[0], s[2]) <= RADIO + 32]
-    g = grupos(sp)
-    return {"seed": seed, "completo": ok, "segundos": round(time.time() - t0), "spawners": len(sp),
-            "mobs": sorted({s[3] for s in sp}), "grupos": g, "bonus": bonus(g),
-            "lista": sorted(sp, key=lambda s: math.hypot(s[0], s[2]))[:40]}
+    dungeons = [s for s in sp if s[3] not in DESCARTAR]
+    g = grupos(dungeons)
+    return {"seed": seed, "completo": ok, "segundos": round(time.time() - t0), "spawners": len(dungeons),
+            "descartados": len(sp) - len(dungeons), "mobs": sorted({s[3] for s in dungeons}), "grupos": g,
+            "bonus": bonus(g), "lista": sorted(dungeons, key=lambda s: math.hypot(s[0], s[2]))}
 
 
 def main():
