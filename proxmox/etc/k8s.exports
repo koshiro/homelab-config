@@ -7,3 +7,4 @@
 # homelab-storage recreado en Proxmox (2026-10-03): biblioteca *arr y ComfyUI
 /mnt/homelab-storage/k8s-media-library 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /mnt/homelab-storage/comfyui           192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+/mnt/homelab-storage/seedfinder        192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
