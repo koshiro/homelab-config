@@ -44,7 +44,7 @@ spec:
       containers:
         - name: comfyui
           # Misma imagen que el Job de build: trae gcc/nvcc para Triton y extensiones que compilan al vuelo
-          image: nvidia/cuda:12.8.1-devel-ubuntu24.04
+          image: nvidia/cuda:13.0.3-devel-ubuntu24.04
           env:
             - name: PYTORCH_CUDA_ALLOC_CONF
               value: expandable_segments:True
@@ -55,14 +55,16 @@ spec:
             # git: lo necesita ComfyUI-Manager para instalar/actualizar extensiones
             # --use-sage-attention: SageAttention 2 (int8 QK, fp16 PV) ~2x en atención en Ampere
             # --fast fp16_accumulation: acumulación fp16 en matmul (más rápido en Ampere, diferencia visual mínima)
-            # --enable-triton-backend: kernels INT8 de comfy-kitchen vía Triton. Con PyTorch cu128 ComfyUI apaga el
-            #   backend CUDA (exige cu130 = driver >= 580) y sin esto INT8 ConvRot corre en modo eager (lento)
+            # Kernels INT8 de comfy-kitchen: backend CUDA (requiere PyTorch cu130 = driver >= 580). Con cu128
+            #   ComfyUI lo apaga y había que usar --enable-triton-backend (más lento que CUDA nativo)
+            # --cache-ram 6: liberar modelos de la RAM cuando queden < 6 GB libres en el nodo (el valor por defecto,
+            #   10 % = 2,4 GB, dejaba al nodo casi sin margen para Minecraft/Plex al cargar varios modelos)
             # Sin --lowvram: ComfyUI decide la descarga a RAM según la VRAM libre (la GPU se comparte con Ollama)
             - |
               command -v git >/dev/null || { apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null; }
               git config --global --add safe.directory '*'
               exec /app/venv/bin/python -u /app/main.py --listen 0.0.0.0 --port 8188 --base-directory /app \
-                --use-sage-attention --fast fp16_accumulation --enable-triton-backend
+                --use-sage-attention --fast fp16_accumulation --cache-ram 6
           resources:
             limits:
               nvidia.com/gpu: "1"

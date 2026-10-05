@@ -1,7 +1,7 @@
 # Construye (o actualiza) el entorno de Python de ComfyUI en el volumen (/app/venv), afinado para la
 # RTX 3070 (Ampere, sm_86, 8 GB):
 #   - Python 3.12 gestionado por uv dentro del volumen (/app/.python): no depende de la imagen.
-#   - PyTorch 2.11 + CUDA 12.8 (el driver 570 del nodo no soporta CUDA 13).
+#   - PyTorch 2.14 + CUDA 13.0 (driver 580 del nodo; con cu128 ComfyUI apaga los kernels CUDA de comfy-kitchen).
 #   - SageAttention 2.2 compilado para sm_86 (--use-sage-attention; el modo sageattn3 es solo Blackwell).
 #   - Extensiones: solo las que usan los workflows, en su última versión; el resto pasa a custom_nodes/.disabled.
 # Los modelos van en INT8 ConvRot (nativo desde ComfyUI 0.27): en la serie 30 rinde más que fp8 (sin fp8 por hardware).
@@ -32,12 +32,12 @@ spec:
                     values: ["true"]
       containers:
         - name: build
-          image: nvidia/cuda:12.8.1-devel-ubuntu24.04
+          image: nvidia/cuda:13.0.3-devel-ubuntu24.04
           env:
             - name: TORCH_VERSION
-              value: "2.11.0"
+              value: "2.14.1"
             - name: TORCH_INDEX
-              value: https://download.pytorch.org/whl/cu128
+              value: https://download.pytorch.org/whl/cu130
             - name: SAGEATTENTION_REF
               value: v2.2.0
             - name: TORCH_CUDA_ARCH_LIST
@@ -107,7 +107,7 @@ spec:
               export VIRTUAL_ENV=/app/venv PATH=/app/venv/bin:$PATH
               echo "torch==${TORCH_VERSION}" > /tmp/constraints.txt
 
-              log "PyTorch ${TORCH_VERSION} (cu128)"
+              log "PyTorch ${TORCH_VERSION} (${TORCH_INDEX##*/})"
               uv pip install "torch==${TORCH_VERSION}" torchvision torchaudio --index-url "$TORCH_INDEX"
               log "Requirements de ComfyUI y extensiones"
               uv pip install -c /tmp/constraints.txt -r requirements.txt
@@ -117,9 +117,14 @@ spec:
               uv pip install -c /tmp/constraints.txt setuptools wheel packaging ninja
 
               log "SageAttention ${SAGEATTENTION_REF} para sm_${TORCH_CUDA_ARCH_LIST/./}"
-              if ! python -c 'import sageattention, importlib.metadata as m; assert m.version("sageattention").startswith("2.")' 2>/dev/null; then
+              # Extensión CUDA compilada contra una versión concreta de torch: recompilar si cambió
+              if [ "$(cat venv/.sageattention-torch 2>/dev/null)" != "$TORCH_VERSION" ] || ! python -c 'import sageattention' 2>/dev/null; then
+                uv pip uninstall sageattention 2>/dev/null || true
                 rm -rf /tmp/sa && git clone -q --depth 1 --branch "$SAGEATTENTION_REF" https://github.com/thu-ml/SageAttention.git /tmp/sa
+                # PyTorch >= 2.14 exige C++20 en sus cabeceras; SageAttention 2.2.0 compila con C++17
+                sed -i 's/-std=c++17/-std=c++20/g' /tmp/sa/setup.py
                 (cd /tmp/sa && EXT_PARALLEL=4 NVCC_APPEND_FLAGS="--threads 4" MAX_JOBS=4 uv pip install --no-build-isolation -c /tmp/constraints.txt .)
+                echo "$TORCH_VERSION" > venv/.sageattention-torch
               fi
 
               log "Verificación"

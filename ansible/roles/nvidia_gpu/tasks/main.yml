@@ -51,7 +51,8 @@
 
     - name: Instalar driver de NVIDIA (versión recomendada)
       ansible.builtin.apt:
-        name: nvidia-driver-535 # Versión estable y compatible
+        # Rama 580 (soporte largo): CUDA 13.0, necesaria para PyTorch cu130 en ComfyUI (2026-10-04)
+        name: nvidia-driver-580
         state: present
 
     - name: Configurar repositorios de NVIDIA Container Toolkit
