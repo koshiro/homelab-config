@@ -32,6 +32,22 @@ spec:
           echo "Creando directorios para qBittorrent..."
           mkdir -p /data/downloads/completed /data/downloads/incomplete
           mkdir -p /config/qBittorrent
+          # Límite de seeding: ratio 2 o 7 días (lo primero). Al detenerse, Radarr/Sonarr
+          # (removeCompletedDownloads) borran el torrent y su hardlink en downloads/,
+          # así borrar de la biblioteca libera el espacio de verdad.
+          CFG=/config/qBittorrent/qBittorrent.conf
+          touch "$CFG"
+          grep -q '^\[BitTorrent\]' "$CFG" || printf '[BitTorrent]\n' >> "$CFG"
+          set_session() {
+            if grep -q "^Session.$1=" "$CFG"; then
+              sed -i "s|^Session.$1=.*|Session\\\\$1=$2|" "$CFG"
+            else
+              sed -i "/^\[BitTorrent\]/a Session\\\\$1=$2" "$CFG"
+            fi
+          }
+          set_session GlobalMaxRatio 2
+          set_session GlobalMaxSeedingMinutes 10080
+          set_session ShareLimitAction Stop
           echo "Asegurando permisos..."
           chown -R 1000:1000 /data/downloads /config/qBittorrent
         volumeMounts:
