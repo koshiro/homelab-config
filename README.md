@@ -50,9 +50,22 @@ export KUBECONFIG=~/.kube/config-homelab
 | ComfyUI | `comfyui` | `comfyui.danielriquelme.cl` | NFS `comfyui` | ⏸ 0 réplicas |
 | WebODM | `webodm` | interno | local-path | ✅ |
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
-| noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` | — | ✅ |
-| josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` (regla propia en el túnel) | NFS Proxmox `nvme/k8s/webs/josekast` (solo lectura) | ✅ |
+| noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
+| josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` · NodePort 30890 | disco de pibot `/var/lib/homelab-josekast` (respaldo diario al NAS) | ✅ en pibot |
 | Grafana | `grafana` | `grafana.danielriquelme.cl` | ninguno (efímero) | ⚠️ ver plan de monitoreo |
+
+### Sitios estáticos (josekast.cl, noledigasanadie)
+
+Regla: **los sitios estáticos corren en pibot con almacenamiento propio y deben seguir en línea si cae Proxmox.** El NAS solo guarda un respaldo.
+
+- **Pod:** nginx con `nodeName: pibot`, contenido en el disco NVMe de la Pi (`hostPath` `/var/lib/homelab-<sitio>`, solo lectura). Nada de NFS ni local-path de los workers.
+- **Respaldo:** CronJob `config-backup-<sitio>` (02:47, [webs-estaticas-backup.yaml](cluster/00-infrastructure/backups/webs-estaticas-backup.yaml)) copia el sitio a `nvme/k8s/backups/apps/<sitio>/data` en Proxmox (sanoid + syncoid + R2); `check-backups.sh` avisa si pasan más de 26 h. Si Proxmox está caído el job falla, pero el sitio sigue sirviéndose.
+- **Exposición:** hoy `josekast.cl` y `*.danielriquelme.cl` llegan por el túnel `pve` → Traefik, y ambos corren en los workers (VMs de Proxmox): si cae Proxmox el sitio deja de ser alcanzable aunque el pod siga vivo. El paso siguiente es un túnel propio `pibot-webs` con el conector en pibot apuntando a los NodePort (`http://192.168.1.15:30890` / `30891`), sin pasar por Traefik ni CoreDNS. Ver [docs/PENDIENTES.md](docs/PENDIENTES.md).
+- **Publicar contenido:** `rsync -a --delete <carpeta>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/` (nginx sirve lo nuevo al instante). josekast.cl se genera con `~/git/twscrap/web/build.py` y se publica con `~/git/twscrap/web/publicar.sh`.
+- **Restaurar desde el NAS:** `rsync -a root@192.168.1.100:/nvme/k8s/backups/apps/<sitio>/data/ /tmp/<sitio>/ && rsync -a --delete /tmp/<sitio>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/`.
+- **Sitio nuevo:** copiar `cluster/apps/josekast` (Deployment en pibot + Service NodePort fijo + Ingress), crear `/var/lib/homelab-<sitio>` en pibot (`sudo install -d -o daniel -g daniel`) y agregar su CronJob a `webs-estaticas-backup.yaml` y su nombre a `check-backups.sh`.
+
+El dataset `nvme/k8s/webs` (antiguo origen NFS de josekast.cl) quedó sin uso; conserva la versión anterior del sitio en `webs/_respaldos/`.
 
 ## Estructura del repo
 

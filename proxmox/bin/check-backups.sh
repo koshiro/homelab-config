@@ -17,9 +17,10 @@ notify() { if [ -n "${DRY_RUN:-}" ]; then printf "%s\n" "$1"; else notify-telegr
 
 chk "dump Postgres (immich)" "$(newest_file /nvme/k8s/backups/postgres "immich-*.dump")" 26
 chk "snapshot etcd"          "$(newest_file /nvme/k8s/backups/etcd "etcd-snapshot-*")" 14
-# CronJobs config-backup-* (cluster/00-infrastructure/backups/app-config-backup.yaml)
+# CronJobs config-backup-* (cluster/00-infrastructure/backups/app-config-backup.yaml y
+# webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
-         minecraft-spiral2 minecraft-spiral3 webodm-db; do
+         minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie; do
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 for d in immich minecraft pingvin backups webs; do

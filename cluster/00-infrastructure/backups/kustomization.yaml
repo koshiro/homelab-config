@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - etcd-snapshot-copy.yaml
   - app-config-backup.yaml
+  - webs-estaticas-backup.yaml

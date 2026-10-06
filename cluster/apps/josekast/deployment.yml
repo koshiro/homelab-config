@@ -1,6 +1,8 @@
-# Sitio estático josekast.cl. Contenido en Proxmox: /nvme/k8s/webs/josekast (dataset nvme/k8s/webs,
-# export NFS de solo lectura; snapshots sanoid + réplica + R2). Para actualizar el sitio:
-#   scp sitio.html root@192.168.1.100:/nvme/k8s/webs/josekast/index.html
+# Sitio estático josekast.cl. Corre en pibot con el contenido en su disco (/var/lib/homelab-josekast),
+# sin depender de Proxmox: el túnel pibot-webs lo sirve aunque caigan los workers y el NAS
+# (ver «Sitios estáticos» en README.md). Respaldo diario al NAS: config-backup-josekast.
+# El contenido lo genera ~/git/twscrap/web/build.py y se publica con ~/git/twscrap/web/publicar.sh
+# (rsync a daniel@k3s-node-0:/var/lib/homelab-josekast/; nginx lo sirve al instante, sin reiniciar).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,9 +20,19 @@ spec:
       labels:
         app: josekast
     spec:
+      # k3s-node-0 / MagicDNS: Raspberry Pi (hostname de cluster: pibot)
+      nodeName: pibot
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: nginx
           image: nginx:1.27-alpine
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 80
@@ -51,10 +63,9 @@ spec:
             periodSeconds: 30
       volumes:
         - name: web
-          nfs:
-            server: 192.168.1.100
-            path: /nvme/k8s/webs/josekast
-            readOnly: true
+          hostPath:
+            path: /var/lib/homelab-josekast
+            type: Directory
         - name: nginx-conf
           configMap:
             name: josekast-nginx

@@ -93,6 +93,16 @@ Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamient
 VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). Immich ML v3 lo exige, por eso está fijado a k3s-node-1 (`cpu: host`).
 - [ ] En la próxima mantención: `qm set 103 --cpu x86-64-v2-AES` y `qm set 104 --cpu x86-64-v2-AES` (requiere reiniciar cada VM) y quitar el `nodeSelector` de Immich ML.
 
+## 4d. Sitios estáticos independientes de Proxmox
+
+- [x] josekast.cl y noledigasanadie corren en pibot con contenido en su disco (`/var/lib/homelab-<sitio>`), NodePort 30890/30891 y respaldo diario al NAS (2026-10-06).
+- [ ] **Túnel `pibot-webs`:** hoy el tráfico público sigue entrando por el túnel `pve` → Traefik → CoreDNS, que corren en los workers; si cae Proxmox los sitios no son alcanzables aunque el pod viva. Falta:
+  1. Zero Trust → Networks → Tunnels → *Create tunnel* `pibot-webs` (Cloudflared), copiar el token.
+  2. Public hostnames de `pibot-webs`: `josekast.cl` y `www.josekast.cl` → `http://192.168.1.15:30890`; `noledigasanadie.danielriquelme.cl` → `http://192.168.1.15:30891`. Al guardarlos, Cloudflare reemplaza los CNAME de `josekast.cl`/`www` (hoy al túnel `pve`) y crea el de `noledigasanadie` (un registro específico gana al comodín).
+  3. Conector en pibot: secret `cloudflared-webs-token` cifrado con SOPS + Deployment `cloudflared-webs` (`nodeName: pibot`, `dnsPolicy: Default` para resolver con el router y no con CoreDNS).
+  4. Probar apagando lógicamente los workers (`kubectl cordon` + escalar Traefik/cloudflared del túnel `pve` a 0 un minuto) que ambos sitios siguen respondiendo.
+  - Las reglas `josekast.cl` del túnel `pve` y los Ingress se dejan: volver atrás es devolver el CNAME al túnel `pve`.
+
 ## 5. Monitoreo — plan Grafana (después de estabilizar)
 
 **Estado actual:**

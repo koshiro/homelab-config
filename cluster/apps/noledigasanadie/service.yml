@@ -1,3 +1,5 @@
+# NodePort fijo: origen del túnel pibot-webs (http://192.168.1.15:30891), que así no depende de
+# CoreDNS ni de Traefik (corren en los workers de Proxmox).
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,10 +8,11 @@ metadata:
   labels:
     app: noledigasanadie
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: noledigasanadie
   ports:
     - name: http
       port: 80
       targetPort: http
+      nodePort: 30891
