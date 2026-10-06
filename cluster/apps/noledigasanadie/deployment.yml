@@ -1,3 +1,6 @@
+# Sitio estático en pibot con el contenido en su disco (/var/lib/homelab-noledigasanadie), sin
+# depender de Proxmox (ver «Sitios estáticos» en README.md). Respaldo diario al NAS:
+# config-backup-noledigasanadie. Publicar: rsync -a --delete <carpeta>/ daniel@k3s-node-0:/var/lib/homelab-noledigasanadie/
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -1,0 +1,119 @@
+# Respaldo de los sitios estáticos que corren en pibot (hostPath /var/lib/homelab-<sitio>) al NAS:
+# Proxmox nvme/k8s/backups/apps/<sitio>/data, espejo diario; la historia la dan sanoid (nvme),
+# syncoid (respaldo/k8s) y restic (R2). check-backups.sh vigila apps/<sitio>/.last-backup.
+# El NAS es solo respaldo: si Proxmox cae, el sitio sigue sirviéndose desde pibot y este job falla
+# (NFS inalcanzable) hasta que vuelva; check-backups.sh avisa si pasan más de 26 h.
+# Restaurar (desde el Mac): rsync -a root@192.168.1.100:/nvme/k8s/backups/apps/<sitio>/data/ /tmp/<sitio>/
+# && rsync -a --delete /tmp/<sitio>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/  (ver README, «Sitios estáticos»).
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-josekast
+  namespace: josekast
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "47 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          nodeName: pibot
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: josekast
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  rsync -a --delete /src/ "$d/data/"
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              hostPath:
+                path: /var/lib/homelab-josekast
+                type: Directory
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-noledigasanadie
+  namespace: noledigasanadie
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "47 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          nodeName: pibot
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: noledigasanadie
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  rsync -a --delete /src/ "$d/data/"
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              hostPath:
+                path: /var/lib/homelab-noledigasanadie
+                type: Directory
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
