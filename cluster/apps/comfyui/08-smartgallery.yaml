@@ -49,8 +49,11 @@ spec:
               value: "0"
             - name: WANTED_GID
               value: "0"
+            # La usan el servidor (encolar remix) y el navegador ("Open ComfyUI", WebSocket de progreso):
+            # tiene que ser alcanzable desde ambos, así que va el NodePort y no el DNS interno del cluster.
+            # Fuera de la LAN se cambia por navegador en el campo de URL del modal de remix.
             - name: COMFYUI_SERVER_URL
-              value: http://comfyui.comfyui.svc.cluster.local:8188
+              value: http://192.168.1.131:30188
             # Por defecto usa todos los núcleos al indexar; limitado para no ahogar al nodo
             - name: MAX_PARALLEL_WORKERS
               value: "2"
