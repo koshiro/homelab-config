@@ -43,6 +43,15 @@ controlnet_aux, no instalados). Los originales de los workflows previos al cambi
 `comfyui.danielriquelme.cl` está detrás de **Cloudflare Access** (app «Homelab admin», política
 `BlockAllbyMe`): login con código enviado al correo, sesión de 24 h.
 
+Desde la casa o el tailnet conviene entrar directo, sin pasar por Cloudflare: cada imagen (PNG de ~4 MB)
+sale a internet y vuelve por el túnel. `04-service-nodeport.yaml` expone el puerto 30188 (sin login):
+
+- **LAN:** `http://192.168.1.131:30188` (k3s-node-1, donde corre el pod)
+- **Tailscale:** `http://k3s-node-1-k3s:30188`
+
+El navegador trata cada URL como un sitio distinto: los ajustes del frontend guardados en `localStorage`
+no se comparten (los workflows sí, viven en el servidor).
+
 ## Galería
 
 [SmartGallery](https://github.com/biagiomaf/smart-comfyui-gallery) (`08-smartgallery.yaml`) muestra `output/`
