@@ -16,6 +16,7 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 |-------|----------------|-------------|
 | Apagado, mantenimiento, troubleshooting cluster | homelab-maintenance / agent-maintenance | Apagado ordenado, verificación estado, GPU |
 | ZFS, NFS, sanoid/syncoid, LXC `nas` en Proxmox | — | Ver `proxmox/README.md` (fuente de verdad del host) |
+| Pi master (voltaje, boot, apagarla) | — | Ver `pibot/README.md` |
 | Nueva aplicación, Ingress, PVC | homelab-deploy-apps / agent-deploy | Patrones de despliegue (kubectl apply -k; Flux pendiente) |
 | Playbooks Ansible, provisionar VMs | homelab-ansible / agent-ansible | Inventario, tags, playbooks |
 | Secretos SOPS, age | homelab-sops-secrets | Encriptación, respaldos de claves |
@@ -58,4 +59,5 @@ El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así 
 - **README.md**: Documentación principal del homelab
 - **docs/**: `ARQUITECTURA.md` (arquitectura objetivo y fases) y `PENDIENTES.md`
 - **proxmox/**: configuración versionada del host
+- **pibot/**: configuración versionada de la Pi master (`config.txt` sin overclock, k3s, cómo apagarla)
 - **scripts/**: Scripts de verificación y utilidades
