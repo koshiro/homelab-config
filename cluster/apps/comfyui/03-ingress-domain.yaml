@@ -1,5 +1,7 @@
 # Acceso protegido por Cloudflare Access (app "Homelab admin", política BlockAllbyMe):
 # login con código por correo antes de llegar a Traefik. Reemplaza el basic auth anterior.
+# comfyui.lan: acceso LAN directo a Traefik vía /etc/hosts (192.168.1.131), sin login como el NodePort;
+# el túnel solo recibe *.danielriquelme.cl, así que no es alcanzable desde internet.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -11,6 +13,16 @@ spec:
   ingressClassName: traefik
   rules:
   - host: comfyui.danielriquelme.cl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: comfyui
+            port:
+              number: 8188
+  - host: comfyui.lan
     http:
       paths:
       - path: /

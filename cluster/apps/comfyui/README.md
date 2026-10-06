@@ -64,6 +64,7 @@ Desde la casa o el tailnet conviene entrar directo, sin pasar por Cloudflare: ca
 sale a internet y vuelve por el túnel. `04-service-nodeport.yaml` expone el puerto 30188 (sin login):
 
 - **LAN:** `http://192.168.1.131:30188` (k3s-node-1, donde corre el pod)
+- **LAN por nombre:** `http://comfyui.lan` (Ingress; requiere la línea de `/etc/hosts` de la sección Galería)
 - **Tailscale:** `http://k3s-node-1-k3s:30188`
 
 El navegador trata cada URL como un sitio distinto: los ajustes del frontend guardados en `localStorage`
@@ -78,6 +79,7 @@ borrar en lote. Funciona aunque ComfyUI esté apagado. Detalles:
 - **Acceso:** `galeria.danielriquelme.cl`, login con usuario `admin` y la contraseña de
   `sops -d cluster/apps/comfyui/secret-smartgallery.sops.yaml`. Debe estar además en la app «Homelab admin»
   de Cloudflare Access (el túnel tiene comodín: sin Access, el Ingress queda público).
+- **LAN:** `http://galeria.lan` (Ingress; requiere `192.168.1.131 galeria.lan comfyui.lan` en `/etc/hosts`).
 - **LAN/tailnet:** `http://192.168.1.131:30189` o `http://k3s-node-1-k3s:30189` (NodePort, sin pasar por
   Cloudflare; pide el mismo login de SmartGallery).
 - **Estado:** base SQLite, miniaturas y zips en `smartgallery/` del mismo volumen.

@@ -116,7 +116,8 @@ spec:
   selector:
     app: smartgallery
 ---
-# Protegido por Cloudflare Access (app "Homelab admin") y el login de SmartGallery
+# Protegido por Cloudflare Access (app "Homelab admin") y el login de SmartGallery.
+# galeria.lan: acceso LAN directo a Traefik vía /etc/hosts (192.168.1.131); solo el login de SmartGallery.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -128,6 +129,16 @@ spec:
   ingressClassName: traefik
   rules:
     - host: galeria.danielriquelme.cl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: smartgallery
+                port:
+                  number: 8189
+    - host: galeria.lan
       http:
         paths:
           - path: /
