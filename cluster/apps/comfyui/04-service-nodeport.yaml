@@ -1,0 +1,21 @@
+# Acceso directo por LAN/tailnet, sin pasar por Cloudflare (las imágenes no salen a internet y vuelven):
+#   LAN:       http://192.168.1.131:30188  (k3s-node-1, donde corre el pod)
+#   Tailscale: http://k3s-node-1-k3s:30188
+# Sin login: solo alcanzable desde la red de la casa y el tailnet (el router no expone NodePorts).
+apiVersion: v1
+kind: Service
+metadata:
+  name: comfyui-nodeport
+  namespace: comfyui
+  labels:
+    app: comfyui
+spec:
+  type: NodePort
+  ports:
+  - port: 8188
+    targetPort: 8188
+    protocol: TCP
+    name: http
+    nodePort: 30188
+  selector:
+    app: comfyui

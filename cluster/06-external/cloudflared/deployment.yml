@@ -1,3 +1,7 @@
+# Dos réplicas del conector, una en pibot y otra en k3s-node-2 (el worker con menos carga; k3s-node-1 va
+# saturado con ComfyUI/Minecraft). Cloudflare reparte las conexiones entre ambas.
+# CPU: con el límite de 200m el túnel se quedaba en el techo al servir las imágenes de ComfyUI (PNG de ~4 MB):
+# cifrar el tráfico en la Pi cuesta CPU. 1 núcleo deja margen.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,6 +11,12 @@ metadata:
     app: cloudflared
 spec:
   replicas: 2
+  # Solo hay dos nodos permitidos y una réplica por nodo: sin surge, si no el pod nuevo no tiene dónde ir
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: cloudflared
@@ -15,6 +25,20 @@ spec:
       labels:
         app: cloudflared
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: ["pibot", "k3s-node-2"]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: cloudflared
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:latest
@@ -32,8 +56,8 @@ spec:
                   key: token
           resources:
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 64Mi
             limits:
-              cpu: 200m
+              cpu: "1"
               memory: 256Mi
