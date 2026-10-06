@@ -137,3 +137,25 @@ spec:
                 name: smartgallery
                 port:
                   number: 8189
+---
+# Acceso directo por LAN/tailnet, sin pasar por Cloudflare (como comfyui-nodeport):
+#   LAN:       http://192.168.1.131:30189  (k3s-node-1, donde corre el pod)
+#   Tailscale: http://k3s-node-1-k3s:30189
+# Sigue pidiendo el login de SmartGallery; el router no expone NodePorts.
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartgallery-nodeport
+  namespace: comfyui
+  labels:
+    app: smartgallery
+spec:
+  type: NodePort
+  ports:
+    - port: 8189
+      targetPort: 8189
+      protocol: TCP
+      name: http
+      nodePort: 30189
+  selector:
+    app: smartgallery
