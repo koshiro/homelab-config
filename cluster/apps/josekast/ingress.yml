@@ -1,6 +1,6 @@
 # Ruta por el túnel pve: hostnames josekast.cl y www.josekast.cl -> http://traefik.kube-system.svc.cluster.local:80
-# (el comodín solo cubre *.danielriquelme.cl). Depende de los workers de Proxmox; la ruta independiente
-# es el túnel pibot-webs -> NodePort 30890 (pendiente, ver docs/PENDIENTES.md 4d). Se mantiene como respaldo.
+# (el comodín solo cubre *.danielriquelme.cl). Depende de los workers de Proxmox; la ruta pública es el
+# túnel pibot-webs -> NodePort 30890. Esta se mantiene como respaldo (devolver el CNAME al túnel pve).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

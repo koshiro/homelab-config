@@ -6,6 +6,13 @@ kind: Kustomization
 #   josekast.cl, www.josekast.cl -> traefik.kube-system.svc:80   (zona josekast.cl, CNAME al túnel)
 # Cualquier Ingress con host *.danielriquelme.cl queda PÚBLICO.
 # El token vive en el secret cloudflared-token (secret.sops.yml, aplicar con sops -d | kubectl apply -f -).
+#
+# Segundo túnel pibot-webs (deployment-webs.yml): sitios estáticos, conector en pibot, origen NodePort:
+#   josekast.cl, www.josekast.cl       -> http://192.168.1.15:30890
+#   noledigasanadie.danielriquelme.cl  -> http://192.168.1.15:30891   (registro propio, gana al comodín)
+# Token en cloudflared-webs-token (secret-webs.sops.yml). Las reglas josekast.cl del túnel pve se
+# mantienen: volver atrás = apuntar el CNAME de nuevo al túnel pve.
 resources:
   - namespace.yml
   - deployment.yml
+  - deployment-webs.yml
