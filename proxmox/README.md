@@ -18,6 +18,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/logind-10-boton-encendido.conf` | `/etc/systemd/logind.conf.d/10-boton-encendido.conf` (ignora pulsación corta del botón; la larga es corte por hardware) |
 | `lxc-110-nas/110.conf` | `/etc/pve/lxc/110.conf` (+ `root:1000:1`, `root:3000:3` en `/etc/subuid` y `/etc/subgid`) |
 | `lxc-110-nas/smb.conf` | `/etc/samba/smb.conf` dentro del LXC 110 |
+| `lxc-110-nas/samba-timemachine.sops.yaml` | Contraseña Samba de `timemachine` (aplicar con `smbpasswd -s timemachine` en el LXC 110; leer con `sops -d`) |
 
 ## Pools ZFS al arrancar
 
