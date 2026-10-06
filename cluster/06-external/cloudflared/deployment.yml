@@ -1,7 +1,9 @@
-# Dos réplicas del conector, una en pibot y otra en k3s-node-2 (el worker con menos carga; k3s-node-1 va
-# saturado con ComfyUI/Minecraft). Cloudflare reparte las conexiones entre ambas.
-# CPU: con el límite de 200m el túnel se quedaba en el techo al servir las imágenes de ComfyUI (PNG de ~4 MB):
-# cifrar el tráfico en la Pi cuesta CPU. 1 núcleo deja margen.
+# Dos réplicas del conector en los workers x86 con menos carga (k3s-node-1 va saturado con ComfyUI/Minecraft).
+# Fuera de pibot: cifrar el túnel en la Pi cuesta ~90m de CPU por MB/s (con 8 descargas en paralelo llegó a
+# 610m con throttling y no pasó de 6,9 MB/s). Cloudflare no reparte carga entre réplicas: manda el tráfico a
+# una y la otra queda de respaldo, así que ambas deben estar en nodos capaces de llevarlo solas.
+# CPU: con 200m el túnel se quedaba en el techo al servir las imágenes de ComfyUI (PNG de ~4 MB); con 1 núcleo
+# aún había throttling por ráfagas (media 272m, 8 % de periodos frenados). 2 núcleos en workers de 6.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,7 +34,7 @@ spec:
               - matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: ["pibot", "k3s-node-2"]
+                    values: ["k3s-node-2", "k3s-node-3"]
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -59,5 +61,5 @@ spec:
               cpu: 100m
               memory: 64Mi
             limits:
-              cpu: "1"
+              cpu: "2"
               memory: 256Mi
