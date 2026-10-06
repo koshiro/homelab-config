@@ -69,6 +69,7 @@ cluster/
   kustomization.yml   Raíz (compila con `kubectl kustomize cluster`; incompleta, ver PENDIENTES)
 docs/               ARQUITECTURA.md, PENDIENTES.md, guides/
 proxmox/            Configuración versionada del host (ZFS, NFS, sanoid, restic, LXC nas)
+pibot/              Configuración versionada de la Pi master (boot, k3s, apagado ordenado)
 scripts/            Respaldos, verificación y utilidades
 backups/            Copias locales de configs (ignorado por git)
 ```

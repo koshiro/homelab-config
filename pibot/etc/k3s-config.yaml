@@ -1,0 +1,3 @@
+tls-san:
+  - pibot
+  - k3s-node-0

@@ -1,0 +1,18 @@
+usuario: timemachine
+password: ENC[AES256_GCM,data:lj2oMRz1c3zIHyKaK0nFuAmDQhFF/oVz,iv:kfx30fTZZ2jYsEQ74AK4cLP+yW/xhzRWG/A4GqZI5sU=,tag:So5Bc+GzqdT75dw5KANI/Q==,type:str]
+share: smb://nas/timemachine
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBtcnl5WXY0ZjhvVHFTUUNU
+            cncrMW9GNnUrY3QzOXVDNTdzTHh2NEJvSmhRCjFESkZFd3NCbWlRVlpzOE8xdGFv
+            RWFFMkF5dVhYWDNsZFhhMG9QbFRHSVUKLS0tIHVYTVEreUlvWmlleDRvR3p2Ym5z
+            U0VkVjNxeStkSVhkN2pqa0hFbFJTWkkKwF5q8SixBffT2y8QfZaP4wqnJPceED7B
+            pIyUJ0TMTvxxiHEpYci9C7OCOUlhUs7Xxj9fT1aNTC6dt/eUhz4zzA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-06T03:42:35Z"
+    mac: ENC[AES256_GCM,data:Hw4pVE8KEYxCC2KeGA1LfGMKK1gdrzKeqR9D+UD8ALcSrgsILp8hpdJPkIlKpkwvFowAb2mYTPbEM+UktKrI20POvV496BNN4SXxISWD/HpDzbSpPLLuQcy2E27ri0fnw7GP/5gN4K+oAo380J/DREZO+qIwG2rjbST9sGsp9IM=,iv:t9S7hyLZ1NcB+r4yft605GHNeLv4mEH8/wspeakUeWg=,tag:crpLG4r3cwyGa6iD5NpXHg==,type:str]
+    encrypted_regex: ^password$
+    version: 3.12.2
