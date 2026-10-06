@@ -34,6 +34,21 @@ Z-Image Turbo v9.0 en INT8 ConvRot** con su codificador de texto INT8. En la ser
 hardware) INT8 ConvRot, nativo desde ComfyUI 0.27, rinde 1,5–2× más que fp8. Evitar nvfp4/mxfp8 (solo
 Blackwell/Ada) y modelos que no caben en 8 GB (Krea 2, FLUX.2 dev).
 
+### LoRAs y trigger words
+
+ComfyUI no lee las trigger words: si el LoRA tiene una, hay que escribirla en el prompt positivo; si
+no, el LoRA se aplica más débil o no se nota. Al agregar un LoRA al Job, sacar la palabra de
+`trainedWords` en `https://civitai.com/api/v1/model-versions/<modelVersionId>` y anotarla aquí. Dentro
+de ComfyUI, el clic derecho → «Show info» del Power Lora Loader (rgthree) también la muestra.
+
+| Archivo (`loras/`) | Trigger | Fuerza | Notas |
+|---|---|---|---|
+| `woman037-zimage.safetensors` | `woman037` | 1.0 | personaje |
+| `woman992-ZIT.safetensors` | `woman992` | 1.0 | personaje |
+| `Purple_grainy_zit.safetensors` | — | 1.0 | grano, desenfoque de bordes, color apagado; el autor usa euler/simple |
+| `grainscape_zimage.safetensors` | — | 0.85–0.9 | película B/N tipo Tri-X, grano fuerte |
+| `AnalogRedmond_zit.safetensors` | `AnalogRedmAF` | 1.0 | foto analógica; `detailed`, `minimalist`, `colorful` o `black and white` orientan el resultado |
+
 El workflow `z-image-turbo---upscaling` nunca funcionó (requiere SeedVR2, Florence2, UltimateSDUpscale y
 controlnet_aux, no instalados). Los originales de los workflows previos al cambio de modelos están en
 `user/default/workflows-originales-20261003/`.
