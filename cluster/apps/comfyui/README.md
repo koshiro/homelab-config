@@ -83,6 +83,8 @@ borrar en lote. Funciona aunque ComfyUI esté apagado. Detalles:
 - **LAN/tailnet:** `http://192.168.1.131:30189` o `http://k3s-node-1-k3s:30189` (NodePort, sin pasar por
   Cloudflare; pide el mismo login de SmartGallery).
 - **Estado:** base SQLite, miniaturas y zips en `smartgallery/` del mismo volumen.
+- **Workflows del remix:** el sidecar `sync-workflows` copia cada minuto `user/default/workflows/` de ComfyUI
+  a la biblioteca del remix como `comfyui_<nombre>.json` (editarlos en ComfyUI, no en la galería).
 - **Arranque:** indexa todo antes de abrir el puerto (~7 archivos/s); el startup probe da 30 min.
 - **Nodo:** solo `k3s-node-1`: NumPy de la imagen exige x86-64-v2 y `k3s-node-2`/`-3` son VMs con CPU
   genérica de KVM.

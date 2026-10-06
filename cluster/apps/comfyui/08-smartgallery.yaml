@@ -36,6 +36,13 @@ spec:
       containers:
         - name: smartgallery
           image: mmartial/smart-comfyui-gallery:2.24.2
+          # "Open ComfyUI" y "LoRA Manager" usan http://127.0.0.1:8188 fijo hasta que se abre el modal de remix
+          # (bug upstream en 2.24.2): se reemplaza por COMFYUI_SERVER_URL antes de arrancar (sudo: la imagen arranca
+          # como smartgallerytoo, con sudo sin contraseña).
+          command: ["/bin/bash", "-c"]
+          args:
+            - sudo sed -i "s#http://127.0.0.1:8188#${COMFYUI_SERVER_URL}#g" /app/templates/*.html /app/templates/modals/*.html
+              && exec /smartgallery_init.bash
           env:
             - name: BASE_OUTPUT_PATH
               value: /mnt/output
@@ -97,6 +104,69 @@ spec:
               port: 8189
             periodSeconds: 30
             failureThreshold: 6
+        # La biblioteca de workflows del remix (.imported_workflows) es propia de SmartGallery y usa el formato
+        # {ui, api, sg_meta}: copia ahí los workflows guardados en ComfyUI cada minuto (el API lo genera
+        # SmartGallery desde la UI al cargarlos). Las copias llevan prefijo comfyui_ y se borran si el original
+        # desaparece; las plantillas guardadas desde SmartGallery no se tocan.
+        - name: sync-workflows
+          image: mmartial/smart-comfyui-gallery:2.24.2
+          securityContext: # la imagen arranca como smartgallerytoo; las salidas de ComfyUI son de root
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["python3", "-u", "-c"]
+          args:
+            - |
+              import json, os, re, time
+              SRC, DST = "/mnt/comfyui-workflows", "/mnt/SmartGallery/.imported_workflows"
+              def sync():
+                  os.makedirs(DST, exist_ok=True)
+                  wanted = set()
+                  for root, _, files in os.walk(SRC):
+                      for f in files:
+                          if not f.lower().endswith(".json"):
+                              continue
+                          src = os.path.join(root, f)
+                          rel = os.path.relpath(src, SRC)[:-5]
+                          name = "comfyui_" + re.sub(r"[^A-Za-z0-9_.-]+", "_", rel).strip("_.") + ".json"
+                          wanted.add(name)
+                          dst = os.path.join(DST, name)
+                          if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+                              continue
+                          try:
+                              with open(src, encoding="utf-8") as fh:
+                                  ui = json.load(fh)
+                          except Exception as e:
+                              print(f"omitido {rel}: {e}")
+                              continue
+                          tmp = dst + ".tmp"
+                          with open(tmp, "w", encoding="utf-8") as fh:
+                              json.dump({"api": {}, "ui": ui, "sg_meta": {"synced_from_comfyui": rel}}, fh)
+                          os.replace(tmp, dst)
+                          print(f"sincronizado {rel} -> {name}")
+                  for f in os.listdir(DST):
+                      if f.startswith("comfyui_") and f.endswith(".json") and f not in wanted:
+                          os.remove(os.path.join(DST, f))
+                          print(f"borrado {f}")
+              while True:
+                  try:
+                      sync()
+                  except Exception as e:
+                      print(f"error: {e}")
+                  time.sleep(60)
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: workspace
+              mountPath: /mnt/comfyui-workflows
+              subPath: user/default/workflows
+              readOnly: true
+            - name: workspace
+              mountPath: /mnt/SmartGallery
+              subPath: smartgallery
       volumes:
         - name: workspace
           persistentVolumeClaim:
