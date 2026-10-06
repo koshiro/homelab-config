@@ -96,12 +96,8 @@ VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). I
 ## 4d. Sitios estáticos independientes de Proxmox
 
 - [x] josekast.cl y noledigasanadie corren en pibot con contenido en su disco (`/var/lib/homelab-<sitio>`), NodePort 30890/30891 y respaldo diario al NAS (2026-10-06).
-- [ ] **Túnel `pibot-webs`:** hoy el tráfico público sigue entrando por el túnel `pve` → Traefik → CoreDNS, que corren en los workers; si cae Proxmox los sitios no son alcanzables aunque el pod viva. Falta:
-  1. Zero Trust → Networks → Tunnels → *Create tunnel* `pibot-webs` (Cloudflared), copiar el token.
-  2. Public hostnames de `pibot-webs`: `josekast.cl` y `www.josekast.cl` → `http://192.168.1.15:30890`; `noledigasanadie.danielriquelme.cl` → `http://192.168.1.15:30891`. Al guardarlos, Cloudflare reemplaza los CNAME de `josekast.cl`/`www` (hoy al túnel `pve`) y crea el de `noledigasanadie` (un registro específico gana al comodín).
-  3. Conector en pibot: secret `cloudflared-webs-token` cifrado con SOPS + Deployment `cloudflared-webs` (`nodeName: pibot`, `dnsPolicy: Default` para resolver con el router y no con CoreDNS).
-  4. Probar apagando lógicamente los workers (`kubectl cordon` + escalar Traefik/cloudflared del túnel `pve` a 0 un minuto) que ambos sitios siguen respondiendo.
-  - Las reglas `josekast.cl` del túnel `pve` y los Ingress se dejan: volver atrás es devolver el CNAME al túnel `pve`.
+- [x] **Túnel `pibot-webs`** (id `e09353d9-9758-46ad-9305-1b924e3e4a45`, creado por API 2026-10-06): conector `cloudflared-webs` en pibot, `josekast.cl`/`www` → `:30890`, `noledigasanadie.danielriquelme.cl` → `:30891` (CNAME propio, gana al comodín). Verificado: los 3 hostnames responden 200 y las peticiones pasan por los conectores de pibot. Las reglas `josekast.cl` del túnel `pve` y los Ingress quedan como vuelta atrás (devolver el CNAME al túnel `pve`).
+- [ ] Simulacro de caída en una ventana de mantención: escalar a 0 `cloudflared` (túnel `pve`) y Traefik un minuto y confirmar que los sitios estáticos siguen respondiendo (corta Immich y el resto mientras dura).
 
 ## 5. Monitoreo — plan Grafana (después de estabilizar)
 
