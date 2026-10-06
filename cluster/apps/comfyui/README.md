@@ -34,6 +34,8 @@ Z-Image Turbo v9.0 en INT8 ConvRot** con su codificador de texto INT8. En la ser
 hardware) INT8 ConvRot, nativo desde ComfyUI 0.27, rinde 1,5–2× más que fp8. Evitar nvfp4/mxfp8 (solo
 Blackwell/Ada) y modelos que no caben en 8 GB (Krea 2, FLUX.2 dev).
 
+Crear LoRAs de personaje a partir de imágenes del propio Z-Image Turbo: [`LORAS-PERSONAJES.md`](LORAS-PERSONAJES.md).
+
 El workflow `z-image-turbo---upscaling` nunca funcionó (requiere SeedVR2, Florence2, UltimateSDUpscale y
 controlnet_aux, no instalados). Los originales de los workflows previos al cambio de modelos están en
 `user/default/workflows-originales-20261003/`.
