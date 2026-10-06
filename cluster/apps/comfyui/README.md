@@ -34,6 +34,8 @@ Z-Image Turbo v9.0 en INT8 ConvRot** con su codificador de texto INT8. En la ser
 hardware) INT8 ConvRot, nativo desde ComfyUI 0.27, rinde 1,5–2× más que fp8. Evitar nvfp4/mxfp8 (solo
 Blackwell/Ada) y modelos que no caben en 8 GB (Krea 2, FLUX.2 dev).
 
+Crear LoRAs de personaje a partir de imágenes del propio Z-Image Turbo: [`LORAS-PERSONAJES.md`](LORAS-PERSONAJES.md).
+
 ### LoRAs y trigger words
 
 ComfyUI no lee las trigger words: si el LoRA tiene una, hay que escribirla en el prompt positivo; si
