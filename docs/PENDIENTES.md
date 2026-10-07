@@ -99,6 +99,17 @@ VM 103 y 104 no tienen `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2). I
 - [x] **Túnel `pibot-webs`** (id `e09353d9-9758-46ad-9305-1b924e3e4a45`, creado por API 2026-10-06): conector `cloudflared-webs` en pibot, `josekast.cl`/`www` → `:30890`, `noledigasanadie.danielriquelme.cl` → `:30891` (CNAME propio, gana al comodín). Verificado: los 3 hostnames responden 200 y las peticiones pasan por los conectores de pibot. Las reglas `josekast.cl` del túnel `pve` y los Ingress quedan como vuelta atrás (devolver el CNAME al túnel `pve`).
 - [ ] Simulacro de caída en una ventana de mantención: escalar a 0 `cloudflared` (túnel `pve`) y Traefik un minuto y confirmar que los sitios estáticos siguen respondiendo (corta Immich y el resto mientras dura).
 
+## 4e. pibot: volver a 1800 MHz con un cable USB-C nuevo
+
+1800 MHz con `over_voltage=2` rinde +15–22 % (detalle en `pibot/README.md`), pero con carga sostenida baja el voltaje
+pasado el primer minuto con todos los cables probados (2026-10-06); el problema quedó aislado en los cables. El único
+que funciona bien es el del laptop. Mientras tanto pibot va a 1500 MHz de serie (`arm_freq`/`over_voltage` comentados
+en `config.txt`).
+- [ ] Comprar un cable USB-C bueno (corto, 3–5 A) para la fuente de 50 W.
+- [ ] Con el cable nuevo: descomentar `arm_freq=1800` y `over_voltage=2` en `/boot/firmware/config.txt` y en
+  `pibot/boot/config.txt`, reiniciar y correr `pibot/vtest.sh` (~11 min). Aceptar solo con 0 muestras con bajo voltaje
+  en la fase de carga; si no, volver a 1500.
+
 ## 5. Monitoreo — plan Grafana (después de estabilizar)
 
 **Estado actual:**
