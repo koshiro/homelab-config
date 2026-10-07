@@ -53,3 +53,5 @@ arm_boost=1
 #arm_freq=2147
 #gpu_freq=750
 dtparam=ant2
+arm_freq=1800
+over_voltage=2
