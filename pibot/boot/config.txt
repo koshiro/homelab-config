@@ -55,3 +55,5 @@ arm_boost=1
 dtparam=ant2
 arm_freq=1800
 over_voltage=2
+dtoverlay=disable-wifi
+dtoverlay=disable-bt

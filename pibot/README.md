@@ -32,6 +32,15 @@ transcodificación) y solo suma consumo. El CM4 no tiene sensor de corriente (`v
 Pi 5): para medir watts hace falta un medidor USB-C o un enchufe inteligente. Respaldos en la Pi:
 `/boot/firmware/config.txt.bak-oc-20261005` (OC original) y `config.txt.bak-pre-bench-20261006` (1500 MHz).
 
+WiFi y Bluetooth desactivados (`dtoverlay=disable-wifi`, `dtoverlay=disable-bt`, `hciuart` deshabilitado): no se
+usaban y restan consumo. La red es solo por `eth0`.
+
+**La fuente importa.** Con una fuente USB-C de 27 W (2026-10-06), en carga hubo bajo voltaje activo en el 92 % de las
+muestras, la CPU cayó a 600 MHz y 7z con 4 hilos bajó a 2353 MIPS (menos que de serie). Con la fuente anterior, el
+mismo ajuste dio `0x0` en todas las muestras. Si `get_throttled` no queda en `0x0` bajo carga, cambiar el cable o la
+fuente antes de tocar `config.txt`. Prueba completa (reposo, carga, reposo; ~11 min): copiar `pibot/vtest.sh` a la Pi y correr
+`setsid nohup /tmp/vtest.sh <etiqueta> &`; el resumen queda en `/tmp/vtest-<etiqueta>/summary.txt`.
+
 Verificar después de cualquier cambio de hardware o de `config.txt`:
 
 ```bash
