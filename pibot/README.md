@@ -11,7 +11,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `boot/cmdline.txt` | `/boot/firmware/cmdline.txt` (una sola línea, sin salto final) |
 | `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml` |
 
-## Overclock moderado: 1800 MHz (2026-10-06)
+## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
 
 `config.txt` tenía `over_voltage=9`, `arm_freq=2147` y `gpu_freq=750`. Con eso la entrada de 5 V caía:
 `vcgencmd get_throttled` = `0x50005` (bajo voltaje y throttling activos, incluso en reposo) y el firmware dejaba la
@@ -26,7 +26,9 @@ Benchmark (`7z b`, `openssl speed -multi 4`) del 2026-10-06:
 | **1800 MHz, `over_voltage=2`** | 1722 | 5354 | 646 MB/s | 265 MB/s | 0,92 V | 59,4 °C | `0x0` |
 | 2000 MHz, `over_voltage=6` | — | — | — | — | 1,02 V | — | `0x50000` al arrancar |
 
-Queda en **1800 MHz con `over_voltage=2`** (+15 % en 7z, +21 % en cripto, sin bajo voltaje). 2000 MHz ya marcó bajo
+El objetivo es **1800 MHz con `over_voltage=2`** (+15 % en 7z, +21 % en cripto). Con carga sostenida, pasado el
+primer minuto el voltaje cae con todos los cables probados, así que hoy va a **1500 MHz de serie** (líneas comentadas
+en `config.txt`) hasta tener un cable USB-C nuevo (ver `docs/PENDIENTES.md`, 4e). 2000 MHz ya marcó bajo
 voltaje en el arranque. No subir `over_voltage` ni tocar `gpu_freq`: la GPU no se usa (sin pantalla, cámara ni
 transcodificación) y solo suma consumo. El CM4 no tiene sensor de corriente (`vcgencmd pmic_read_adc` es solo de la
 Pi 5): para medir watts hace falta un medidor USB-C o un enchufe inteligente. Respaldos en la Pi:
@@ -39,15 +41,15 @@ usaban y restan consumo. La red es solo por `eth0`.
 muestras, la CPU cayó a 600 MHz y 7z con 4 hilos bajó a 2353 MIPS (menos que de serie). Con la fuente anterior, el
 mismo ajuste dio `0x0` en todas las muestras. Si `get_throttled` no queda en `0x0` bajo carga, cambiar el cable o la
 fuente antes de tocar `config.txt`. Cambiar el cable de la fuente de 27 W apenas cambió algo (87 % de muestras con bajo
-voltaje bajo carga), y una tercera combinación de fuente y cable fue peor (95 %). Solo la fuente original de 50 W
-dio `0x0` a 1800 MHz. Prueba completa (reposo, carga, reposo; ~11 min): copiar `pibot/vtest.sh` a la Pi y correr
+voltaje bajo carga), y una tercera combinación de fuente y cable fue peor (95 %). Con la fuente de 50 W la prueba corta
+dio `0x0`, pero con carga sostenida cayó al minuto (50 % de muestras): el problema son los cables. Prueba completa (reposo, carga, reposo; ~11 min): copiar `pibot/vtest.sh` a la Pi y correr
 `setsid nohup /tmp/vtest.sh <etiqueta> &`; el resumen queda en `/tmp/vtest-<etiqueta>/summary.txt`.
 
 Verificar después de cualquier cambio de hardware o de `config.txt`:
 
 ```bash
 ssh daniel@k3s-node-0 'vcgencmd get_throttled; vcgencmd measure_clock arm; vcgencmd measure_volts core'
-# esperado: throttled=0x0, ~1800 MHz, ~0,92 V
+# esperado: throttled=0x0, ~1500 MHz (~1800 MHz y ~0,92 V si se reactiva el OC)
 ```
 
 ## Qué corre aquí
