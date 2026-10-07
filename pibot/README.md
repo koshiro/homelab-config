@@ -39,7 +39,8 @@ usaban y restan consumo. La red es solo por `eth0`.
 muestras, la CPU cayó a 600 MHz y 7z con 4 hilos bajó a 2353 MIPS (menos que de serie). Con la fuente anterior, el
 mismo ajuste dio `0x0` en todas las muestras. Si `get_throttled` no queda en `0x0` bajo carga, cambiar el cable o la
 fuente antes de tocar `config.txt`. Cambiar el cable de la fuente de 27 W apenas cambió algo (87 % de muestras con bajo
-voltaje bajo carga): el problema era la fuente. Prueba completa (reposo, carga, reposo; ~11 min): copiar `pibot/vtest.sh` a la Pi y correr
+voltaje bajo carga), y una tercera combinación de fuente y cable fue peor (95 %). Solo la fuente original de 50 W
+dio `0x0` a 1800 MHz. Prueba completa (reposo, carga, reposo; ~11 min): copiar `pibot/vtest.sh` a la Pi y correr
 `setsid nohup /tmp/vtest.sh <etiqueta> &`; el resumen queda en `/tmp/vtest-<etiqueta>/summary.txt`.
 
 Verificar después de cualquier cambio de hardware o de `config.txt`:
