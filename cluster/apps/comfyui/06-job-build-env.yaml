@@ -53,6 +53,9 @@ spec:
                 LanPaint=https://github.com/scraed/LanPaint
                 z-image-power-nodes=https://github.com/martin-rizzo/ComfyUI-ZImagePowerNodes
                 controlaltai-nodes=https://github.com/gseth/ControlAltAI-Nodes
+            # Extensiones sin repo propio que se conservan: las copia el initContainer de SwarmUI (09-swarmui.yaml)
+            - name: LOCAL_NODES
+              value: SwarmComfyCommon SwarmComfyExtra
             - name: UV_PYTHON_INSTALL_DIR
               value: /app/.python
             - name: UV_CACHE_DIR
@@ -82,7 +85,7 @@ spec:
 
               log "Extensiones: activar/actualizar las usadas, desactivar el resto"
               mkdir -p custom_nodes/.disabled
-              keep=""
+              keep="$LOCAL_NODES"
               for entry in $CUSTOM_NODES; do
                 name="${entry%%=*}"; url="${entry#*=}"; keep="$keep $name"
                 if [ -d "custom_nodes/.disabled/$name" ] && [ ! -d "custom_nodes/$name" ]; then mv "custom_nodes/.disabled/$name" custom_nodes/; fi
