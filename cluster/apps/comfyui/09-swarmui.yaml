@@ -139,9 +139,9 @@ spec:
   selector:
     app: swarmui
 ---
+# Protegido por Cloudflare Access (app "Homelab admin", política BlockAllbyMe): SwarmUI no tiene login, así que
+# el hostname tiene que seguir en esa app mientras exista esta regla (el túnel enruta *.danielriquelme.cl).
 # swarmui.lan: acceso LAN directo a Traefik vía /etc/hosts (192.168.1.131), sin login como el NodePort.
-# swarmui.danielriquelme.cl NO va aquí hasta que el hostname esté en la app "Homelab admin" de Cloudflare Access:
-# el túnel enruta *.danielriquelme.cl a Traefik y SwarmUI no tiene login (quedaría público).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -152,6 +152,16 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
+    - host: swarmui.danielriquelme.cl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: swarmui
+                port:
+                  number: 7801
     - host: swarmui.lan
       http:
         paths:

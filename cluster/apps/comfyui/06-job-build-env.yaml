@@ -118,6 +118,14 @@ spec:
                 log "  $req"; uv pip install -c /tmp/constraints.txt --index-strategy unsafe-best-match --extra-index-url "$TORCH_INDEX" -r "$req"
               done
               uv pip install -c /tmp/constraints.txt setuptools wheel packaging ninja
+              # SwarmComfyExtra: imageio-ffmpeg (guardar video/animaciones, trae su ffmpeg) y onnxruntime CPU (rembg).
+              # ultralytics arrastra opencv-python (con GUI, pide libxcb): se deja solo el headless, que provee cv2
+              uv pip install -c /tmp/constraints.txt imageio-ffmpeg onnxruntime
+              if uv pip freeze | grep -q '^opencv-python=='; then
+                OPENCV_VERSION="$(uv pip freeze | sed -n 's/^opencv-python-headless==//p')"
+                uv pip uninstall opencv-python
+                uv pip install --reinstall --no-deps "opencv-python-headless${OPENCV_VERSION:+==$OPENCV_VERSION}"
+              fi
 
               log "SageAttention ${SAGEATTENTION_REF} para sm_${TORCH_CUDA_ARCH_LIST/./}"
               # Extensión CUDA compilada contra una versión concreta de torch: recompilar si cambió
@@ -132,7 +140,7 @@ spec:
 
               log "Verificación"
               python - <<'PY'
-              import torch, sageattention, importlib.metadata as m
+              import torch, sageattention, cv2, imageio_ffmpeg, importlib.metadata as m
               print("torch", torch.__version__, "| CUDA", torch.version.cuda, "| GPU", torch.cuda.get_device_name(0), "| cap", torch.cuda.get_device_capability(0))
               print("sageattention", m.version("sageattention"))
               from sageattention import sageattn
