@@ -9,7 +9,13 @@
 #   output/swarmui/ salidas, para que SmartGallery también las indexe
 # Nodos extra: SwarmComfyCommon y SwarmComfyExtra (vienen en el repo de SwarmUI) los copia el initContainer a
 # custom_nodes/ de ComfyUI; 06-job-build-env.yaml los conserva (LOCAL_NODES). ComfyUI los carga al reiniciar.
-# Primer arranque: Server → Backends → "ComfyUI API By URL" con la URL de arriba (queda en Data/Backends.fds).
+# Configuración inicial (ya hecha; vive en swarmui/Data/, reconstruir solo si se pierde el volumen):
+#   - Data/Backends.fds: backend 0, type comfyui_api, Address http://comfyui.comfyui.svc:8188
+#   - Data/Settings.fds: IsInstalled true, LaunchMode none y las carpetas de modelos de arriba
+#   - models/text_encoders/qwen_3_4b.safetensors → cyberrealisticZImage_v90_txt.safetensors (enlace simbólico):
+#     SwarmUI usa ese nombre para Z-Image y, si no existe, intenta bajarlo de Hugging Face (5,6 GB; con 3 GB de
+#     límite la descarga muere por falta de memoria y deja la generación colgada)
+# Rendimiento medido: 1024×1024, 8 pasos, modelo ya cargado ≈ 21 s; en frío (modelo desde NFS) ≈ 2,5 min.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
