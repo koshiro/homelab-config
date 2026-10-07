@@ -13,7 +13,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | **GPU** | NVIDIA en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
 | **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (media, pendiente de fase 1). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
-| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl` y `noledigasanadie.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
+| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl` y `noledigasanadie.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `swarmui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
 | **Base de datos** | CloudNative-PG en ns `postgresql` (`homelab-postgres-rw.postgresql.svc`) |
 | **GitOps** | Objetivo: FluxCD (**aún no instalado**). Hoy se aplica con `kubectl apply -k` |
@@ -48,7 +48,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | FlareSolverr | `flaresolverr` | interno (Prowlarr) | — | ✅ |
 | Ollama / Open WebUI | `ollama-stack` | `k3s-node-0:31434` / `chat.danielriquelme.cl` | local-path (no depende de NFS) | ✅ GPU RTX 3070 |
 | ComfyUI | `comfyui` | `comfyui.danielriquelme.cl` | NFS `comfyui` | ⏸ 0 réplicas |
-| SwarmUI | `comfyui` | `http://k3s-node-0:30190` (solo LAN/tailnet) · `swarmui.lan` | NFS `comfyui` (`swarmui/`, salidas en `output/swarmui`) | interfaz sobre ComfyUI, sin GPU propia |
+| SwarmUI | `comfyui` | `swarmui.danielriquelme.cl` · NodePort 30190 · `swarmui.lan` | NFS `comfyui` (`swarmui/`, salidas en `output/swarmui`) | interfaz sobre ComfyUI, sin GPU propia |
 | WebODM | `webodm` | interno | local-path | ✅ |
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
