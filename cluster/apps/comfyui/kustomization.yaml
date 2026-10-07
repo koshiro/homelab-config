@@ -8,3 +8,4 @@ resources:
   - 03-ingress-domain.yaml
   - 04-service-nodeport.yaml
   - 08-smartgallery.yaml
+  - 09-swarmui.yaml

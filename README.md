@@ -48,6 +48,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | FlareSolverr | `flaresolverr` | interno (Prowlarr) | — | ✅ |
 | Ollama / Open WebUI | `ollama-stack` | `k3s-node-0:31434` / `chat.danielriquelme.cl` | local-path (no depende de NFS) | ✅ GPU RTX 3070 |
 | ComfyUI | `comfyui` | `comfyui.danielriquelme.cl` | NFS `comfyui` | ⏸ 0 réplicas |
+| SwarmUI | `comfyui` | `http://k3s-node-0:30190` (solo LAN/tailnet) · `swarmui.lan` | NFS `comfyui` (`swarmui/`, salidas en `output/swarmui`) | interfaz sobre ComfyUI, sin GPU propia |
 | WebODM | `webodm` | interno | local-path | ✅ |
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
