@@ -124,10 +124,11 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - [x] Manifiestos y dashboards en el repo; capa `03-monitoring` activa en `cluster/kustomization.yml`. Eliminados HelmRelease/HelmRepository de kube-prometheus-stack y los `ServiceMonitor`.
 - [x] `pve-exporter` arreglado: nunca autenticó (no expande `${PVE_*}` en `pve.yml`, y el token del secret vivo daba 401). Ahora usa `PVE_TOKEN_NAME`/`PVE_TOKEN_VALUE` y el token versionado (válido). Imagen fijada en 3.10.1.
 - [x] Speedtest de cada 2 min a 1 por hora (cada prueba satura el enlace).
+- [x] Host Proxmox: dataset `nvme/k8s/victoria-metrics` (quota 30G), `k8s.exports`, `sanoid.conf`, `syncoid-respaldo.service` y `check-backups.sh` copiados. ACL del token: `pveum acl modify / --tokens 'monitoring@pve!monitoring-token' --roles PVEAuditor` (tiene `privsep=1`; el rol solo estaba en el usuario → 403 `Sys.Audit`).
+- [x] Borrado el Grafana manual (ns `grafana`) y el secret huérfano `monitoring/truenas-api-credentials`.
+- [x] Verificado: todos los targets `up` (speedtest al primer scrape de la hora), ~17 k series, stack completo ~510 MiB de RAM (Grafana ~330, VictoriaMetrics ~60).
 
 **Pendiente:**
-- [ ] Host Proxmox (a mano, ver PR): crear `nvme/k8s/victoria-metrics` (quota 30G), copiar `k8s.exports`, `sanoid.conf`, `syncoid-respaldo.service` y `check-backups.sh`, y dar ACL al token: `pveum acl modify / --tokens 'monitoring@pve!monitoring-token' --roles PVEAuditor` (tiene `privsep=1`; el rol solo estaba en el usuario → 403 `Sys.Audit`).
-- [ ] Borrar el Grafana manual (`kubectl delete namespace grafana`: su Ingress compite por `grafana.danielriquelme.cl`) y el secret huérfano `monitoring/truenas-api-credentials`.
 - [ ] Exporters del host Proxmox: `node_exporter`, `zfs_exporter` (pools `nvme`, `respaldo`, `homelab-storage`) y `smartctl_exporter`, con su job en `scrape.yml` y dashboards. Versionarlos en `proxmox/`.
 - [ ] Alertas: `vmalert` + reglas básicas (nodo caído, disco >85 %, PVC lleno, temperatura de pibot, pool ZFS degradado) hacia el bot de Telegram que ya usa `notify-telegram`. Hoy solo hay visualización.
 - [ ] Dashboard propio «Homelab — resumen» (una pantalla: nodos, pibot, pools, speedtest, top pods).
