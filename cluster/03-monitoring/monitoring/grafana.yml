@@ -1,0 +1,149 @@
+# Grafana con datasource y dashboards provisionados desde el repo (dashboards/, configMapGenerator).
+# Un dashboard creado o editado en la UI vive en la base SQLite del PVC (respaldada por
+# config-backup-grafana); para que sea permanente, exportar el JSON a dashboards/.
+# Admin: secret-grafana.sops.yaml (sops -d … | kubectl apply -f -). Detrás de Cloudflare Access.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [amd64]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [k3s-node-2]
+      securityContext:
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:13.2.3
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin-credentials
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin-credentials
+                  key: admin-password
+            - name: GF_SERVER_ROOT_URL
+              value: https://grafana.danielriquelme.cl
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+            - name: GF_ANALYTICS_CHECK_FOR_UPDATES
+              value: "false"
+            - name: GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES
+              value: "false"
+            - name: GF_NEWS_NEWS_FEED_ENABLED
+              value: "false"
+            # vista en vivo: permite refrescar cada 5s
+            - name: GF_DASHBOARDS_MIN_REFRESH_INTERVAL
+              value: 5s
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: /var/lib/grafana/dashboards/cluster/k8s-global.json
+            - name: GF_DATE_FORMATS_DEFAULT_TIMEZONE
+              value: America/Santiago
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 20m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yml
+              subPath: datasources.yml
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
+              subPath: dashboards.yml
+            - name: dashboards-cluster
+              mountPath: /var/lib/grafana/dashboards/cluster
+            - name: dashboards-infra
+              mountPath: /var/lib/grafana/dashboards/infra
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana-data
+        - name: provisioning
+          configMap:
+            name: grafana-provisioning
+        # un ConfigMap por dashboard: el límite de kubectl apply es 256 KiB por objeto
+        - name: dashboards-cluster
+          projected:
+            sources:
+              - configMap: {name: grafana-dashboard-node-exporter-full}
+              - configMap: {name: grafana-dashboard-k8s-global}
+              - configMap: {name: grafana-dashboard-k8s-namespaces}
+              - configMap: {name: grafana-dashboard-k8s-nodes}
+              - configMap: {name: grafana-dashboard-k8s-pods}
+        - name: dashboards-infra
+          projected:
+            sources:
+              - configMap: {name: grafana-dashboard-proxmox}
+              - configMap: {name: grafana-dashboard-speedtest}
+              - configMap: {name: grafana-dashboard-victoriametrics}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

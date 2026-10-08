@@ -58,9 +58,9 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 | Hora | Tarea |
 |---|---|
 | cada 15 min | sanoid: snapshots de `nvme/k8s/*` y poda de `respaldo/k8s/*` |
-| 02:40–02:46 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path → `nvme/k8s/backups/apps/<app>` |
+| 02:40–02:47 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path → `nvme/k8s/backups/apps/<app>` |
 | 03:15 | (k8s) dump Postgres de Immich → `nvme/k8s/backups/postgres` (5 días) |
-| 03:30 | syncoid `nvme/k8s` → `respaldo/k8s` |
+| 03:30 | syncoid `nvme/k8s` → `respaldo/k8s` (excepto `victoria-metrics`: métricas, se pueden perder) |
 | 04:30 | restic → Cloudflare R2 (`homelab/restic`): immich, minecraft, backups, webs; sin lo regenerable; retiene 3 diarios + 2 semanales (objetivo < 10 GB, nivel gratuito) |
 | 08:00 | verificación de frescura de todos los respaldos (alerta Telegram; resumen los lunes) y ping al monitor externo (`cloudflare/monitor`, avisa si falta > 26 h) |
 | 00:30 / 12:30 | (k8s) copia de snapshots de etcd de pibot |

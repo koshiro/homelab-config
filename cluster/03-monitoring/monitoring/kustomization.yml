@@ -1,11 +1,51 @@
 # cluster/03-monitoring/monitoring/kustomization.yml
-# Requiere Flux (HelmRelease). Los secretos *.sops.yml se descifran con Flux (docs/PENDIENTES.md §5).
+# VictoriaMetrics + Grafana + exporters. kubectl apply -k cluster/03-monitoring
+# Secretos aparte: sops -d secret-grafana.sops.yaml | kubectl apply -f -
+#                  sops -d secret-proxmox.sops.yaml | kubectl apply -f -
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yml
-  - helm-repository.yml
-  - helm-release.yml
-  - ingress.yml
+  - victoria-metrics.yml
+  - node-exporter.yml
+  - kube-state-metrics.yml
   - pve-exporter.yml
   - speedtest-exporter.yml
+  - grafana.yml
+  - ingress.yml
+
+configMapGenerator:
+  - name: victoria-metrics-scrape
+    namespace: monitoring
+    files:
+      - scrape.yml
+  - name: grafana-provisioning
+    namespace: monitoring
+    files:
+      - grafana-provisioning/datasources.yml
+      - grafana-provisioning/dashboards.yml
+  # un ConfigMap por dashboard (límite de 256 KiB de la anotación de kubectl apply)
+  - name: grafana-dashboard-node-exporter-full
+    namespace: monitoring
+    files: [dashboards/cluster/node-exporter-full.json]
+  - name: grafana-dashboard-k8s-global
+    namespace: monitoring
+    files: [dashboards/cluster/k8s-global.json]
+  - name: grafana-dashboard-k8s-namespaces
+    namespace: monitoring
+    files: [dashboards/cluster/k8s-namespaces.json]
+  - name: grafana-dashboard-k8s-nodes
+    namespace: monitoring
+    files: [dashboards/cluster/k8s-nodes.json]
+  - name: grafana-dashboard-k8s-pods
+    namespace: monitoring
+    files: [dashboards/cluster/k8s-pods.json]
+  - name: grafana-dashboard-proxmox
+    namespace: monitoring
+    files: [dashboards/infra/proxmox.json]
+  - name: grafana-dashboard-speedtest
+    namespace: monitoring
+    files: [dashboards/infra/speedtest.json]
+  - name: grafana-dashboard-victoriametrics
+    namespace: monitoring
+    files: [dashboards/infra/victoriametrics.json]

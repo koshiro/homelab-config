@@ -53,7 +53,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
 | josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` · NodePort 30890 | disco de pibot `/var/lib/homelab-josekast` (respaldo diario al NAS) | ✅ en pibot |
-| Grafana | `grafana` | `grafana.danielriquelme.cl` | ninguno (efímero) | ⚠️ ver plan de monitoreo |
+| Grafana + VictoriaMetrics | `monitoring` | `grafana.danielriquelme.cl` | local-path (Grafana) · NFS `nvme/k8s/victoria-metrics` (métricas, 90 días) | ✅ dashboards en `cluster/03-monitoring/monitoring/dashboards/` |
 
 ### Sitios estáticos (josekast.cl, noledigasanadie)
 
@@ -75,7 +75,7 @@ ansible/            Inventario, playbooks (provisioning/, maintenance/), rol nvi
 cluster/
   00-infrastructure/  NVIDIA device plugin, RuntimeClass, CronJob de copia de etcd
   01-networking/      Middleware de Traefik (Traefik lo provee k3s)
-  03-monitoring/      kube-prometheus-stack (HelmRelease, requiere Flux) + exporters
+  03-monitoring/      VictoriaMetrics, Grafana, node-exporter, kube-state-metrics, exporters de Proxmox y speedtest
   04-media-stack/     Plex, *arr, qBittorrent, FlareSolverr
   05-services/        Overseerr, Pingvin
   06-external/        cloudflared

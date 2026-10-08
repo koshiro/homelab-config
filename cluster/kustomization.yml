@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - 00-infrastructure/
   - 01-networking/
-  # - 03-monitoring/   # pendiente: plan Grafana/Flux en docs/PENDIENTES.md
+  - 03-monitoring/
   - 04-media-stack/
   - 05-services/
   - 06-external/

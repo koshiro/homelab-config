@@ -5,4 +5,4 @@ After=zfs-import.target
 Type=oneshot
 # mbuffer avisa en cada dataset si no hay HOME
 Environment=HOME=/root
-ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation nvme/k8s respaldo/k8s
+ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation --exclude=nvme/k8s/victoria-metrics nvme/k8s respaldo/k8s

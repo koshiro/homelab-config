@@ -1,0 +1,154 @@
+# VictoriaMetrics single-node: base de métricas y scraper a la vez (-promscrape.config, sin vmagent
+# ni Prometheus). Habla PromQL, así que Grafana lo usa como datasource "prometheus".
+# Datos en Proxmox: dataset ZFS nvme/k8s/victoria-metrics (quota 30G, export NFS, sin syncoid ni
+# restic; ver proxmox/README.md). Los workers no tienen disco local para 90 días de métricas.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: victoria-metrics-pv
+spec:
+  capacity:
+    storage: 30Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  mountOptions:
+    - nfsvers=4.2
+    - hard
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/victoria-metrics
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: victoria-metrics-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-proxmox
+  volumeName: victoria-metrics-pv
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: victoria-metrics
+  namespace: monitoring
+---
+# Descubrimiento de nodos/pods y scrape de kubelet/cAdvisor (nodes/metrics)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: victoria-metrics
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/metrics, services, endpoints, pods]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics, /metrics/cadvisor]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: victoria-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: victoria-metrics
+subjects:
+  - kind: ServiceAccount
+    name: victoria-metrics
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victoria-metrics
+  namespace: monitoring
+  labels:
+    app: victoria-metrics
+spec:
+  replicas: 1
+  # el directorio de datos lleva flock: nunca dos pods a la vez
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: victoria-metrics
+  template:
+    metadata:
+      labels:
+        app: victoria-metrics
+    spec:
+      serviceAccountName: victoria-metrics
+      affinity:
+        nodeAffinity:
+          # fuera de pibot (4 GB, control plane); node-1 y node-3 van cargados
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [amd64]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [k3s-node-2]
+      containers:
+        - name: victoria-metrics
+          image: victoriametrics/victoria-metrics:v1.152.0
+          args:
+            - -storageDataPath=/storage
+            - -retentionPeriod=90d
+            - -promscrape.config=/config/scrape.yml
+            - -promscrape.config.strictParse=true
+            # avisa de targets caídos en http://victoria-metrics:8428/targets
+            - -promscrape.suppressScrapeErrors=false
+            - -selfScrapeInterval=30s
+            - -search.latencyOffset=5s
+          ports:
+            - name: http
+              containerPort: 8428
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          volumeMounts:
+            - name: data
+              mountPath: /storage
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: victoria-metrics-data
+        - name: config
+          configMap:
+            name: victoria-metrics-scrape
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: victoria-metrics
+  namespace: monitoring
+  labels:
+    app: victoria-metrics
+spec:
+  selector:
+    app: victoria-metrics
+  ports:
+    - name: http
+      port: 8428
+      targetPort: http

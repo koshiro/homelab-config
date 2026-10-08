@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  # dashboards/<carpeta>/*.json del repo; editables en la UI pero se sobrescriben al reiniciar
+  - name: repo
+    type: file
+    disableDeletion: true
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

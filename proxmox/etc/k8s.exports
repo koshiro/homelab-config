@@ -8,3 +8,5 @@
 /mnt/homelab-storage/k8s-media-library 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /mnt/homelab-storage/comfyui           192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /mnt/homelab-storage/seedfinder        192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+# Métricas de VictoriaMetrics (2026-10-08). Sin restic ni syncoid: se pueden perder.
+/nvme/k8s/victoria-metrics 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)

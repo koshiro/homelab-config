@@ -1,0 +1,104 @@
+# Scrape de VictoriaMetrics (formato Prometheus). Se monta vía configMapGenerator: un cambio aquí
+# cambia el hash del ConfigMap y reinicia el pod.
+# Todos los jobs llevan cluster="homelab": los dashboards dotdc (Kubernetes / Views) filtran por él.
+# Ver targets: kubectl -n monitoring port-forward svc/victoria-metrics 8428 → http://localhost:8428/targets
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # Máquina: CPU, RAM, disco, red, temperatura (DaemonSet en los 4 nodos). 15s = vista en vivo.
+  - job_name: node-exporter
+    scrape_interval: 15s
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [monitoring]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: node-exporter
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: homelab
+
+  # Estado de objetos k8s (pods, deployments, PVC, restarts…)
+  - job_name: kube-state-metrics
+    static_configs:
+      - targets: [kube-state-metrics.monitoring.svc:8080]
+    relabel_configs:
+      - target_label: cluster
+        replacement: homelab
+
+  # cAdvisor del kubelet: CPU/RAM/red por contenedor. Se descartan las series más caras que no usa
+  # ningún dashboard.
+  - job_name: kubelet-cadvisor
+    scheme: https
+    metrics_path: /metrics/cadvisor
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tls_config:
+      # el certificado del kubelet lo firma la CA de servidor de k3s, no la del service account
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: homelab
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: container_(tasks_state|memory_failures_total|blkio_device_usage_total|ulimits_soft|fs_(inodes|io|reads|writes|sector)_.*|memory_(mapped_file|kernel_usage|max_usage_bytes)|spec_.*|last_seen|file_descriptors|sockets|threads.*|processes|start_time_seconds|oom_events_total|pressure_.*)
+        action: drop
+
+  # Kubelet: solo uso de volúmenes (PVC llenos) y conteo de pods/contenedores
+  - job_name: kubelet
+    scheme: https
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tls_config:
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: homelab
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: kubelet_(volume_stats_.*|running_pods|running_containers|node_name)
+        action: keep
+
+  # Host Proxmox vía API (VMs, LXC, storage). target = host a consultar.
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      target: [192.168.1.100]
+      cluster: ["1"]
+      node: ["1"]
+    static_configs:
+      - targets: [pve-exporter.monitoring.svc:9221]
+    relabel_configs:
+      - target_label: instance
+        replacement: pve
+      - target_label: cluster
+        replacement: homelab
+
+  # Speedtest real contra Internet: cada scrape satura el enlace unos 20 s (cientos de MB), así que 1 por hora.
+  - job_name: speedtest
+    scrape_interval: 1h
+    scrape_timeout: 2m
+    static_configs:
+      - targets: [speedtest-exporter.monitoring.svc:9798]
+    relabel_configs:
+      - target_label: instance
+        replacement: speedtest
+      - target_label: cluster
+        replacement: homelab

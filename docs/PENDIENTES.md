@@ -110,28 +110,36 @@ en `config.txt`).
   `pibot/boot/config.txt`, reiniciar y correr `pibot/vtest.sh` (~11 min). Aceptar solo con 0 muestras con bajo voltaje
   en la fase de carga; si no, volver a 1500.
 
-## 5. Monitoreo — plan Grafana (después de estabilizar)
+## 5. Monitoreo — VictoriaMetrics + Grafana (sin Flux)
 
-**Estado actual:**
-- ns `grafana`: `grafana/grafana:latest` aplicado a mano, **sin volumen** (dashboards/usuarios se pierden al reiniciar), sin manifiestos en el repo.
-- ns `monitoring`: `pve-exporter`, `speedtest-exporter`, `truenas-node-exporter` corriendo, pero **no hay Prometheus** que los scrapee.
-- Repo `cluster/03-monitoring/monitoring/`: `HelmRelease` kube-prometheus-stack 61.1.0 (requiere Flux) + `secret-generator.yaml` (KSOPS, era ArgoCD). Capa comentada en `cluster/kustomization.yml`.
+Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-stack. Usa PromQL y los mismos exporters y dashboards, pero ocupa ~5–10× menos RAM y disco (~0,5 GB en total contra 1,5–2,5 GB), no necesita operador, CRDs ni Helm, y se aplica con `kubectl apply -k cluster/03-monitoring`. **No depende de Flux**; cuando llegue Flux (§6) basta con una Kustomization más, sin HelmRelease.
 
-**Plan:**
-1. Instalar Flux (sección 6) — el HelmRelease ya existe.
-2. kube-prometheus-stack en ns `monitoring` con Grafana incluido; valores mínimos para Raspberry + 3 workers: retención 7d, PVC `local-path` 10 Gi para Prometheus (luego NFS de Proxmox), Alertmanager desactivado al inicio.
-3. Actualizar chart a versión actual y fijar imagen de Grafana (no `latest`).
-4. Scrape configs para los exporters existentes (`pve-exporter`, `speedtest-exporter`) vía `ServiceMonitor`; añadir `node_exporter`/`zfs_exporter`/`smartctl_exporter` en el host Proxmox.
-5. Dashboards como ConfigMaps con label `grafana_dashboard: "1"`.
-6. Secretos (`secret-grafana`, `secret-proxmox`) vía SOPS con Flux (`decryption.provider: sops`).
-7. Migrar/eliminar el Grafana manual del ns `grafana` y su Ingress.
-8. Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) junto al monitoreo si hace falta.
+**Componentes** (`cluster/03-monitoring/monitoring/`, ns `monitoring`):
+- `victoria-metrics`: base de métricas y scraper a la vez (`scrape.yml`), retención 90 días, datos en el dataset ZFS `nvme/k8s/victoria-metrics` (quota 30G, NFS; sin syncoid ni restic, 2 snapshots diarios). Prefiere node-2; nunca pibot.
+- `node-exporter` (DaemonSet en los 4 nodos, cada 15 s), `kube-state-metrics`, cAdvisor y kubelet (volúmenes); `pve-exporter` (API de Proxmox) y `speedtest-exporter` (1 por hora).
+- `grafana` 13 con base SQLite en `local-path` (respaldo `config-backup-grafana`), datasource y dashboards provisionados desde `dashboards/` (Node Exporter Full, Kubernetes Views, Proxmox, Speedtest, VictoriaMetrics). `grafana.danielriquelme.cl` tras Cloudflare Access.
+- Secretos: `secret-grafana.sops.yaml`, `secret-proxmox.sops.yaml` (`sops -d … | kubectl apply -f -`).
+
+**Hecho (2026-10-08):**
+- [x] Manifiestos y dashboards en el repo; capa `03-monitoring` activa en `cluster/kustomization.yml`. Eliminados HelmRelease/HelmRepository de kube-prometheus-stack y los `ServiceMonitor`.
+- [x] `pve-exporter` arreglado: nunca autenticó (no expande `${PVE_*}` en `pve.yml`, y el token del secret vivo daba 401). Ahora usa `PVE_TOKEN_NAME`/`PVE_TOKEN_VALUE` y el token versionado (válido). Imagen fijada en 3.10.1.
+- [x] Speedtest de cada 2 min a 1 por hora (cada prueba satura el enlace).
+
+**Pendiente:**
+- [ ] Host Proxmox (a mano, ver PR): crear `nvme/k8s/victoria-metrics` (quota 30G), copiar `k8s.exports`, `sanoid.conf`, `syncoid-respaldo.service` y `check-backups.sh`, y dar ACL al token: `pveum acl modify / --tokens 'monitoring@pve!monitoring-token' --roles PVEAuditor` (tiene `privsep=1`; el rol solo estaba en el usuario → 403 `Sys.Audit`).
+- [ ] Borrar el Grafana manual (`kubectl delete namespace grafana`: su Ingress compite por `grafana.danielriquelme.cl`) y el secret huérfano `monitoring/truenas-api-credentials`.
+- [ ] Exporters del host Proxmox: `node_exporter`, `zfs_exporter` (pools `nvme`, `respaldo`, `homelab-storage`) y `smartctl_exporter`, con su job en `scrape.yml` y dashboards. Versionarlos en `proxmox/`.
+- [ ] Alertas: `vmalert` + reglas básicas (nodo caído, disco >85 %, PVC lleno, temperatura de pibot, pool ZFS degradado) hacia el bot de Telegram que ya usa `notify-telegram`. Hoy solo hay visualización.
+- [ ] Dashboard propio «Homelab — resumen» (una pantalla: nodos, pibot, pools, speedtest, top pods).
+- [ ] Login de Grafana con el JWT de Cloudflare Access (`GF_AUTH_JWT_*`, cabecera `Cf-Access-Jwt-Assertion`) para no tener un segundo login.
+- [ ] Tras una semana, revisar `vm_rows` y uso del dataset (`zfs list nvme/k8s/victoria-metrics`); ajustar retención o drops de cAdvisor si se acerca a la quota.
+- [ ] Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) si hace falta.
 
 ## 6. GitOps con Flux
 
 - [ ] `flux bootstrap github --owner=koshiro --repository=homelab-config --path=cluster --private`.
 - [ ] Clave age en el cluster (`sops-age` secret en `flux-system`) y `decryption` en las Kustomizations.
-- [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`, `03-monitoring`.
+- [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`.
 - [ ] Hasta entonces el flujo real es `kubectl apply -k` / `kubectl apply -f`. `kubectl kustomize cluster` compila (verificado 2026-09-30).
 
 ## 7. IoT
