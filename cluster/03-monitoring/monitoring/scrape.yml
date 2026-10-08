@@ -76,6 +76,20 @@ scrape_configs:
         regex: kubelet_(volume_stats_.*|running_pods|running_containers|node_name)
         action: keep
 
+  # Host Proxmox: node_exporter del paquete Debian + textfile-metrics.sh (pools ZFS, datasets,
+  # SMART). Ver proxmox/README.md. instance=pve para que Node Exporter Full lo liste junto a los nodos.
+  - job_name: pve-host
+    scrape_interval: 15s
+    static_configs:
+      - targets: [192.168.1.100:9100]
+    relabel_configs:
+      - target_label: instance
+        replacement: pve
+      - target_label: node
+        replacement: pve
+      - target_label: cluster
+        replacement: homelab
+
   # Host Proxmox vía API (VMs, LXC, storage). target = host a consultar.
   - job_name: pve
     metrics_path: /pve

@@ -1,0 +1,7 @@
+[Unit]
+Description=Métricas ZFS/SMART cada 5 min
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

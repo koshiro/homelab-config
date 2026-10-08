@@ -1,0 +1,31 @@
+# Alertmanager → Telegram. CHAT_ID lo reemplaza el initContainer con el valor de
+# secret-alertmanager-telegram.sops.yaml (Alertmanager no expande variables); el token se lee de archivo.
+route:
+  receiver: telegram
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: telegram
+      repeat_interval: 2h
+
+inhibit_rules:
+  # con un nodo caído no avisar también de sus targets
+  - source_matchers: [alertname="NodoCaido"]
+    target_matchers: [alertname="TargetCaido"]
+    equal: [instance]
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/telegram/bot_token
+        chat_id: CHAT_ID
+        parse_mode: HTML
+        send_resolved: true
+        message: |-
+          {{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}🔴{{ else }}🟠{{ end }}{{ else }}✅{{ end }} <b>{{ .CommonLabels.alertname }}</b>{{ if eq .Status "resolved" }} (resuelta){{ end }}
+          {{ range .Alerts }}• {{ .Annotations.summary }}{{ if eq $.Status "firing" }}
+            <i>{{ .Annotations.description }}</i>{{ end }}
+          {{ end }}<a href="https://grafana.danielriquelme.cl">Grafana</a>
