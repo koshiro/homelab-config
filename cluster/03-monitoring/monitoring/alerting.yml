@@ -1,0 +1,169 @@
+# Alertas: vmalert evalúa alert-rules.yml contra VictoriaMetrics cada 30 s y manda a Alertmanager,
+# que agrupa, silencia y avisa por Telegram (alertmanager.yml).
+# Estado de alertas (ALERTS) se escribe en VictoriaMetrics y se restaura al reiniciar vmalert.
+# Silenciar: kubectl -n monitoring port-forward svc/alertmanager 9093 → http://localhost:9093
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmalert
+  namespace: monitoring
+  labels:
+    app: vmalert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vmalert
+  template:
+    metadata:
+      labels:
+        app: vmalert
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [amd64]
+      containers:
+        - name: vmalert
+          image: victoriametrics/vmalert:v1.152.0
+          args:
+            - -rule=/rules/*.yml
+            - -datasource.url=http://victoria-metrics.monitoring.svc:8428
+            - -notifier.url=http://alertmanager.monitoring.svc:9093
+            - -remoteWrite.url=http://victoria-metrics.monitoring.svc:8428
+            - -remoteRead.url=http://victoria-metrics.monitoring.svc:8428
+            - -evaluationInterval=30s
+            - -external.url=https://grafana.danielriquelme.cl
+          ports:
+            - name: http
+              containerPort: 8880
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - name: rules
+              mountPath: /rules
+      volumes:
+        - name: rules
+          configMap:
+            name: vmalert-rules
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vmalert
+  namespace: monitoring
+  labels:
+    app: vmalert
+spec:
+  selector:
+    app: vmalert
+  ports:
+    - name: http
+      port: 8880
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [amd64]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      initContainers:
+        # Alertmanager no expande variables: inserta el chat_id del secret en la config
+        - name: config
+          image: busybox:1.37
+          command: [sh, -ec, 'sed "s/CHAT_ID/$(cat /telegram/chat_id)/" /template/alertmanager.yml > /config/alertmanager.yml']
+          volumeMounts:
+            - name: template
+              mountPath: /template
+            - name: telegram
+              mountPath: /telegram
+            - name: config
+              mountPath: /config
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.34.1
+          args:
+            - --config.file=/config/alertmanager.yml
+            - --storage.path=/alertmanager
+            - --web.external-url=http://alertmanager.monitoring.svc:9093
+            # una sola réplica: sin gossip
+            - --cluster.listen-address=
+          ports:
+            - name: http
+              containerPort: 9093
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: telegram
+              mountPath: /etc/alertmanager/telegram
+              readOnly: true
+            # silencios activos: se pierden al reiniciar el pod (aceptable en el homelab)
+            - name: data
+              mountPath: /alertmanager
+      volumes:
+        - name: template
+          configMap:
+            name: alertmanager-config
+        - name: telegram
+          secret:
+            secretName: alertmanager-telegram
+            defaultMode: 0440
+        - name: config
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: http

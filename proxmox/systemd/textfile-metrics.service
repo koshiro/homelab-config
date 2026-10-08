@@ -1,0 +1,5 @@
+[Unit]
+Description=Métricas ZFS/SMART para node_exporter (textfile)
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/textfile-metrics.sh

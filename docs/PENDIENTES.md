@@ -118,7 +118,10 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - `victoria-metrics`: base de métricas y scraper a la vez (`scrape.yml`), retención 90 días, datos en el dataset ZFS `nvme/k8s/victoria-metrics` (quota 30G, NFS; sin syncoid ni restic, 2 snapshots diarios). Prefiere node-2; nunca pibot.
 - `node-exporter` (DaemonSet en los 4 nodos, cada 15 s), `kube-state-metrics`, cAdvisor y kubelet (volúmenes); `pve-exporter` (API de Proxmox) y `speedtest-exporter` (1 por hora).
 - `grafana` 13 con base SQLite en `local-path` (respaldo `config-backup-grafana`), datasource y dashboards provisionados desde `dashboards/` (Node Exporter Full, Kubernetes Views, Proxmox, Speedtest, VictoriaMetrics). `grafana.danielriquelme.cl` tras Cloudflare Access.
-- Secretos: `secret-grafana.sops.yaml`, `secret-proxmox.sops.yaml` (`sops -d … | kubectl apply -f -`).
+- `vmalert` (reglas en `alert-rules.yml`, cada 30 s) → `alertmanager` → Telegram (mismo bot que `notify-telegram`). Críticas se repiten cada 2 h, el resto cada 12 h.
+- Host Proxmox: `prometheus-node-exporter` (Debian, :9100, job `pve-host`) + `textfile-metrics.sh` cada 5 min (pools ZFS, datasets, SMART con `-n standby`).
+- Login: JWT de Cloudflare Access (`Cf-Access-Jwt-Assertion`, app «Homelab admin»): entras con tu correo, sin contraseña. `admin` del secret queda de emergencia vía port-forward.
+- Secretos: `secret-grafana.sops.yaml`, `secret-proxmox.sops.yaml`, `secret-alertmanager-telegram.sops.yaml` (`sops -d … | kubectl apply -f -`).
 
 **Hecho (2026-10-08):**
 - [x] Manifiestos y dashboards en el repo; capa `03-monitoring` activa en `cluster/kustomization.yml`. Eliminados HelmRelease/HelmRepository de kube-prometheus-stack y los `ServiceMonitor`.
@@ -128,13 +131,15 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - [x] Borrado el Grafana manual (ns `grafana`) y el secret huérfano `monitoring/truenas-api-credentials`.
 - [x] Verificado: todos los targets `up` (speedtest al primer scrape de la hora), ~17 k series, stack completo ~510 MiB de RAM (Grafana ~330, VictoriaMetrics ~60).
 
+- [x] Exporters del host Proxmox (2026-10-08): `node_exporter` del paquete Debian y `proxmox/bin/textfile-metrics.sh` en vez de `zfs_exporter`/`smartctl_exporter` (no están en trixie; el script usa `smartctl -n standby` y no despierta discos).
+- [x] Alertas (2026-10-08): 17 reglas en 3 grupos (disponibilidad, recursos, almacenamiento); circuito Alertmanager → Telegram probado con una alerta de prueba.
+- [x] Dashboard propio «Homelab — resumen» (`dashboards/resumen.py` → `cluster/resumen.json`), home de Grafana.
+- [x] Login de Grafana con el JWT de Cloudflare Access (todos los correos de la política entran como admin).
+
 **Pendiente:**
-- [ ] Exporters del host Proxmox: `node_exporter`, `zfs_exporter` (pools `nvme`, `respaldo`, `homelab-storage`) y `smartctl_exporter`, con su job en `scrape.yml` y dashboards. Versionarlos en `proxmox/`.
-- [ ] Alertas: `vmalert` + reglas básicas (nodo caído, disco >85 %, PVC lleno, temperatura de pibot, pool ZFS degradado) hacia el bot de Telegram que ya usa `notify-telegram`. Hoy solo hay visualización.
-- [ ] Dashboard propio «Homelab — resumen» (una pantalla: nodos, pibot, pools, speedtest, top pods).
-- [ ] Login de Grafana con el JWT de Cloudflare Access (`GF_AUTH_JWT_*`, cabecera `Cf-Access-Jwt-Assertion`) para no tener un segundo login.
-- [ ] Tras una semana, revisar `vm_rows` y uso del dataset (`zfs list nvme/k8s/victoria-metrics`); ajustar retención o drops de cAdvisor si se acerca a la quota.
-- [ ] Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) si hace falta.
+- [ ] Tras una semana (~2026-10-15), revisar `vm_rows` y uso del dataset (`zfs list nvme/k8s/victoria-metrics`); ajustar retención o drops de cAdvisor si se acerca a la quota (ya hay alerta `DatasetCercaDeQuota`).
+- [ ] Ajustar umbrales de alertas si generan ruido la primera semana.
+- [ ] Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) si hace falta; no es parte del monitoreo.
 
 ## 6. GitOps con Flux
 

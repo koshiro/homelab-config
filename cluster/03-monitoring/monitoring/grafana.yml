@@ -86,9 +86,33 @@ spec:
             - name: GF_DASHBOARDS_MIN_REFRESH_INTERVAL
               value: 5s
             - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
-              value: /var/lib/grafana/dashboards/cluster/k8s-global.json
+              value: /var/lib/grafana/dashboards/cluster/resumen.json
             - name: GF_DATE_FORMATS_DEFAULT_TIMEZONE
               value: America/Santiago
+            # Login con Cloudflare Access: el túnel añade Cf-Access-Jwt-Assertion (firmado por el
+            # equipo driquelme, aud = app «Homelab admin»). Grafana lo valida y crea/entra con el
+            # correo. Access solo deja pasar los correos de su política, así que todos son admin.
+            # El usuario admin del secret queda como acceso de emergencia (port-forward).
+            - name: GF_AUTH_JWT_ENABLED
+              value: "true"
+            - name: GF_AUTH_JWT_HEADER_NAME
+              value: Cf-Access-Jwt-Assertion
+            - name: GF_AUTH_JWT_EMAIL_CLAIM
+              value: email
+            - name: GF_AUTH_JWT_USERNAME_CLAIM
+              value: email
+            - name: GF_AUTH_JWT_JWK_SET_URL
+              value: https://driquelme.cloudflareaccess.com/cdn-cgi/access/certs
+            - name: GF_AUTH_JWT_EXPECT_CLAIMS
+              value: '{"iss":"https://driquelme.cloudflareaccess.com","aud":["3019953c2e5acc164e6d6636a4cdac3644650d1455098e3af4c6164f1972f2c7"]}'
+            - name: GF_AUTH_JWT_AUTO_SIGN_UP
+              value: "true"
+            - name: GF_AUTH_JWT_ALLOW_ASSIGN_GRAFANA_ADMIN
+              value: "true"
+            - name: GF_AUTH_JWT_ROLE_ATTRIBUTE_PATH
+              value: "'GrafanaAdmin'"
+            - name: GF_AUTH_JWT_SKIP_ORG_ROLE_SYNC
+              value: "false"
           readinessProbe:
             httpGet:
               path: /api/health
@@ -121,6 +145,7 @@ spec:
         - name: dashboards-cluster
           projected:
             sources:
+              - configMap: {name: grafana-dashboard-resumen}
               - configMap: {name: grafana-dashboard-node-exporter-full}
               - configMap: {name: grafana-dashboard-k8s-global}
               - configMap: {name: grafana-dashboard-k8s-namespaces}

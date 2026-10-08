@@ -5,7 +5,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | Archivo del repo | Ruta en el host |
 |---|---|
 | `bin/notify-telegram` | `/usr/local/bin/notify-telegram` |
-| `bin/restic-offsite.sh`, `bin/check-backups.sh` | `/usr/local/sbin/` |
+| `bin/restic-offsite.sh`, `bin/check-backups.sh`, `bin/textfile-metrics.sh` | `/usr/local/sbin/` |
 | `systemd/*.service`, `systemd/*.timer` | `/etc/systemd/system/` |
 | `systemd/drop-ins/sanoid-notify.conf` | `/etc/systemd/system/sanoid.service.d/notify.conf` |
 | `systemd/drop-ins/syncoid-respaldo-notify.conf` | `/etc/systemd/system/syncoid-respaldo.service.d/notify.conf` |
@@ -13,6 +13,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 8 GB; `update-initramfs -u`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
+| `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |
 | `etc/zed-all-telegram.sh` | `/etc/zfs/zed.d/all-telegram.sh` |
 | `etc/logind-10-boton-encendido.conf` | `/etc/systemd/logind.conf.d/10-boton-encendido.conf` (ignora pulsación corta del botón; la larga es corte por hardware) |
@@ -57,6 +58,7 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 
 | Hora | Tarea |
 |---|---|
+| cada 5 min | `textfile-metrics.sh`: pools ZFS, datasets y SMART → `/var/lib/prometheus/node-exporter/homelab.prom` |
 | cada 15 min | sanoid: snapshots de `nvme/k8s/*` y poda de `respaldo/k8s/*` |
 | 02:40–02:47 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path → `nvme/k8s/backups/apps/<app>` |
 | 03:15 | (k8s) dump Postgres de Immich → `nvme/k8s/backups/postgres` (5 días) |

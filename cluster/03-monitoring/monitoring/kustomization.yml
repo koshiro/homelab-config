@@ -2,6 +2,7 @@
 # VictoriaMetrics + Grafana + exporters. kubectl apply -k cluster/03-monitoring
 # Secretos aparte: sops -d secret-grafana.sops.yaml | kubectl apply -f -
 #                  sops -d secret-proxmox.sops.yaml | kubectl apply -f -
+#                  sops -d secret-alertmanager-telegram.sops.yaml | kubectl apply -f -
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -11,6 +12,7 @@ resources:
   - kube-state-metrics.yml
   - pve-exporter.yml
   - speedtest-exporter.yml
+  - alerting.yml
   - grafana.yml
   - ingress.yml
 
@@ -19,12 +21,23 @@ configMapGenerator:
     namespace: monitoring
     files:
       - scrape.yml
+  - name: vmalert-rules
+    namespace: monitoring
+    files:
+      - alert-rules.yml
+  - name: alertmanager-config
+    namespace: monitoring
+    files:
+      - alertmanager.yml
   - name: grafana-provisioning
     namespace: monitoring
     files:
       - grafana-provisioning/datasources.yml
       - grafana-provisioning/dashboards.yml
   # un ConfigMap por dashboard (límite de 256 KiB de la anotación de kubectl apply)
+  - name: grafana-dashboard-resumen
+    namespace: monitoring
+    files: [dashboards/cluster/resumen.json]
   - name: grafana-dashboard-node-exporter-full
     namespace: monitoring
     files: [dashboards/cluster/node-exporter-full.json]

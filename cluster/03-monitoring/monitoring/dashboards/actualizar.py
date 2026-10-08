@@ -2,6 +2,7 @@
 """Descarga los dashboards de grafana.com y los deja listos para el provisioning de Grafana.
 
 Uso: python3 cluster/03-monitoring/monitoring/dashboards/actualizar.py
+(El dashboard propio «Homelab — resumen» se genera aparte con resumen.py.)
 Luego revisar el diff y aplicar con kubectl apply -k cluster/03-monitoring.
 
 - ${DS_PROMETHEUS} → uid fijo "victoriametrics" (grafana-provisioning/datasources.yml).

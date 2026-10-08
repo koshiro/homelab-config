@@ -1,0 +1,126 @@
+# Reglas de vmalert (PromQL). Las evalúa vmalert contra VictoriaMetrics y las envía a Alertmanager,
+# que avisa por Telegram (mismo bot que notify-telegram en Proxmox).
+# severity: critical = actuar ya; warning = revisar en el día.
+# Probar una expresión: Grafana → Explore, o kubectl -n monitoring port-forward svc/vmalert 8880.
+groups:
+  - name: disponibilidad
+    rules:
+      - alert: NodoCaido
+        expr: up{job=~"node-exporter|pve-host"} == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.instance }} no responde"
+          description: "node_exporter de {{ $labels.instance }} lleva 3 min sin responder: nodo apagado, colgado o sin red."
+      - alert: TargetCaido
+        expr: up{job!~"node-exporter|pve-host|speedtest"} == 0
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Scrape {{ $labels.job }}/{{ $labels.instance }} caído"
+          description: "VictoriaMetrics no puede leer {{ $labels.job }} en {{ $labels.instance }} hace 10 min."
+      - alert: PodReiniciando
+        expr: increase(kube_pod_container_status_restarts_total[30m]) > 3
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} reinicia en bucle"
+          description: "El contenedor {{ $labels.container }} se reinició {{ $value | printf \"%.0f\" }} veces en 30 min."
+      - alert: DeploymentIncompleto
+        expr: kube_deployment_status_replicas_available < kube_deployment_spec_replicas and kube_deployment_spec_replicas > 0
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.deployment }} sin réplicas disponibles"
+          description: "Disponibles {{ $value }} de las réplicas pedidas, hace 15 min."
+      - alert: RecolectorHostDetenido
+        expr: time() - textfile_metrics_last_run_timestamp_seconds > 1800
+        labels: {severity: warning}
+        annotations:
+          summary: "textfile-metrics.sh no corre en Proxmox"
+          description: "Las métricas de ZFS/SMART tienen más de 30 min. Revisar systemctl status textfile-metrics.timer."
+
+  - name: recursos
+    rules:
+      - alert: DiscoRaizLleno
+        expr: 100 * node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes < 15
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Disco raíz de {{ $labels.instance }} con {{ $value | printf \"%.0f\" }} % libre"
+          description: "Quedan {{ $value | printf \"%.0f\" }} % libres en / de {{ $labels.instance }} hace 15 min."
+      - alert: PVCLleno
+        expr: 100 * kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 10
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} casi lleno"
+          description: "Queda {{ $value | printf \"%.0f\" }} % libre."
+      - alert: MemoriaNodoBaja
+        expr: 100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 8
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} con poca RAM libre"
+          description: "Solo {{ $value | printf \"%.1f\" }} % de memoria disponible hace 10 min."
+      - alert: TemperaturaPibotAlta
+        expr: max by (instance) (node_thermal_zone_temp{instance="pibot"}) > 75
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "pibot a {{ $value | printf \"%.0f\" }} °C"
+          description: "La Raspberry master lleva 10 min sobre 75 °C (throttling desde 80 °C)."
+
+  - name: almacenamiento
+    rules:
+      - alert: PoolZFSDegradado
+        expr: zfs_pool_healthy == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Pool ZFS {{ $labels.pool }} en estado {{ $labels.health }}"
+          description: "zpool status {{ $labels.pool }} en Proxmox."
+      - alert: PoolZFSErrores
+        expr: zfs_pool_data_errors > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "Pool ZFS {{ $labels.pool }} con errores de datos"
+          description: "zpool status -v {{ $labels.pool }} lista archivos dañados."
+      - alert: PoolZFSLleno
+        expr: 100 * zfs_pool_allocated_bytes / zfs_pool_size_bytes > 85
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Pool ZFS {{ $labels.pool }} al {{ $value | printf \"%.0f\" }} %"
+          description: "Sobre 80–85 % ZFS pierde rendimiento y fragmenta."
+      - alert: DatasetCercaDeQuota
+        expr: 100 * zfs_dataset_used_bytes / on (dataset) zfs_dataset_quota_bytes > 85
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Dataset {{ $labels.dataset }} al {{ $value | printf \"%.0f\" }} % de su quota"
+          description: "Al llegar a la quota las escrituras fallan (VictoriaMetrics pasa a solo lectura)."
+      - alert: DiscoSMARTFallando
+        expr: smart_healthy == 0
+        labels: {severity: critical}
+        annotations:
+          summary: "SMART de {{ $labels.device }} reporta FAILED"
+          description: "smartctl -a /dev/{{ $labels.device }} en Proxmox. Planificar reemplazo."
+      - alert: DiscoSectoresNuevos
+        expr: delta(smart_ata_attribute_raw{id=~"5|197|198"}[1d]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.device }}: {{ $labels.name }} subió"
+          description: "Aumentó en {{ $value | printf \"%.0f\" }} en 24 h: el disco empieza a degradarse."
+      - alert: NVMeDesgastado
+        expr: smart_nvme_percentage_used > 80 or increase(smart_nvme_media_errors[1d]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "NVMe {{ $labels.device }} desgastado o con errores de medio"
+          description: "Valor {{ $value }}. smartctl -a /dev/{{ $labels.device }}."
+      - alert: DiscoCaliente
+        expr: (smart_temperature_celsius{device!~"nvme.*"} > 50) or (smart_temperature_celsius{device=~"nvme.*"} > 70)
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.device }} a {{ $value }} °C"
+          description: "Lleva 15 min sobre el umbral (HDD/SSD 50 °C, NVMe 70 °C)."

@@ -1,0 +1,5 @@
+# /etc/default/prometheus-node-exporter (paquete Debian prometheus-node-exporter, :9100)
+# Lo lee VictoriaMetrics (job pve-host). Fuera: sistemas de archivos ZFS (los cubre
+# textfile-metrics.sh por dataset) y las interfaces virtuales de VMs/LXC.
+# Textfile collector: /var/lib/prometheus/node-exporter/*.prom (default del paquete).
+ARGS="--collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|tmpfs|zfs|fuse.lxcfs|nfsd)$ --collector.netdev.device-exclude=^(veth|tap|fwbr|fwpr|fwln).* --collector.netclass.ignored-devices=^(veth|tap|fwbr|fwpr|fwln).*"
