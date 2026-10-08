@@ -1,4 +1,4 @@
-# speedtest-exporter.yml
+# speedtest-exporter.yml — corre un speedtest en cada scrape (job speedtest en scrape.yml, 1 por hora)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,20 +39,3 @@ spec:
     - name: http
       port: 9798
       targetPort: http
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: speedtest-exporter-monitor
-  namespace: monitoring
-  labels:
-    release: kube-prometheus-stack
-spec:
-  selector:
-    matchLabels:
-      app: speedtest-exporter
-  endpoints:
-    - port: http
-      # Intervalo y timeout válidos para el operador
-      interval: 2m
-      scrapeTimeout: 90s

@@ -109,7 +109,7 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
   - Pública por túnel con comodín: Immich, Pingvin, Overseerr, Open WebUI, Plex.
   - Solo tailnet (NodePort, sin Ingress): qBittorrent, *arr, ComfyUI, Grafana; o Cloudflare Access si se quieren desde fuera.
 - **GitOps:** Flux con SOPS cuando todo lo anterior esté estable (`docs/PENDIENTES.md` §6).
-- **Monitoreo:** kube-prometheus-stack + `node_exporter`, `zfs_exporter` y `smartctl_exporter` en el host (`docs/PENDIENTES.md` §5).
+- **Monitoreo:** VictoriaMetrics + Grafana con `kubectl apply -k` (sin Flux); falta `node_exporter`, `zfs_exporter` y `smartctl_exporter` en el host (`docs/PENDIENTES.md` §5).
 
 ## Plan por fases
 
@@ -153,7 +153,7 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 ### Fase 4 — Operación
 
 1. Flux + SOPS.
-2. Monitoreo (Grafana/Prometheus + exporters del host).
+2. Monitoreo: VictoriaMetrics + Grafana desplegados (2026-10-08); faltan exporters del host y alertas.
 3. Rotación de secretos (`.vault_password.txt`, `.truenas-api-key` deja de existir, contraseñas Postgres).
 4. Reescribir `docs/` según esta arquitectura.
 5. Copia offsite cifrada de `nvme/k8s/{immich,minecraft,pingvin}` y dumps de Postgres (ver «Respaldo fuera de casa»).

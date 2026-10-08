@@ -1,0 +1,14 @@
+apiVersion: 1
+datasources:
+  # VictoriaMetrics habla PromQL: datasource tipo prometheus. uid fijo: los dashboards lo referencian.
+  - name: VictoriaMetrics
+    uid: victoriametrics
+    type: prometheus
+    access: proxy
+    url: http://victoria-metrics.monitoring.svc:8428
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+      prometheusType: Prometheus
+      httpMethod: POST
