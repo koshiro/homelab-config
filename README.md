@@ -119,7 +119,7 @@ ansible-playbook ansible/playbook_provision_all.yml   # vault: ~/.config/homelab
 
 Playbooks disponibles: [ansible/playbooks/README.md](ansible/playbooks/README.md).
 
-**Desplegar una app:** namespace → Deployment → Service → PVC → Ingress (`host: <app>.danielriquelme.cl`). El túnel ya enruta el comodín; no hace falta tocar Cloudflare. Para servicios privados usar NodePort fijo y acceder por tailnet. Añadir la carpeta a `cluster/kustomization.yml`.
+**Desplegar una app:** ver [docs/DISENO-APPS.md](docs/DISENO-APPS.md) (contrato de la app, almacenamiento, exposición, plantillas y checklist). En corto: namespace → Deployment → Service → PVC → Ingress (`host: <app>.danielriquelme.cl`); el túnel ya enruta el comodín y todo Ingress queda público. Para servicios privados usar NodePort fijo y acceder por tailnet. Añadir la carpeta a `cluster/kustomization.yml`.
 
 **Secretos (SOPS/age):**
 
@@ -141,6 +141,6 @@ kubectl get node k3s-node-1 -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'
 ansible all -i ansible/inventory -m ping
 ```
 
-## Agentes y skills
+## Agentes
 
-Ver **[AGENTS.md](AGENTS.md)**: skills locales en `.cursor/skills/` (mantenimiento, despliegue, Ansible, SOPS, respaldos). Pentest y evaluaciones de seguridad viven en el repo hermano `security-assessment`.
+Ver **[AGENTS.md](AGENTS.md)**: qué documento leer según la tarea y reglas que aplican siempre. Pentest y evaluaciones de seguridad viven en el repo hermano `security-assessment`.
