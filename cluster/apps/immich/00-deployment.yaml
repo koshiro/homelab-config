@@ -93,7 +93,7 @@ spec:
         app.kubernetes.io/instance: immich
     spec:
       # Immich ML v3 requiere x86-64-v2: solo k3s-node-1 (VM 102, cpu: host) lo expone.
-      # k3s-node-2/3 usan kvm64 (pendiente cambiar a x86-64-v2-AES en mantención).
+      # k3s-node-2/3 usan kvm64 hasta su próximo stop/start (cpu: host pendiente, PENDIENTES §4c).
       nodeSelector:
         kubernetes.io/hostname: k3s-node-1
       containers:

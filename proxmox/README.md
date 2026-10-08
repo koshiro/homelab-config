@@ -22,6 +22,23 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `lxc-110-nas/samba-timemachine.sops.yaml` | Contraseña Samba de `timemachine` (aplicar con `smbpasswd -s timemachine` en el LXC 110; leer con `sops -d`) |
 | `lxc-110-nas/samba-daniel.sops.yaml` | Contraseña Samba de `daniel` (share `archivo`, RAW; aplicar con `smbpasswd -s daniel` en el LXC 110; en el Mac está en el Llavero, servidor `nas`) |
 
+## VMs del cluster k3s
+
+Configuración que se aparta de los valores por defecto de Proxmox (`qm config <vmid>`):
+
+| VM | Nombre | `cpu` | Notas |
+|---|---|---|---|
+| 102 | `k3s-node-1` | `host` | GPU RTX 3070 (`hostpci`) |
+| 103 | `k3s-node-2` | `host` (desde 2026-10-08, **pendiente de stop/start**) | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
+| 104 | `k3s-node-3` | `host` (desde 2026-10-08, **pendiente de stop/start**) | Igual que 103 |
+
+Aplicado con `qm set 103 --cpu host` y `qm set 104 --cpu host` con las VMs encendidas: el tipo de CPU no se cambia en
+caliente, así que queda como cambio pendiente (`qm pending <vmid>`, en naranjo en la interfaz web) hasta el próximo
+**stop/start desde Proxmox** (`qm shutdown` + `qm start`, `qm reboot`, el botón *Reboot* de la interfaz o
+`playbook_graceful_shutdown_cluster.yml`). **Un `reboot` dentro del invitado no lo aplica**: la VM sigue con el
+mismo proceso QEMU. `playbook_graceful_shutdown_cluster.yml` y `playbook_startup_cluster.yml` avisan si alguna VM tiene
+cambios pendientes.
+
 ## Pools ZFS al arrancar
 
 `nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`; el `boot-pool` de TrueNAS se ve en `zpool import` pero **no** se importa solo (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.

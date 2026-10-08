@@ -16,8 +16,8 @@ Estado verificado contra el cluster el 2026-10-08.
 |---|---|---|---|---|
 | `pibot` (`k3s-node-0` en el tailnet, 192.168.1.15) | Raspberry Pi, control-plane + etcd | **arm64** | 4 / 3,7 GiB | Sobrevive a una caída de Proxmox. Poca RAM: solo cargas livianas y críticas (sitios estáticos, conectores). Exige `nodeName: pibot` + tolerations |
 | `k3s-node-1` (192.168.1.131) | VM en Proxmox, label `node-role.kubernetes.io/media-worker` | amd64, CPU `host` | 8 / 23,5 GiB | **Única GPU**: RTX 3070 8 GB, time-slicing (`nvidia.com/gpu: 10` virtuales, misma VRAM). Único worker con x86-64-v2 |
-| `k3s-node-2` (192.168.1.132) | VM en Proxmox | amd64, CPU `kvm64` | 4 / 7,7 GiB | **Sin x86-64-v2** (sin SSE4.2): NumPy reciente, PyTorch, Immich ML y similares fallan (`PENDIENTES.md` §4c) |
-| `k3s-node-3` (192.168.1.133) | VM en Proxmox | amd64, CPU `kvm64` | 6 / 15,6 GiB | Igual que node-2 |
+| `k3s-node-2` (192.168.1.132) | VM en Proxmox | amd64, CPU `kvm64` (`host` pendiente de stop/start) | 4 / 7,7 GiB | **Sin x86-64-v2** (sin SSE4.2): NumPy reciente, PyTorch, Immich ML y similares fallan (`PENDIENTES.md` §4c) |
+| `k3s-node-3` (192.168.1.133) | VM en Proxmox | amd64, CPU `kvm64` (`host` pendiente de stop/start) | 6 / 15,6 GiB | Igual que node-2 |
 
 Ningún nodo tiene taints salvo los de control-plane de pibot. El scheduler reparte libremente entre node-1/2/3.
 
