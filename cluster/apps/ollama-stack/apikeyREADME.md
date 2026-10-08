@@ -1,6 +1,6 @@
 # Ollama stack — acceso y API keys
 
-Referencia rápida para conectar clientes (Cursor, scripts) y usar Open WebUI.
+Referencia rápida para conectar clientes (editores con API OpenAI-compatible, scripts) y usar Open WebUI.
 
 ## Qué hay desplegado
 
@@ -58,10 +58,10 @@ En el deployment **no** hay `OLLAMA_API_KEY`. La instancia es de confianza en re
 
 | Cliente | Base URL | API Key |
 |---------|----------|---------|
-| **Cursor** (OpenAI-compatible) | `http://k3s-node-0:31434/v1` | Cualquier placeholder, p. ej. `ollama` |
+| **Editor o cliente OpenAI-compatible** | `http://k3s-node-0:31434/v1` | Cualquier placeholder, p. ej. `ollama` |
 | **curl / scripts** | `http://k3s-node-0:31434` | No requerida |
 
-Ejemplo Cursor:
+Ejemplo de cliente OpenAI-compatible:
 
 - **Override OpenAI Base URL:** `http://k3s-node-0:31434/v1`
 - **API Key:** `ollama`
@@ -98,10 +98,10 @@ kubectl get pods,svc -n ollama-stack
 
 | ¿Qué quieres? | Cómo acceder |
 |---------------|--------------|
-| API Ollama desde el Mac (Cursor, scripts) | Tailscale → `http://k3s-node-0:31434` o `.../v1` |
+| API Ollama desde el Mac (editores, scripts) | Tailscale → `http://k3s-node-0:31434` o `.../v1` |
 | UI de chat / admin Open WebUI | Tailscale → `:30080`, LAN → `192.168.1.15:30080`, o `chat.danielriquelme.cl` |
 | Configurar modelos en Ollama | `kubectl exec ... ollama pull` o Open WebUI |
 | API key Ollama | Placeholder (`ollama` / `ollama-local`); servidor sin auth hoy |
 | API key Open WebUI | Generar en la UI (Account → API Keys) |
 
-Más contexto en el README raíz: sección *Ollama en el clúster y Cursor vía Tailscale*.
+Manifiestos en esta carpeta (`deployment-ollama.yml`, `deployment-webui.yml`); acceso y almacenamiento en la tabla *Servicios* del README raíz.

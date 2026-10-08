@@ -4,8 +4,7 @@ Guía para agentes que **crean una aplicación nueva o portan una existente** (d
 del homelab. Si la app cumple el contrato de la sección 2 y se empaqueta como en la sección 5, se despliega con un
 `kubectl apply -k` sin ajustes posteriores.
 
-Estado verificado contra el cluster el 2026-10-08. Ante una contradicción con `.cursor/skills/homelab-deploy-apps`,
-**manda este documento** (esa skill está obsoleta: menciona `nfs-csi`/`nfs-immich`, que no existen).
+Estado verificado contra el cluster el 2026-10-08.
 
 ---
 
@@ -33,6 +32,10 @@ Ningún nodo tiene taints salvo los de control-plane de pibot. El scheduler repa
 | NFS de `homelab-storage` | PV estático sin StorageClass (ver `cluster/04-media-stack/pv-media-library.yml`) | Disco de 12 TB **sin redundancia**, `/mnt/homelab-storage/<x>` | Ninguno (datos reemplazables) | Media, modelos de IA, descargas, datos voluminosos que se pueden volver a obtener |
 | `hostPath` en pibot | `hostPath: /var/lib/homelab-<app>` + `nodeName: pibot` | NVMe de la Pi | CronJob en `webs-estaticas-backup.yaml` | **Solo** sitios estáticos y cosas que deben sobrevivir a Proxmox |
 | `emptyDir` | volumen del pod | efímero | — | Temporales, `/tmp` con `readOnlyRootFilesystem` |
+
+**`local-path` no tiene cuota**: el `storage` del PVC es decorativo y los datos van al disco raíz de la VM, que también
+guarda imágenes y logs. Libre al 2026-10-08: node-1 13 GB (de 78), node-2 5 GB (de 29), node-3 6 GB (de 29). Un
+PVC que crezca puede dejar el nodo en `DiskPressure` y desalojar pods de otras apps. Más de ~2 GB → NFS.
 
 Prohibido: `nfs-csi`, `nfs-immich` u otra StorageClass inventada (no hay CSI de NFS instalado); `hostPath` en los
 workers; SQLite sobre NFS (bloqueos y corrupción).
@@ -150,7 +153,7 @@ Responde en orden; cada respuesta fija una parte del manifiesto.
 | Tipo de dato | Almacenamiento |
 |---|---|
 | Nada (stateless) | Ninguno |
-| Config/SQLite/pequeño (< 5 GiB) | PVC `local-path` + CronJob `config-backup-<app>` |
+| Config/SQLite/pequeño (< 2 GiB) | PVC `local-path` + CronJob `config-backup-<app>` |
 | Datos de usuario irremplazables | PV estático `nfs-proxmox` en `nvme/k8s/<app>` (requiere crear dataset y export en Proxmox) |
 | Voluminoso y reemplazable (media, modelos) | PV estático NFS en `/mnt/homelab-storage/<app>` |
 | Relacional con varios usuarios/concurrencia | Base en `homelab-postgres` (§4.5) |

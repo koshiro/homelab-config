@@ -1,27 +1,36 @@
-# Agentes Especializados del Homelab
+# Guía para agentes del homelab
 
-Este documento describe los **subagentes** y **skills** disponibles para trabajar de forma óptima con el cluster homelab. Los agentes están optimizados con conocimiento de contexto específico del ecosistema.
+Punto de entrada para cualquier agente que trabaje en este repo. El conocimiento vive en documentos versionados; esta
+página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 
-## Cómo usar
+## Dónde está cada cosa
 
-1. **Skills** (en `.cursor/skills/`): Se aplican automáticamente cuando el agente detecta tareas relacionadas. Proveen conocimiento de dominio persistente.
+| Tarea | Leer | Contenido |
+|-------|------|-----------|
+| Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue |
+| Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml` |
+| Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
+| ZFS, NFS, sanoid/syncoid/restic, LXC `nas` en Proxmox | `proxmox/README.md` | Fuente de verdad del host: qué archivo del repo va a qué ruta |
+| Respaldos y su verificación | `proxmox/README.md` § Tareas programadas, `cluster/00-infrastructure/backups/` | sanoid/syncoid/restic en el host + CronJobs `config-backup-*`, dump de Postgres y copia de etcd |
+| Pi master (voltaje, boot, overclock, apagarla) | `pibot/README.md` | |
+| Secretos SOPS / age | `README.md` § Operación y las reglas de abajo | |
+| Arquitectura objetivo, pendientes | `docs/ARQUITECTURA.md`, `docs/PENDIENTES.md` | |
+| Pentest web, evidencias, DTPlus / intranet | Repo hermano **`~/git/security-assessment`** (su `AGENTS.md`) | No recrear `security-assessment/` dentro de este repo |
 
-2. **Subagentes** (en `.cursor/agents/`): Definiciones para delegar tareas específicas. Usar el comando o menú de Cursor para lanzar un agente especializado.
+## Reglas que aplican siempre
 
-3. **mcp_task** (si disponible): Para tareas paralelas o exploración profunda, usar `subagent_type: explore` o `generalPurpose` con prompts que referencien los skills.
-
-## Mapa de delegación por tipo de tarea
-
-| Tarea | Skill / Agente | Descripción |
-|-------|----------------|-------------|
-| Apagado, mantenimiento, troubleshooting cluster | homelab-maintenance / agent-maintenance | Apagado ordenado, verificación estado, GPU |
-| ZFS, NFS, sanoid/syncoid, LXC `nas` en Proxmox | — | Ver `proxmox/README.md` (fuente de verdad del host) |
-| Pi master (voltaje, boot, apagarla) | — | Ver `pibot/README.md` |
-| Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue. Reemplaza a la skill `homelab-deploy-apps` (obsoleta) |
-| Playbooks Ansible, provisionar VMs | homelab-ansible / agent-ansible | Inventario, tags, playbooks |
-| Secretos SOPS, age | homelab-sops-secrets | Encriptación, respaldos de claves |
-| Respaldos, cronjobs, verificación | homelab-backups / agent-backups | sanoid/syncoid/restic en Proxmox + CronJobs k8s |
-| Pentest web sandbox, evidencias, DTPlus / intranet | security-web-pentest (stub) | Repo dedicado **`security-assessment`** junto a este monorepo; ver el `AGENTS.md` de ese repo |
+- **Apagado siempre ordenado** con `playbook_graceful_shutdown_cluster.yml`; nunca `poweroff --force` (corrompe NFS y
+  Postgres).
+- **`kubectl` local** funciona contra `k3s-node-0:6443`; no hace falta `ssh … sudo k3s kubectl`.
+- **Logs de k3s**: en pibot el servicio es `k3s` (`ssh daniel@k3s-node-0 sudo journalctl -u k3s`); en los workers es
+  `k3s-agent`.
+- **Disco de los workers casi lleno** (2026-10-08: node-1 13 GB libres, node-2 5 GB, node-3 6 GB). `local-path`,
+  imágenes y logs comparten ese disco. Revisar con `ansible k3s_nodes -i ansible/inventory -m shell -a 'df -h /'`.
+- **SOPS**: `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`; editar un secreto cifrado en el lugar con
+  `sops <archivo>.sops.yml`. Nunca versionar secretos en claro.
+- **Cloudflare** (túneles, DNS, hostnames): lo hace el agente por API con `vault_cloudfare_full_api_token` del vault
+  de Ansible. Todo Ingress `*.danielriquelme.cl` es público por el comodín del túnel.
+- **Archivos nuevos en `docs/`**: el gitignore global de la máquina ignora `docs`; se agregan con `git add -f`.
 
 ## Arquitectura actual (resumen)
 
@@ -42,17 +51,6 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 5. Si un cambio se aplica al cluster antes del merge (para probarlo), el PR se mergea apenas se confirma que funciona, para que `main` no quede detrás del cluster.
 
 El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así que el flujo se cumple por convención. Nada de push directo a `main` ni `--force`.
-
-## Skills disponibles
-
-| Skill | Ubicación | Cuándo usar |
-|-------|-----------|-------------|
-| homelab-maintenance | .cursor/skills/homelab-maintenance/ | Mantenimiento, apagado, troubleshooting |
-| homelab-deploy-apps | .cursor/skills/homelab-deploy-apps/ | Desplegar/modificar aplicaciones |
-| homelab-ansible | .cursor/skills/homelab-ansible/ | Ansible, playbooks, inventario |
-| homelab-sops-secrets | .cursor/skills/homelab-sops-secrets/ | Secretos SOPS |
-| homelab-backups | .cursor/skills/homelab-backups/ | Respaldos, cronjobs |
-| security-web-pentest | .cursor/skills/security-web-pentest/ | **Stub:** redirige al repo `security-assessment` |
 
 ## Referencias
 
