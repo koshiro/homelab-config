@@ -17,7 +17,7 @@ Este documento describe los **subagentes** y **skills** disponibles para trabaja
 | Apagado, mantenimiento, troubleshooting cluster | homelab-maintenance / agent-maintenance | Apagado ordenado, verificación estado, GPU |
 | ZFS, NFS, sanoid/syncoid, LXC `nas` en Proxmox | — | Ver `proxmox/README.md` (fuente de verdad del host) |
 | Pi master (voltaje, boot, apagarla) | — | Ver `pibot/README.md` |
-| Nueva aplicación, Ingress, PVC | homelab-deploy-apps / agent-deploy | Patrones de despliegue (kubectl apply -k; Flux pendiente) |
+| Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue. Reemplaza a la skill `homelab-deploy-apps` (obsoleta) |
 | Playbooks Ansible, provisionar VMs | homelab-ansible / agent-ansible | Inventario, tags, playbooks |
 | Secretos SOPS, age | homelab-sops-secrets | Encriptación, respaldos de claves |
 | Respaldos, cronjobs, verificación | homelab-backups / agent-backups | sanoid/syncoid/restic en Proxmox + CronJobs k8s |
@@ -57,7 +57,7 @@ El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así 
 ## Referencias
 
 - **README.md**: Documentación principal del homelab
-- **docs/**: `ARQUITECTURA.md` (arquitectura objetivo y fases) y `PENDIENTES.md`
+- **docs/**: `ARQUITECTURA.md` (arquitectura objetivo y fases), `PENDIENTES.md` y `DISENO-APPS.md` (cómo diseñar y portar apps para el cluster; leer antes de crear cualquier app)
 - **proxmox/**: configuración versionada del host
 - **pibot/**: configuración versionada de la Pi master (`config.txt` sin overclock, k3s, cómo apagarla)
 - **scripts/**: Scripts de verificación y utilidades
