@@ -114,6 +114,21 @@
   vars:
     guest_timeout: 180
   tasks:
+    - name: Cambios pendientes en VMs (se aplican con este stop/start)
+      ansible.builtin.shell: |
+        for vm in $(qm list | awk 'NR>1 {print $1}'); do
+          qm pending "$vm" | grep -E '^(new|del) ' | sed "s/^/VM $vm: /"
+        done
+        true
+      register: pendientes
+      changed_when: false
+
+    - name: Avisar cambios pendientes
+      ansible.builtin.debug:
+        msg: >-
+          ℹ️ Se aplicarán al volver a arrancar: {{ pendientes.stdout_lines }}
+      when: pendientes.stdout_lines | length > 0
+
     - name: Apagar LXC encendidos
       ansible.builtin.shell: |
         for ct in $(pct list | awk 'NR>1 && $2=="running" {print $1}'); do

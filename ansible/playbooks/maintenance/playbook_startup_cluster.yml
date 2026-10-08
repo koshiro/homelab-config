@@ -39,6 +39,22 @@
       register: arranque
       changed_when: arranque.stdout | length > 0
 
+    - name: Cambios pendientes en VMs (no aplicados aún)
+      ansible.builtin.shell: |
+        for vm in $(qm list | awk 'NR>1 {print $1}'); do
+          qm pending "$vm" | grep -E '^(new|del) ' | sed "s/^/VM $vm: /"
+        done
+        true
+      register: pendientes
+      changed_when: false
+
+    - name: Avisar cambios pendientes
+      ansible.builtin.debug:
+        msg: >-
+          ⚠️ VMs con cambios pendientes {{ pendientes.stdout_lines }}: requieren stop/start desde Proxmox
+          (drain + qm reboot <vmid>); un reboot dentro del invitado no basta. Ver proxmox/README.md § VMs del cluster k3s.
+      when: pendientes.stdout_lines | length > 0
+
     - name: Resumen Proxmox
       ansible.builtin.debug:
         msg: "Pools: {{ pools.stdout_lines }} · exports NFS: {{ nfs.stdout }} · {{ arranque.stdout_lines | default([]) }}"
