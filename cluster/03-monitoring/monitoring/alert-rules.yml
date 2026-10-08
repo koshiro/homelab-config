@@ -106,13 +106,16 @@ groups:
           summary: "SMART de {{ $labels.device }} reporta FAILED"
           description: "smartctl -a /dev/{{ $labels.device }} en Proxmox. Planificar reemplazo."
       - alert: DiscoSectoresNuevos
-        expr: delta(smart_ata_attribute_raw{id=~"5|197|198"}[1d]) > 0
+        # resta contra el valor de hace 24 h (no delta/increase: en VictoriaMetrics una serie nueva
+        # cuenta como si partiera de 0 y un contador viejo en 1 disparaba la alerta). Sin dato de
+        # hace 24 h no hay resultado. sde ya tenía Reallocated_Sector_Ct=1 al instalar el monitoreo.
+        expr: smart_ata_attribute_raw{id=~"5|197|198"} - smart_ata_attribute_raw{id=~"5|197|198"} offset 1d > 0
         labels: {severity: warning}
         annotations:
           summary: "{{ $labels.device }}: {{ $labels.name }} subió"
           description: "Aumentó en {{ $value | printf \"%.0f\" }} en 24 h: el disco empieza a degradarse."
       - alert: NVMeDesgastado
-        expr: smart_nvme_percentage_used > 80 or increase(smart_nvme_media_errors[1d]) > 0
+        expr: smart_nvme_percentage_used > 80 or (smart_nvme_media_errors - smart_nvme_media_errors offset 1d > 0)
         labels: {severity: warning}
         annotations:
           summary: "NVMe {{ $labels.device }} desgastado o con errores de medio"
