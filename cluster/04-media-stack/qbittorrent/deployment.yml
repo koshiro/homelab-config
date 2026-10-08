@@ -48,6 +48,13 @@ spec:
           set_session GlobalMaxRatio 2
           set_session GlobalMaxSeedingMinutes 10080
           set_session ShareLimitAction Stop
+          # Cola: MaxActiveTorrents es el active_limit de libtorrent, un tope duro que
+          # también cuenta los torrents lentos/stalled. Con 10, unos pocos torrents sin
+          # seeds tapaban la cola entera; IgnoreSlowTorrentsForQueueing solo libera los
+          # cupos por tipo (descargas/subidas), no este.
+          set_session MaxActiveTorrents 50
+          set_session MaxActiveDownloads 10
+          set_session MaxActiveUploads 5
           echo "Asegurando permisos..."
           chown -R 1000:1000 /data/downloads /config/qBittorrent
         volumeMounts:
