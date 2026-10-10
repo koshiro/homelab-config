@@ -12,7 +12,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
-| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 8 GB; `update-initramfs -u`) |
+| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB; `update-initramfs -u`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
 | `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |
@@ -39,7 +39,12 @@ Las tres usan `scsihw: virtio-scsi-single` (con `virtio-scsi-pci` el `iothread=1
 instalado en el invitado. Los discos se agrandan en caliente: `qm resize <vmid> scsi0 +NG` y en el invitado
 `growpart /dev/sda 1 && resize2fs /dev/sda1` (2026-10-10: node-1 80→100 GB, node-2/3 30→50 GB).
 
-**Presupuesto de RAM del host (64 GB):** VMs 102–104 = 44 GB + LXC 110 = 1 GB + ARC hasta 8 GB + host. La VM 105
+Evaluado y descartado (2026-10-10): **CPU pinning / `isolcpus` / `iothreadpin`**. El host tiene 4 núcleos (8 hilos) para
+16 vCPU, y ZFS, nfsd y el LXC `nas` necesitan esos mismos núcleos: aislar núcleos les quitaría CPU, y el disco local de
+las VMs casi no tiene I/O (la carga es NFS). **`aio`/caché**: ya está en lo óptimo por defecto (`aio=io_uring`,
+`cache=none` → `direct`, zvol como dispositivo de bloque); `aio=native` no aporta sobre zvol.
+
+**Presupuesto de RAM del host (64 GB):** VMs 102–104 = 44 GB + LXC 110 = 1 GB + ARC hasta 6 GB + host. La VM 105
 (`opencontracts-lab`, 12 GB, temporal) deja el host con ~8 GB libres; con 16 GB en node-3 el host llegó a llenar sus 8
 GB de swap con memoria de node-2/3. Antes de subir la RAM de una VM, revisar `free -m` y `swapon --show` en el host:
 el swap debe quedar cerca de 0. Para vaciarlo con RAM libre suficiente: `swapoff -a && swapon -a`.
@@ -57,7 +62,7 @@ moverlo antes con `kubectl -n postgresql patch cluster homelab-postgres --subres
 ### Presupuesto de RAM del host
 
 El host tiene 62 GB. **La suma de la `memory` de las VMs encendidas no debe pasar de ~50 GB**: el resto es para el ARC
-(`zfs_arc_max` 8 GB), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 44 GB (102: 24, 103: 8, 104: 12), así que
+(`zfs_arc_max` 6 GB, bajado de 8 el 2026-10-10 para dar margen tras reiniciar VMs), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 44 GB (102: 24, 103: 8, 104: 12), así que
 **una VM extra de laboratorio (p. ej. la 105, 12 GB) no cabe con el cluster encendido** sin achicar otra.
 
 Por qué importa: los invitados llenan su RAM con caché de páginas NFS y el host no la recupera, así que con la RAM
