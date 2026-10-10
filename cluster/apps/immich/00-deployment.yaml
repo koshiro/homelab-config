@@ -18,6 +18,22 @@ spec:
         app.kubernetes.io/name: server
         app.kubernetes.io/instance: immich
     spec:
+      # Fuera de pibot (4 GB, reservado a sitios estáticos); preferir k3s-node-3, donde vive immich-redis.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [k3s-node-3]
       containers:
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v3.2.4
@@ -92,10 +108,23 @@ spec:
         app.kubernetes.io/name: machine-learning
         app.kubernetes.io/instance: immich
     spec:
-      # Immich ML v3 requiere x86-64-v2: solo k3s-node-1 (VM 102, cpu: host) lo expone.
-      # k3s-node-2/3 usan kvm64 hasta su próximo stop/start (cpu: host pendiente, PENDIENTES §4c).
-      nodeSelector:
-        kubernetes.io/hostname: k3s-node-1
+      # Immich ML v3 requiere x86-64-v2: todos los workers lo tienen desde 2026-10-10 (cpu: host).
+      # Fuera de pibot (4 GB, reservado a sitios estáticos); preferir k3s-node-3, donde vive immich-redis.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [k3s-node-3]
       containers:
         - name: immich-machine-learning
           image: ghcr.io/immich-app/immich-machine-learning:v3.2.4
@@ -109,12 +138,20 @@ spec:
             - name: http
               containerPort: 3003
               protocol: TCP
+          # En reposo ~170 MB; al indexar (CLIP + caras) sube a 2–3 GB.
+          resources:
+            requests:
+              memory: 512Mi
+            limits:
+              memory: 4Gi
           volumeMounts:
             - name: cache
               mountPath: /cache
       volumes:
+        # Modelos descargados (~800 MB) en el disco del nodo, que está casi lleno.
         - name: cache
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 2Gi
 ---
 apiVersion: v1
 kind: Service

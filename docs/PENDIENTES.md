@@ -94,7 +94,7 @@ VM 103 y 104 no tenían `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2: N
 fallan). Immich ML está fijado a k3s-node-1 (`cpu: host`) por eso.
 - [x] 2026-10-08: `cpu: host` puesto en 103 y 104 **como cambio pendiente** (sin reiniciar; ver `proxmox/README.md` § VMs del cluster k3s).
 - [x] 2026-10-10: stop/start de 103 y 104 hecho (drain + `qm shutdown`/`qm start`); `sse4_2` y `avx2` presentes, `qm pending` limpio.
-- [ ] Después: quitar el `nodeSelector` de Immich ML (`cluster/apps/immich/00-deployment.yaml`) y actualizar la tabla de nodos de `docs/DISENO-APPS.md`.
+- [x] 2026-10-10: Immich ML sin `nodeSelector`; server y ML prefieren k3s-node-3 (con Redis) y excluyen pibot. Tabla de nodos de `docs/DISENO-APPS.md` actualizada.
 
 ## 4d. Sitios estáticos independientes de Proxmox
 
