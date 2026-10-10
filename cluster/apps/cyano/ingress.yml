@@ -1,0 +1,22 @@
+# Respaldo por el túnel pve (comodín *.danielriquelme.cl -> Traefik). La ruta pública es el túnel
+# pibot-webs -> NodePort 30892; volver atrás = apuntar el CNAME cyano al túnel pve.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cyano
+  namespace: cyano
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: cyano.danielriquelme.cl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cyano
+                port:
+                  number: 80

@@ -20,7 +20,7 @@ chk "snapshot etcd"          "$(newest_file /nvme/k8s/backups/etcd "etcd-snapsho
 # CronJobs config-backup-* (cluster/00-infrastructure/backups/app-config-backup.yaml y
 # webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
-         minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie grafana; do
+         minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie cyano grafana; do
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 for d in immich minecraft pingvin backups webs; do
