@@ -27,11 +27,17 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 Configuración que se aparta de los valores por defecto de Proxmox (`qm config <vmid>`):
 
-| VM | Nombre | `cpu` | `memory` | Notas |
-|---|---|---|---|---|
-| 102 | `k3s-node-1` | `host` | 24 GB | GPU RTX 3070 (`hostpci`): con passthrough la RAM queda fija entera en el host, sin balloon |
-| 103 | `k3s-node-2` | `host` (aplicado 2026-10-10) | 8 GB | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
-| 104 | `k3s-node-3` | `host` (aplicado 2026-10-10) | 12 GB (antes 16, bajada 2026-10-10) | Igual que 103 |
+| VM | Nombre | `cpu` | `cores` | `memory` | Disco | Notas |
+|---|---|---|---|---|---|---|
+| 102 | `k3s-node-1` | `host` | 6 (antes 8, 2026-10-10) | 24 GB | 100 GB | GPU RTX 3070 (`hostpci`): con passthrough la RAM queda fija entera en el host, sin balloon. Con 8 vCPU usaba los 8 hilos del host y le quitaba CPU a nfsd, ZFS y las otras VMs |
+| 103 | `k3s-node-2` | `host` (aplicado 2026-10-10) | 4 | 8 GB | 50 GB | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
+| 104 | `k3s-node-3` | `host` (aplicado 2026-10-10) | 6 | 12 GB (antes 16, bajada 2026-10-10) | 50 GB | Igual que 103 |
+
+Las tres usan `scsihw: virtio-scsi-single` (con `virtio-scsi-pci` el `iothread=1` del disco no tiene efecto) y
+`scsi0: …,iothread=1,discard=on,ssd=1`, para que el `fstrim.timer` semanal del invitado devuelva espacio al zvol (sin
+`discard` el zvol de node-1 ocupaba 81 GB para un disco de 80). Todas tienen `agent: 1` con `qemu-guest-agent`
+instalado en el invitado. Los discos se agrandan en caliente: `qm resize <vmid> scsi0 +NG` y en el invitado
+`growpart /dev/sda 1 && resize2fs /dev/sda1` (2026-10-10: node-1 80→100 GB, node-2/3 30→50 GB).
 
 **Presupuesto de RAM del host (64 GB):** VMs 102–104 = 44 GB + LXC 110 = 1 GB + ARC hasta 8 GB + host. La VM 105
 (`opencontracts-lab`, 12 GB, temporal) deja el host con ~8 GB libres; con 16 GB en node-3 el host llegó a llenar sus 8
@@ -51,7 +57,7 @@ moverlo antes con `kubectl -n postgresql patch cluster homelab-postgres --subres
 ### Presupuesto de RAM del host
 
 El host tiene 62 GB. **La suma de la `memory` de las VMs encendidas no debe pasar de ~50 GB**: el resto es para el ARC
-(`zfs_arc_max` 8 GB), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 48 GB (102: 24, 103: 8, 104: 16), así que
+(`zfs_arc_max` 8 GB), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 44 GB (102: 24, 103: 8, 104: 12), así que
 **una VM extra de laboratorio (p. ej. la 105, 12 GB) no cabe con el cluster encendido** sin achicar otra.
 
 Por qué importa: los invitados llenan su RAM con caché de páginas NFS y el host no la recupera, así que con la RAM
