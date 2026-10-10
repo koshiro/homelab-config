@@ -34,9 +34,12 @@ spec:
           echo "Creando directorios para qBittorrent..."
           mkdir -p /data/downloads/completed /data/downloads/incomplete
           mkdir -p /config/qBittorrent
-          # Límite de seeding: ratio 2 o 7 días (lo primero). Al detenerse, Radarr/Sonarr
-          # (removeCompletedDownloads) borran el torrent y su hardlink en downloads/,
-          # así borrar de la biblioteca libera el espacio de verdad.
+          # Límite de seeding: ratio 2, 2 días seedeando o 2 días inactivo (lo primero).
+          # El de inactividad cubre los completos en queuedUP, que nunca acumulan
+          # tiempo de seeding. Al detenerse, Radarr/Sonarr (removeCompletedDownloads)
+          # borran el torrent y su hardlink en downloads/, así borrar de la biblioteca
+          # libera el espacio de verdad. Stop y no Remove: si el *arr no importó, se
+          # queda detenido en vez de perder los archivos.
           CFG=/config/qBittorrent/qBittorrent.conf
           touch "$CFG"
           grep -q '^\[BitTorrent\]' "$CFG" || printf '[BitTorrent]\n' >> "$CFG"
@@ -48,7 +51,8 @@ spec:
             fi
           }
           set_session GlobalMaxRatio 2
-          set_session GlobalMaxSeedingMinutes 10080
+          set_session GlobalMaxSeedingMinutes 2880
+          set_session GlobalMaxInactiveSeedingMinutes 2880
           set_session ShareLimitAction Stop
           # Cola: MaxActiveTorrents es el active_limit de libtorrent, un tope duro que
           # también cuenta los torrents lentos/stalled. Con 10, unos pocos torrents sin
