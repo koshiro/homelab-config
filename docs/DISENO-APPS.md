@@ -15,9 +15,9 @@ Estado verificado contra el cluster el 2026-10-08.
 | Nodo | Qué es | Arquitectura | CPU / RAM asignable | Notas para diseñar |
 |---|---|---|---|---|
 | `pibot` (`k3s-node-0` en el tailnet, 192.168.1.15) | Raspberry Pi, control-plane + etcd | **arm64** | 4 / 3,7 GiB | Sobrevive a una caída de Proxmox. Poca RAM: solo cargas livianas y críticas (sitios estáticos, conectores). Exige `nodeName: pibot` + tolerations |
-| `k3s-node-1` (192.168.1.131) | VM en Proxmox, label `node-role.kubernetes.io/media-worker` | amd64, CPU `host` | 8 / 23,5 GiB | **Única GPU**: RTX 3070 8 GB, time-slicing (`nvidia.com/gpu: 10` virtuales, misma VRAM). Único worker con x86-64-v2 |
-| `k3s-node-2` (192.168.1.132) | VM en Proxmox | amd64, CPU `kvm64` (`host` pendiente de stop/start) | 4 / 7,7 GiB | **Sin x86-64-v2** (sin SSE4.2): NumPy reciente, PyTorch, Immich ML y similares fallan (`PENDIENTES.md` §4c) |
-| `k3s-node-3` (192.168.1.133) | VM en Proxmox | amd64, CPU `kvm64` (`host` pendiente de stop/start) | 6 / 15,6 GiB | Igual que node-2 |
+| `k3s-node-1` (192.168.1.131) | VM en Proxmox, label `node-role.kubernetes.io/media-worker` | amd64, CPU `host` | 8 / 23,5 GiB | **Única GPU**: RTX 3070 8 GB, time-slicing (`nvidia.com/gpu: 10` virtuales, misma VRAM) |
+| `k3s-node-2` (192.168.1.132) | VM en Proxmox | amd64, CPU `host` | 4 / 7,7 GiB | Primario de Postgres (CNPG) desde 2026-10-10 |
+| `k3s-node-3` (192.168.1.133) | VM en Proxmox | amd64, CPU `host` | 6 / 11,7 GiB | Immich (server, ML, Redis), Minecraft spirals |
 
 Ningún nodo tiene taints salvo los de control-plane de pibot. El scheduler reparte libremente entre node-1/2/3.
 
@@ -89,7 +89,8 @@ portarla). Cada punto evita un problema que ya ocurrió o un límite real del cl
 1. **Imagen pública con tag fijo** (`nginx:1.27-alpine`, `ghcr.io/…:2.24.2`), nunca `latest` en apps nuevas. No existe
    registry propio ni pipeline de build.
 2. **amd64** como mínimo; **multi-arch (amd64 + arm64)** si la app podría tener que correr en pibot.
-3. Si la imagen usa NumPy/PyTorch/ONNX modernos o binarios compilados con `-march=x86-64-v2`: fijar a `k3s-node-1`.
+3. NumPy/PyTorch/ONNX modernos o binarios con `-march=x86-64-v2` corren en cualquier worker (todos con CPU `host` desde
+   2026-10-10); fijar a `k3s-node-1` solo si necesita GPU.
 4. **Código propio**, en este orden de preferencia:
    - **a)** Script pequeño (un archivo, ≲ 1 MiB) sobre una imagen base oficial, montado con `configMapGenerator`
      (patrón `cluster/apps/minecraft/whitelist-bot/`: `python:3.13-alpine` + `bot.py`). Preferir solo stdlib.
@@ -146,7 +147,7 @@ Responde en orden; cada respuesta fija una parte del manifiesto.
 **¿Debe seguir en línea si cae Proxmox?** (solo sitios estáticos o servicios críticos muy livianos)
 → Sí: patrón *sitio en pibot* (§4.2). → No: worker normal.
 
-**¿Necesita GPU o CPU con x86-64-v2?** → Sí: fijar a `k3s-node-1` (§4.3). → No: sin afinidad.
+**¿Necesita GPU?** → Sí: fijar a `k3s-node-1` (§4.3). → No: sin afinidad (o solo excluir `pibot`).
 
 **¿Qué datos guarda?**
 
@@ -472,8 +473,7 @@ explícitamente al usuario.
             limits: {nvidia.com/gpu: "1", memory: 8Gi}
 ```
 
-Mismo `nodeAffinity` (sin `runtimeClassName` ni `nvidia.com/gpu`) para apps que solo necesitan x86-64-v2. Ver
-`cluster/apps/ollama-stack/deployment-ollama.yml` y `cluster/apps/comfyui/00-deployment.yaml`.
+Ver `cluster/apps/ollama-stack/deployment-ollama.yml` y `cluster/apps/comfyui/00-deployment.yaml`.
 
 ### 4.4 Datos valiosos en NFS de Proxmox (`nvme/k8s/<app>`)
 
@@ -693,7 +693,7 @@ Después:
 ## 8. Checklist «lista para el cluster»
 
 - [ ] Imagen pública con tag fijo, arquitectura compatible con el nodo destino
-- [ ] Nodo decidido: libre / `k3s-node-1` (GPU o x86-64-v2) / `pibot` (estático crítico)
+- [ ] Nodo decidido: libre / `k3s-node-1` (GPU) / `pibot` (estático crítico)
 - [ ] Config por env, secretos en `*.sops.yml` cifrado con `metadata.namespace`, nada sensible en claro
 - [ ] UID 1000, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `readOnlyRootFilesystem` si se puede
 - [ ] `requests`/`limits` de memoria; probes HTTP sobre un endpoint barato
