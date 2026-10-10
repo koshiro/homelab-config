@@ -24,7 +24,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 - **`kubectl` local** funciona contra `k3s-node-0:6443`; no hace falta `ssh … sudo k3s kubectl`.
 - **Logs de k3s**: en pibot el servicio es `k3s` (`ssh daniel@k3s-node-0 sudo journalctl -u k3s`); en los workers es
   `k3s-agent`.
-- **Disco de los workers casi lleno** (2026-10-08: node-1 13 GB libres, node-2 5 GB, node-3 6 GB). `local-path`,
+- **Disco de los workers** (2026-10-10: node-1 100 GB al 65 %, node-2/3 50 GB al 49 %). `local-path`,
   imágenes y logs comparten ese disco. Revisar con `ansible k3s_nodes -i ansible/inventory -m shell -a 'df -h /'`.
 - **SOPS**: `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`; editar un secreto cifrado en el lugar con
   `sops <archivo>.sops.yml`. Nunca versionar secretos en claro.
