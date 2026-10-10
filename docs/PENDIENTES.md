@@ -88,6 +88,36 @@ Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamient
 - [x] Mantención 2026-10-01: Proxmox 9.0.3 → **9.2.21**, ZFS **2.4.4**, kernel **7.0.14** (6.14.11 queda como respaldo en el menú de arranque). El apagado ordenado funcionó; el reinicio se colgó desmontando los snapshots bloqueados y requirió reset por KVM. Tras arrancar, `respaldo` no se importó (`zpool.cache` vacío): se registraron `nvme` y `respaldo` en el cache. No se ejecutó `zpool upgrade`.
 - [x] Snapshots colgados borrados y primer respaldo restic lanzado con el script nuevo (sin PANIC).
 
+## 4b3. Swap del host con RAM libre (bug ZFS 2.4 + kernel 7.0)
+
+Desde el kernel 7.0, `vmalloc` intenta primero un bloque de orden alto y, si falla, despierta a `kswapd`. ZFS 2.4 lo
+hace al crecer sus caches de bloques de 1M (`recordsize=1M` en todo `homelab-storage`): kswapd recupera memoria con
+15–20 GB libres, encoge el ARC (baja a ~2,4 GB) y manda a swap RAM fría de las VMs. Confirmado 2026-10-10 con un
+histograma sobre `vmscan:mm_vmscan_wakeup_kswapd`: 49/49 despertares en 4 min eran orden 10 desde
+`spl_cache_grow_work → __vmalloc`. El swap del host crecía ~4–5 GB al día, en ráfagas (respaldos, reinicios de pods).
+Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (PVE 9.2, kernel 7.0.14, ZFS 2.4.4, 62 GB).
+
+- [x] 2026-10-10: swap vaciado (`swapoff -a && swapon -a`) y `systemctl set-property qemu.slice MemorySwapMax=0`
+  (versionado en `proxmox/systemd/drop-ins/qemu-slice-sin-swap.conf`). Mitiga el swap, no la causa: kswapd sigue
+  despertando y el ARC sigue oscilando.
+- [ ] Comprobar tras una noche de respaldos: `memory.swap.current` de `/sys/fs/cgroup/qemu.slice/10{2,3,4}.scope` en 0.
+- [ ] Alerta por tasa de swap-out del host (`increase(node_vmstat_pswpout{instance="pve"}[1h])` > ~100 MiB), además
+  de `SwapHostProxmox` al 50 %.
+- [ ] **Arreglo definitivo** (elegir uno y programarlo en una ventana de mantención):
+  - ZFS con el fix: seguir [PR #19276](https://github.com/openzfs/zfs/pull/19276) (borrador al 2026-10-10; quita
+    `__GFP_KSWAPD_RECLAIM` del intento de orden alto en `kv_alloc`). Cuando llegue a un `zfs` 2.4.x de Proxmox o a
+    `proxmox-kernel-7.0`, actualizar, reiniciar el host y retirar el drop-in de `qemu.slice`. Revisar los changelogs
+    con `apt-get changelog proxmox-kernel-7.0.<x>-pve-signed` (el 7.0.14-23 no lo trae).
+  - Kernel donde `vmalloc` no despierte kswapd: los reportes dicen que empezó al pasar de 6.17 a 7.0. Un kernel
+    6.17 de Proxmox con ZFS ≥ 2.4 serviría. **No sirve el 6.14.11 instalado**: trae ZFS 2.3.4 y `homelab-storage`
+    tiene activa `block_cloning_endian` (feature de 2.4), así que importaría en solo lectura.
+  - Si el fix tarda: en el próximo reinicio planificado probar `spl_kmem_cache_obj_per_slab=1` en
+    `proxmox/etc/zfs.conf` (baja esas peticiones de orden 10 a orden ≤8) y, si el ARC sigue desplomándose,
+    `zfs_arc_shrinker_limit` (hoy 0; el issue sugiere ~1300 para 64 GB).
+- No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
+- Descartado: el balloon con free-page-reporting y THP no son la causa (en el foro de Proxmox VMs con `balloon: 0`
+  también caían a swap); `vm.swappiness` no influye; `vm.watermark_boost_factor=0` solo calla kswapd unos minutos.
+
 ## 4c. VMs k3s-node-2/3 con CPU kvm64
 
 VM 103 y 104 no tenían `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2: NumPy reciente, Immich ML v3, PyTorch
