@@ -1,0 +1,71 @@
+# Cyano Curve (cyano.danielriquelme.cl). Corre en pibot con el contenido en su disco (/var/lib/homelab-cyano),
+# sin depender de Proxmox: el túnel pibot-webs lo sirve aunque caigan los workers y el NAS
+# (ver «Sitios estáticos» en README.md). Respaldo diario al NAS: config-backup-cyano.
+# El contenido se genera y publica desde ~/git/cyano con scripts/publicar.sh
+# (npm ci + build + rsync a daniel@k3s-node-0:/var/lib/homelab-cyano/; nginx lo sirve al instante, sin reiniciar).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cyano
+  namespace: cyano
+  labels:
+    app: cyano
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cyano
+  template:
+    metadata:
+      labels:
+        app: cyano
+    spec:
+      # k3s-node-0 / MagicDNS: Raspberry Pi (hostname de cluster: pibot)
+      nodeName: pibot
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: web
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: web
+          hostPath:
+            path: /var/lib/homelab-cyano
+            type: Directory
+        - name: nginx-conf
+          configMap:
+            name: cyano-nginx

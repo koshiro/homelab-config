@@ -13,7 +13,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | **GPU** | NVIDIA en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
 | **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (media, pendiente de fase 1). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
-| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl` y `noledigasanadie.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `swarmui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
+| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl`, `noledigasanadie.danielriquelme.cl` y `cyano.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `swarmui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
 | **Base de datos** | CloudNative-PG en ns `postgresql` (`homelab-postgres-rw.postgresql.svc`) |
 | **GitOps** | Objetivo: FluxCD (**aún no instalado**). Hoy se aplica con `kubectl apply -k` |
@@ -53,16 +53,17 @@ export KUBECONFIG=~/.kube/config-homelab
 | AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
 | josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` · NodePort 30890 | disco de pibot `/var/lib/homelab-josekast` (respaldo diario al NAS) | ✅ en pibot |
+| Cyano Curve | `cyano` | `cyano.danielriquelme.cl` · NodePort 30892 | disco de pibot `/var/lib/homelab-cyano` (respaldo diario al NAS) | ✅ en pibot |
 | Grafana + VictoriaMetrics | `monitoring` | `grafana.danielriquelme.cl` | local-path (Grafana) · NFS `nvme/k8s/victoria-metrics` (métricas, 90 días) | ✅ dashboards en `cluster/03-monitoring/monitoring/dashboards/` |
 
-### Sitios estáticos (josekast.cl, noledigasanadie)
+### Sitios estáticos (josekast.cl, noledigasanadie, cyano)
 
 Regla: **los sitios estáticos corren en pibot con almacenamiento propio y deben seguir en línea si cae Proxmox.** El NAS solo guarda un respaldo.
 
 - **Pod:** nginx con `nodeName: pibot`, contenido en el disco NVMe de la Pi (`hostPath` `/var/lib/homelab-<sitio>`, solo lectura). Nada de NFS ni local-path de los workers.
 - **Respaldo:** CronJob `config-backup-<sitio>` (02:47, [webs-estaticas-backup.yaml](cluster/00-infrastructure/backups/webs-estaticas-backup.yaml)) copia el sitio a `nvme/k8s/backups/apps/<sitio>/data` en Proxmox (sanoid + syncoid + R2); `check-backups.sh` avisa si pasan más de 26 h. Si Proxmox está caído el job falla, pero el sitio sigue sirviéndose.
-- **Exposición:** túnel propio `pibot-webs`, conector `cloudflared-webs` en pibot ([deployment-webs.yml](cluster/06-external/cloudflared/deployment-webs.yml)) con origen en el NodePort de cada sitio (`http://192.168.1.15:30890` / `30891`). No pasa por Traefik ni CoreDNS (corren en los workers) y resuelve DNS con el router (`dnsPolicy: Default`): con Proxmox caído solo hacen falta pibot e internet. Las rutas viven en Cloudflare (Zero Trust → Tunnels → `pibot-webs` → Public hostnames). El túnel `pve` conserva sus reglas `josekast.cl` y los Ingress siguen: volver atrás = apuntar el CNAME al túnel `pve`.
-- **Publicar contenido:** `rsync -a --delete <carpeta>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/` (nginx sirve lo nuevo al instante). josekast.cl se genera con `~/git/twscrap/web/build.py` y se publica con `~/git/twscrap/web/publicar.sh`.
+- **Exposición:** túnel propio `pibot-webs`, conector `cloudflared-webs` en pibot ([deployment-webs.yml](cluster/06-external/cloudflared/deployment-webs.yml)) con origen en el NodePort de cada sitio (`http://192.168.1.15:30890` / `30891` / `30892`). No pasa por Traefik ni CoreDNS (corren en los workers) y resuelve DNS con el router (`dnsPolicy: Default`): con Proxmox caído solo hacen falta pibot e internet. Las rutas viven en Cloudflare (Zero Trust → Tunnels → `pibot-webs` → Public hostnames). El túnel `pve` conserva sus reglas `josekast.cl` y los Ingress siguen: volver atrás = apuntar el CNAME al túnel `pve`.
+- **Publicar contenido:** `rsync -a --delete <carpeta>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/` (nginx sirve lo nuevo al instante). josekast.cl se genera con `~/git/twscrap/web/build.py` y se publica con `~/git/twscrap/web/publicar.sh`; Cyano Curve, con `~/git/cyano/scripts/publicar.sh`.
 - **Restaurar desde el NAS:** `rsync -a root@192.168.1.100:/nvme/k8s/backups/apps/<sitio>/data/ /tmp/<sitio>/ && rsync -a --delete /tmp/<sitio>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/`.
 - **Sitio nuevo:** copiar `cluster/apps/josekast` (Deployment en pibot + Service NodePort fijo + Ingress), crear `/var/lib/homelab-<sitio>` en pibot (`sudo install -d -o daniel -g daniel`), agregar su CronJob a `webs-estaticas-backup.yaml` y su nombre a `check-backups.sh`, y su Public hostname en el túnel `pibot-webs` → `http://192.168.1.15:<nodePort>`.
 

@@ -117,3 +117,59 @@ spec:
               nfs:
                 server: 192.168.1.100
                 path: /nvme/k8s/backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-cyano
+  namespace: cyano
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "47 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          nodeName: pibot
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: cyano
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  rsync -a --delete /src/ "$d/data/"
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              hostPath:
+                path: /var/lib/homelab-cyano
+                type: Directory
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
