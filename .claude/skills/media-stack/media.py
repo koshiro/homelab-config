@@ -144,7 +144,12 @@ def diagnostico_movimientos():
     """qBittorrent mueve de a un torrent (FIFO). Si el job de cabeza no termina, la cola entera se traba."""
     out = sh(["kubectl", "exec", "-n", "qbittorrent", "deploy/qbittorrent", "-c", "qbittorrent", "--", "sh", "-c",
               f"cd {QB_LOGS} && cat $(ls -tr) | grep -E 'started\\. Process|Enqueued torrent move|Moved torrent|"
-              "move canceled|Failed to move'"], check=False).splitlines()
+              "move canceled|Failed to move'; grep ' /incomplete ' /proc/mounts"], check=False).splitlines()
+    montaje = next((l for l in out if " /incomplete " in l), "")
+    if "vers=4.2" in montaje:
+        print("  AVISO /incomplete montado con NFS 4.2: los movimientos a /data se cuelgan (COPY sin CB_OFFLOAD). "
+              "Ver hechos.md; el PV qbittorrent-scratch-pv debe ir con nfsvers=4.1")
+    out = [l for l in out if l is not montaje]
     ultimo_ok = next((l for l in reversed(out) if "Moved torrent" in l or "started. Process" in l), None)
     pendientes = out[out.index(ultimo_ok) + 1:] if ultimo_ok else out
     encolados = [l for l in pendientes if "Enqueued" in l]
@@ -273,13 +278,16 @@ def c_wait_search(a):
 def c_grabs(a):
     """Releases tomados por los *arr en los últimos N minutos, por indexer."""
     desde = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - a.minutes * 60))
+    ev, txt = (3, "importados") if a.imported else (1, "grabs")
     for app in ("sonarr", "radarr"):
-        rec = [r for r in arr(app, "history?pageSize=500&eventType=1&sortKey=date&sortDirection=descending")["records"]
+        rec = [r for r in arr(app, f"history?pageSize=500&eventType={ev}&sortKey=date&sortDirection=descending")["records"]
                if r["date"] >= desde]
-        print(f"{app}: {len(rec)} grabs en {a.minutes} min", dict(Counter(r["data"].get("indexer") for r in rec)))
+        print(f"{app}: {len(rec)} {txt} en {a.minutes} min",
+              "" if a.imported else dict(Counter(r["data"].get("indexer") for r in rec)))
         if a.verbose:
             for r in rec:
-                print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)} [{r['data'].get('indexer')}]")
+                idx = r["data"].get("indexer")
+                print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)}" + (f" [{idx}]" if idx else ""))
 
 
 def c_imported(a):
@@ -404,6 +412,7 @@ def main():
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")
     x.add_argument("--minutes", type=int, default=60); x.add_argument("-v", "--verbose", action="store_true")
+    x.add_argument("--imported", action="store_true", help="importaciones en vez de grabs")
     x.set_defaults(f=c_grabs)
     x = s.add_parser("imported", help="torrents ya importados y fuera de cola → borrar")
     x.add_argument("--apply", action="store_true"); x.add_argument("--limit", type=int, default=15)

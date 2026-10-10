@@ -15,9 +15,13 @@ spec:
     server: 192.168.1.100
     path: "/mnt/scratch/qbittorrent"
   persistentVolumeReclaimPolicy: Retain
+  # NFS 4.1 a propósito: con 4.2 en ambos montajes, el movimiento /incomplete → /data de
+  # qBittorrent se vuelve un COPY asíncrono del lado del servidor y el cliente se queda
+  # esperando para siempre el CB_OFFLOAD (los datos se copian, pero la llamada no vuelve):
+  # la cola de movimientos se traba y nada se importa. 4.1 no tiene COPY → copia normal.
   mountOptions:
     - hard
-    - nfsvers=4.2
+    - nfsvers=4.1
     - noatime
     - nodiratime
     - rsize=1048576

@@ -16,9 +16,11 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
 
 ## Descargas al 100 % que no se importan
 1. `$M unimported --paths`. Grupos posibles:
-   - **moving**: si dice "cola de movimientos trabada" → `$M update qbittorrent --apply` (corta descargas ~1 min) y
-     verificar que los `moving` bajen (script en background con `$M torrents --state '^moving$' --limit 0`). Si la
-     cola corre pero lento, es la copia /incomplete → /data: esperar.
+   - **moving**: si dice "cola de movimientos trabada" → primero verificar que `/incomplete` siga en `vers=4.1`
+     (`grep incomplete /proc/mounts` en el pod; ver `hechos.md`, causa raíz NFS COPY). Luego
+     `$M update qbittorrent --apply` (corta descargas ~1 min) y verificar que los `moving` bajen (script en
+     background con `$M torrents --state '^moving$' --limit 0`). Si la cola corre pero lento, es la copia
+     /incomplete → /data (~100 MB/s): esperar.
    - **en cola con aviso** (`importPending`/`importBlocked`/`importFailed`): leer el mensaje; ejecutables o sin video
      → lo resuelve el CronJob del filtro; otros → `$M logs sonarr|radarr --grep 'Import'`.
    - **fuera de cola y sin import**: torrents agregados a mano o cuyo ítem se borró del *arr; preguntar antes de
