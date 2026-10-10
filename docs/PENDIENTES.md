@@ -73,7 +73,7 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [x] `WO_SECRET_KEY` de WebODM rotada (2026-10-01); `secret.sops.yml` ahora incluye `namespace: webodm`.
 - [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí** (siguen sin trackear al 2026-10-10); decidir si se cifran o borran antes de commitear en ese repo.
 - [x] ~~TrueNAS por tailnet~~: obsoleto, TrueNAS retirado (el pool vive en Proxmox).
-- [x] **qBittorrent:** WebUI de vuelta en `qbittorrent.danielriquelme.cl` tras Cloudflare Access (2026-10-10, PR #31); NodePort 30808 queda para LAN/tailnet. `networkpolicy.yml` no está aplicado (solo `allow-arr-suite-communication`).
+- [x] **qBittorrent:** WebUI de vuelta en `qbittorrent.danielriquelme.cl` tras Cloudflare Access (2026-10-10, PR #31); NodePort 30808 queda para LAN/tailnet. `networkpolicy.yml` no está aplicado (solo `allow-arr-suite-communication`). Sin login desde la red de pods (`WebUI\AuthSubnetWhitelist=10.42.0.0/16`, lo fija el init container del Deployment; 2026-10-10, PR #40): Access es la única barrera pública. La contraseña sigue para clientes fuera de esa red.
 - [x] Cloudflare Access para apps de administración: la app «Homelab admin» cubre grafana, comfyui, swarmui, galeria, chat, sonarr, radarr, prowlarr, bazarr y qbittorrent (verificado por API 2026-10-10). Recordatorio: el comodín `*.danielriquelme.cl → traefik` hace público todo Ingress; agregar a Access cada app de administración nueva.
 
 ## 4b. Postgres — respaldo robusto (pendiente)

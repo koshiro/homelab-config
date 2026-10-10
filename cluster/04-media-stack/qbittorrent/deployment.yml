@@ -65,8 +65,9 @@ spec:
           # Descargar in-situ; *arr hace hardlink desde /data/downloads.
           set_session TempPathEnabled false
           # WebUI sin login para la red de pods: el público llega vía Traefik
-          # (ya filtrado por Cloudflare Access) y la NetworkPolicy solo deja
-          # entrar a Traefik y a los *arr.
+          # (ya filtrado por Cloudflare Access) y los *arr hablan directo.
+          # Ojo: networkpolicy.yml no está aplicado; en el cluster rige
+          # allow-arr-suite-communication (namespaces arr-suite + kube-system).
           grep -q '^\[Preferences\]' "$CFG" || printf '[Preferences]\n' >> "$CFG"
           set_webui() {
             if grep -q "^WebUI.$1=" "$CFG"; then
