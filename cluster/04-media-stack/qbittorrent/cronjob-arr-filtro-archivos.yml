@@ -1,0 +1,102 @@
+# Saca de la cola de Sonarr/Radarr los torrents con archivos que no son video (malware .exe/.scr/.lnk,
+# releases falsos en .rar/.zip sin video) y los manda al blocklist, así el *arr busca otro release.
+# Complementa a Session\ExcludedFileNames de qBittorrent (deployment.yml), que impide bajar esos
+# archivos pero no hace que el *arr descarte el release: sin esto quedaban en importPending con
+# «Caution: Found executable file» o «No files found are eligible for import».
+# Lee la lista de archivos de qBittorrent (WebUI sin login para 10.42.0.0/16), que existe apenas
+# llega la metadata del torrent, antes de bajar nada. DRY_RUN=1 solo informa.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arr-filtro-archivos
+  namespace: qbittorrent
+data:
+  filtro.py: |
+    import json, os, re, urllib.error, urllib.parse, urllib.request
+
+    QBIT = "http://qbittorrent.qbittorrent.svc.cluster.local:8080"
+    ARRS = {
+        "sonarr": ("http://sonarr.sonarr.svc.cluster.local:8989", os.environ["SONARR_API_KEY"], "includeUnknownSeriesItems"),
+        "radarr": ("http://radarr.radarr.svc.cluster.local:7878", os.environ["RADARR_API_KEY"], "includeUnknownMovieItems"),
+    }
+    DRY_RUN = os.environ.get("DRY_RUN") == "1"
+    # Sin .url: los releases chinos traen accesos directos publicitarios junto al video real.
+    # qBittorrent igual los excluye.
+    PELIGROSOS = re.compile(r"\.(exe|scr|bat|cmd|com|pif|lnk|msi|vbs|vbe|js|jse|wsf|wsh|hta|ps1|cpl|jar|dll|apk)$", re.I)
+    VIDEO = re.compile(r"\.(mkv|mp4|m4v|avi|ts|m2ts|mts|wmv|mov|webm|mpg|mpeg|vob|iso|img|flv|divx|ogm)$", re.I)
+
+    def pedir(url, metodo="GET", cabeceras=None, cuerpo=None):
+        req = urllib.request.Request(url, method=metodo, headers=cabeceras or {}, data=cuerpo)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            datos = r.read()
+        return json.loads(datos) if datos else None
+
+    def motivo(archivos):
+        nombres = [a["name"] for a in archivos]
+        if not nombres:
+            return None  # sin metadata todavía
+        malos = [n for n in nombres if PELIGROSOS.search(n)]
+        if malos:
+            return f"ejecutable: {malos[0]}"
+        if not any(VIDEO.search(n) for n in nombres):
+            return f"sin video: {', '.join(sorted({os.path.splitext(n)[1] or n for n in nombres}))}"
+        return None
+
+    for arr, (base, clave, sin_conocer) in ARRS.items():
+        cab = {"X-Api-Key": clave, "Content-Type": "application/json"}
+        cola = pedir(f"{base}/api/v3/queue?pageSize=1000&{sin_conocer}=false", cabeceras=cab)["records"]
+        por_torrent = {}
+        for item in cola:
+            if item.get("protocol") == "torrent" and item.get("downloadId"):
+                por_torrent.setdefault(item["downloadId"].lower(), []).append(item)
+        for hash_, items in por_torrent.items():
+            try:
+                archivos = pedir(f"{QBIT}/api/v2/torrents/files?hash={hash_}")
+            except urllib.error.HTTPError:
+                continue  # no está en qBittorrent
+            razon = motivo(archivos)
+            if not razon:
+                continue
+            print(f"[{arr}] {'(dry-run) ' if DRY_RUN else ''}blocklist «{items[0]['title']}» — {razon}", flush=True)
+            if DRY_RUN:
+                continue
+            q = urllib.parse.urlencode({"removeFromClient": "true", "blocklist": "true", "skipRedownload": "false"})
+            pedir(f"{base}/api/v3/queue/bulk?{q}", "DELETE", cab, json.dumps({"ids": [i["id"] for i in items]}).encode())
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: arr-filtro-archivos
+  namespace: qbittorrent
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: filtro
+              image: python:3.13-alpine
+              command: ["python3", "/script/filtro.py"]
+              env:
+                - name: DRY_RUN
+                  value: "0"
+              envFrom:
+                - secretRef:
+                    name: arr-api-keys
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+          volumes:
+            - name: script
+              configMap:
+                name: arr-filtro-archivos
