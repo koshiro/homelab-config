@@ -11,6 +11,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 | Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml` |
 | Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
 | ZFS, NFS, sanoid/syncoid/restic, LXC `nas` en Proxmox | `proxmox/README.md` | Fuente de verdad del host: qué archivo del repo va a qué ruta |
+| Suite arr, qBittorrent, Plex, Seerr (cola, atascos, calidad, actualizar) | **`.claude/skills/media-stack/SKILL.md`** | CLI `media.py` con salida compacta; leerla antes de explorar el repo o los pods |
 | Respaldos y su verificación | `proxmox/README.md` § Tareas programadas, `cluster/00-infrastructure/backups/` | sanoid/syncoid/restic en el host + CronJobs `config-backup-*`, dump de Postgres y copia de etcd |
 | Pi master (voltaje, boot, overclock, apagarla) | `pibot/README.md` | |
 | Secretos SOPS / age | `README.md` § Operación y las reglas de abajo | |
