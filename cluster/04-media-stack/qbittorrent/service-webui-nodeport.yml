@@ -1,4 +1,5 @@
-# WebUI solo por LAN/tailnet (sin Ingress público): http://k3s-node-0:30808
+# WebUI por LAN/tailnet: http://k3s-node-0:30808
+# Público: https://qbittorrent.danielriquelme.cl (Cloudflare Access, app «Homelab admin»)
 apiVersion: v1
 kind: Service
 metadata:

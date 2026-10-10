@@ -6,5 +6,6 @@ resources:
   - service-web.yml
   - service-nodeport.yml
   - service-webui-nodeport.yml
+  - ingress.yml
   - pv-media-library.yml
   - pvc-media-library.yml
