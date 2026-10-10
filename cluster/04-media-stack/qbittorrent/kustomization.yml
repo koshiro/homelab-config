@@ -9,3 +9,5 @@ resources:
   - ingress.yml
   - pv-media-library.yml
   - pvc-media-library.yml
+  - pv-scratch.yml
+  - pvc-scratch.yml

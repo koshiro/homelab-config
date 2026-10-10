@@ -13,3 +13,5 @@
 # Parkour Spiral 2 y 3 del lobby de Minecraft (2026-10-10), antes en local-path de node-3
 /nvme/k8s/minecraft-spiral2 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 /nvme/k8s/minecraft-spiral3 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+# Descargas incompletas de qBittorrent (2026-10-10): pool scratch, stripe sdc+sdd, desechable (sin snapshots ni respaldo)
+/mnt/scratch/qbittorrent 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)

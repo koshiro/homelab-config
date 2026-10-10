@@ -60,10 +60,13 @@ spec:
           # Escucha BT en 6881 (hostPort en el nodo media-worker). Sin puerto
           # aleatorio para que el reenvío del router coincida con lo anunciado.
           set_session Port 6881
-          # incomplete/ y save path están en el mismo NFS: el move al terminar
-          # se serializa y se atasca (Radarr ve ~100% en "downloading").
-          # Descargar in-situ; *arr hace hardlink desde /data/downloads.
-          set_session TempPathEnabled false
+          # Incompletos en /incomplete (pool scratch de pve, stripe de 2 HDD): las
+          # escrituras aleatorias de piezas no pegan al HDD de la biblioteca. Al
+          # terminar, qBittorrent copia el archivo a /data/downloads (otro pool,
+          # escritura secuencial) y *arr hace hardlink desde ahí. Solo afecta a
+          # torrents nuevos: los existentes conservan su ruta.
+          set_session TempPathEnabled true
+          set_session TempPath /incomplete/
           # WebUI sin login para la red de pods: el público llega vía Traefik
           # (ya filtrado por Cloudflare Access) y los *arr hablan directo.
           # Ojo: networkpolicy.yml no está aplicado; en el cluster rige
@@ -119,6 +122,8 @@ spec:
         volumeMounts:
         - name: media-library
           mountPath: /data
+        - name: scratch
+          mountPath: /incomplete
         resources:
           requests:
             cpu: 1000m
@@ -130,6 +135,9 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library-pvc
+      - name: scratch
+        persistentVolumeClaim:
+          claimName: qbittorrent-scratch-pvc
       tolerations:
       - key: p2p
         operator: Equal
