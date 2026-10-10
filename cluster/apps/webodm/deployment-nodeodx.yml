@@ -35,12 +35,14 @@ spec:
             - name: api
               containerPort: 3000
           resources:
+            # En reposo usa <100 MB; procesar un proyecto sube la RAM solo mientras dura. Límite 8Gi para no
+            # dejar sin memoria a node-3 (12 GB).
             requests:
-              cpu: "2"
-              memory: 4Gi
+              cpu: 500m
+              memory: 512Mi
             limits:
-              cpu: "8"
-              memory: 16Gi
+              cpu: "6"
+              memory: 8Gi
           volumeMounts:
             - name: nodeodm-data
               mountPath: /var/www/data

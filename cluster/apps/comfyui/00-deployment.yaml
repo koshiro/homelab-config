@@ -65,11 +65,14 @@ spec:
               git config --global --add safe.directory '*'
               exec /app/venv/bin/python -u /app/main.py --listen 0.0.0.0 --port 8188 --base-directory /app \
                 --use-sage-attention --fast fp16_accumulation --cache-ram 6
+          # --cache-ram 6 + modelos cargados: ~9 GB en reposo. El request le avisa al scheduler cuánto ocupa en node-1.
           resources:
             limits:
               nvidia.com/gpu: "1"
+              memory: 16Gi
             requests:
               nvidia.com/gpu: "1"
+              memory: 8Gi
           ports:
             - containerPort: 8188
               name: http
