@@ -44,7 +44,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | Pingvin | `pingvin` | `pingvin.danielriquelme.cl` | NFS Proxmox `nvme/k8s/pingvin` | ✅ |
 | Plex | `plex` | `plex.danielriquelme.cl` · NodePort 32400 | config local-path + media NFS `homelab-storage/k8s-media-library` | ✅ |
 | Sonarr, Radarr, Prowlarr, Bazarr | ns propio | `<app>.danielriquelme.cl` | config local-path + media NFS `k8s-media-library` | ✅ |
-| qBittorrent | `qbittorrent` | `qbittorrent.danielriquelme.cl` · NodePort 30808 · BT 6881 por `hostPort` en k3s-node-1 | media NFS `k8s-media-library` | ✅ |
+| qBittorrent | `qbittorrent` | `qbittorrent.danielriquelme.cl` · NodePort 30808 · BT 6881 por `hostPort` en k3s-node-1 · WebUI sin login desde la red de pods (Access protege lo público) | media NFS `k8s-media-library` | ✅ |
 | Seerr (ex-Overseerr) | `overseerr` | `seerr.danielriquelme.cl`, `overseerr.danielriquelme.cl` | local-path | ✅ |
 | FlareSolverr | `flaresolverr` | interno (Prowlarr) | — | ✅ |
 | Ollama / Open WebUI | `ollama-stack` | `k3s-node-0:31434` / `chat.danielriquelme.cl` · NodePort 30080 | local-path (no depende de NFS) | ✅ GPU |
