@@ -39,6 +39,36 @@ caliente, así que queda como cambio pendiente (`qm pending <vmid>`, en naranjo 
 mismo proceso QEMU. `playbook_graceful_shutdown_cluster.yml` y `playbook_startup_cluster.yml` avisan si alguna VM tiene
 cambios pendientes.
 
+### Presupuesto de RAM del host
+
+El host tiene 62 GB. **La suma de la `memory` de las VMs encendidas no debe pasar de ~50 GB**: el resto es para el ARC
+(`zfs_arc_max` 8 GB), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 48 GB (102: 24, 103: 8, 104: 16), así que
+**una VM extra de laboratorio (p. ej. la 105, 12 GB) no cabe con el cluster encendido** sin achicar otra.
+
+Por qué importa: los invitados llenan su RAM con caché de páginas NFS y el host no la recupera, así que con la RAM
+sobrecomprometida el swap del host se llena (estuvo al 100 % del 2026-10-08 al 10-10). Con presión de memoria, nfsd del
+kernel 7.0 reduce los *slots* de la sesión NFSv4.1 de cada cliente, y el cliente 5.15 de los workers no la vuelve a
+agrandar: k3s-node-1 quedó con 1 slot (todo su I/O NFS en serie) y algunas escrituras quedaron reintentándose para
+siempre. Así terminó qBittorrent con un hilo en estado D que no se podía matar.
+
+Diagnóstico y salida, sin reiniciar el nodo:
+
+```bash
+# En el host: slots por cliente ("session target slots" muy por debajo de "session slots" = sesión encogida)
+for f in /proc/fs/nfsd/clients/*/info; do grep -E "^name|session slots|target slots" $f | tr "\n" " "; echo; done
+# En el worker: RPC NFS encolados (filas en "ForeChannel Slot table" o "delayq" que no bajan)
+sudo mount -t debugfs none /sys/kernel/debug 2>/dev/null; sudo cat /sys/kernel/debug/sunrpc/rpc_clnt/*/tasks
+```
+
+1. Bajar la presión de memoria (apagar la VM de sobra) y vaciar el swap: `swapoff -a && swapon -a`.
+2. Si el cliente sigue con pocos slots, forzar una sesión nueva desde el host, después de detener los pods que escriben
+   mucho (qBittorrent): `echo expire > /proc/fs/nfsd/clients/<id>/ctl`. El cliente reabre sus archivos solo; los locks
+   POSIX no se recuperan (`Lock reclaim failed` en `dmesg`), así que conviene revisar los pods con SQLite en NFS.
+3. Un proceso que ya quedó en estado D sobre NFS se libera con `umount -f <montaje del pod>` en el worker (aborta los
+   RPC pendientes de ese montaje).
+
+La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
+
 ## Pools ZFS al arrancar
 
 `nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`; el `boot-pool` de TrueNAS se ve en `zpool import` pero **no** se importa solo (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
