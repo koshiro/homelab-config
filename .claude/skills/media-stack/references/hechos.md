@@ -31,8 +31,13 @@
   `cat $(ls -tr)` en ese directorio. (2026-10-10)
 - **Movimientos de almacenamiento son una cola FIFO de a uno.** Si el job de cabeza no termina, nada más se mueve y
   todo queda en `moving` sin importarse. `setLocation` falla con "torrent is currently moving". Reiniciar qBittorrent
-  reencola todos los `moving` al arrancar y la cola vuelve a correr. Caso real: el job de cabeza era un torrent de
-  EZTV que luego se borró desde Sonarr; la cola quedó trabada ~3 h. `$M unimported` lo detecta. (2026-10-10)
+  reencola todos los `moving` al arrancar. `$M unimported` lo detecta. (2026-10-10)
+- **Causa raíz de esos atascos (2026-10-10)**: con `/incomplete` y `/data` ambos en NFS 4.2 del mismo servidor,
+  `copy_file_range` se vuelve un `COPY` asíncrono del lado del servidor; los datos se copian, pero el cliente nunca
+  recibe el `CB_OFFLOAD` y la llamada queda colgada (hilo en S, no D). Se ve en `/proc/self/mountstats` del pod
+  (`COPY` y `OFFLOAD_CANCEL` con errores en `/data`). Se reproduce con `timeout 120 cp <archivo>100M+> /data/…`.
+  Arreglo: PV `qbittorrent-scratch-pv` con `nfsvers=4.1` (sin COPY). **No volver a 4.2 en scratch**, y ojo con
+  cualquier otro par de montajes 4.2 entre los que se copien archivos grandes.
 
 ## Radarr / Sonarr / Prowlarr
 - Radarr: perfiles `HD-1080p +` (id 4, 1080p+2160p+Remux, ~275 películas) y `HD - 720p/1080p` (id 6). Tope absoluto

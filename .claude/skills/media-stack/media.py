@@ -144,7 +144,12 @@ def diagnostico_movimientos():
     """qBittorrent mueve de a un torrent (FIFO). Si el job de cabeza no termina, la cola entera se traba."""
     out = sh(["kubectl", "exec", "-n", "qbittorrent", "deploy/qbittorrent", "-c", "qbittorrent", "--", "sh", "-c",
               f"cd {QB_LOGS} && cat $(ls -tr) | grep -E 'started\\. Process|Enqueued torrent move|Moved torrent|"
-              "move canceled|Failed to move'"], check=False).splitlines()
+              "move canceled|Failed to move'; grep ' /incomplete ' /proc/mounts"], check=False).splitlines()
+    montaje = next((l for l in out if " /incomplete " in l), "")
+    if "vers=4.2" in montaje:
+        print("  AVISO /incomplete montado con NFS 4.2: los movimientos a /data se cuelgan (COPY sin CB_OFFLOAD). "
+              "Ver hechos.md; el PV qbittorrent-scratch-pv debe ir con nfsvers=4.1")
+    out = [l for l in out if l is not montaje]
     ultimo_ok = next((l for l in reversed(out) if "Moved torrent" in l or "started. Process" in l), None)
     pendientes = out[out.index(ultimo_ok) + 1:] if ultimo_ok else out
     encolados = [l for l in pendientes if "Enqueued" in l]
