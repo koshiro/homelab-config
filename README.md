@@ -2,20 +2,21 @@
 
 Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de Kubernetes en `cluster/`, secretos con SOPS/age y exposición pública vía Cloudflare Tunnel.
 
-> **Estado (2026-10-01):** TrueNAS se retira (VM 101 detenida). ZFS, NFS y snapshots viven en el host Proxmox (`192.168.1.100`). Immich, Minecraft y Pingvin ya corren desde `nvme/k8s`; Plex, la suite *arr y ComfyUI siguen en `replicas: 0` hasta reconectar el disco de 12 TB (`homelab-storage`, fase 1). Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (retiro de TrueNAS, capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+> **Estado (2026-10-10):** TrueNAS retirado (VM 101 detenida, pendiente de `qm destroy`). ZFS, NFS y snapshots viven en el host Proxmox (`192.168.1.100`). `homelab-storage` se recreó el 2026-10-03 en el disco de 12 TB (**un solo disco, sin redundancia**) y todas las apps están arriba: Immich, Minecraft y Pingvin desde `nvme/k8s`; Plex, la suite *arr, qBittorrent y ComfyUI desde `homelab-storage`. Todos los workers con `cpu: host` desde 2026-10-10. Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
 ## Arquitectura
 
 | Componente | Detalle |
 |---|---|
-| **Proxmox** | `192.168.1.100` · pool ZFS `nvme` (mirror 2×512 GB) para discos de VMs |
-| **k3s** v1.33 | Master `pibot` (Raspberry Pi, `192.168.1.15`) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`) |
-| **GPU** | NVIDIA en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
-| **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (media, pendiente de fase 1). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
+| **Proxmox** | `192.168.1.100` · 64 GB de RAM · pool ZFS `nvme` (mirror 2×512 GB) para discos de VMs. Presupuesto de RAM y cómo reiniciar una VM del cluster: [proxmox/README.md](proxmox/README.md) |
+| **k3s** v1.33 | Master `pibot` (Raspberry Pi, `192.168.1.15`, sin taints) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`, 24/8/12 GB, `cpu: host`) |
+| **GPU** | NVIDIA RTX 3070 en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
+| **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (un disco, sin redundancia: `media` RAW, `k8s-media-library`, `comfyui`, `timemachine`). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
-| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl`, `noledigasanadie.danielriquelme.cl` y `cyano.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `swarmui`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`, `qbittorrent`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
+| **Exposición pública** | Cloudflare Tunnel gestionado **remotamente**. Túnel `pve` (conectores en los workers): `plex.danielriquelme.cl` directo, `*.danielriquelme.cl` → Traefik. Túnel `pibot-webs` (conector en pibot): sitios estáticos `josekast.cl`, `noledigasanadie.danielriquelme.cl` y `cyano.danielriquelme.cl` → NodePort, independiente de Proxmox. Todo Ingress con ese dominio es público, salvo los paneles de administración (`grafana`, `comfyui`, `swarmui`, `galeria`, `chat`, `sonarr`, `radarr`, `prowlarr`, `bazarr`, `qbittorrent`), protegidos por **Cloudflare Access** (app «Homelab admin», OTP por correo) |
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
 | **Base de datos** | CloudNative-PG en ns `postgresql` (`homelab-postgres-rw.postgresql.svc`) |
+| **Monitoreo** | VictoriaMetrics + Grafana + vmalert → Alertmanager → Telegram (ns `monitoring`); reglas en `cluster/03-monitoring/monitoring/alert-rules.yml` |
 | **GitOps** | Objetivo: FluxCD (**aún no instalado**). Hoy se aplica con `kubectl apply -k` |
 
 ## Acceso
@@ -39,22 +40,23 @@ export KUBECONFIG=~/.kube/config-homelab
 | App | Namespace | Acceso | Almacenamiento | Estado |
 |---|---|---|---|---|
 | Immich | `immich` | `immich.danielriquelme.cl` | NFS Proxmox `nvme/k8s/immich` + CNPG | ✅ |
-| Minecraft | `minecraft` | LoadBalancer + DDNS | NFS Proxmox `nvme/k8s/minecraft` | ✅ |
+| Minecraft | `minecraft` | `minecraft.danielriquelme.cl` (Java 25565 / Bedrock 19132, LoadBalancer + DDNS) | NFS Proxmox `nvme/k8s/minecraft` | ✅ proxy Velocity + Geyser, servidores Paper `principal`, `spiral2`, `spiral3`, bot de whitelist ([LOBBY.md](cluster/apps/minecraft/LOBBY.md)) |
 | Pingvin | `pingvin` | `pingvin.danielriquelme.cl` | NFS Proxmox `nvme/k8s/pingvin` | ✅ |
-| Plex | `plex` | `plex.danielriquelme.cl` | config local-path + media NFS | ⏸ 0 réplicas |
-| Sonarr, Radarr, Prowlarr, Bazarr | ns propio | `<app>.danielriquelme.cl` | config local-path + media NFS `k8s-media-library` | ⏸ 0 réplicas |
-| qBittorrent | `qbittorrent` | `http://k3s-node-0:30808` (solo tailnet) | media NFS `k8s-media-library` | ⏸ 0 réplicas |
-| Overseerr | `overseerr` | `overseerr.danielriquelme.cl` | local-path | ✅ |
+| Plex | `plex` | `plex.danielriquelme.cl` · NodePort 32400 | config local-path + media NFS `homelab-storage/k8s-media-library` | ✅ |
+| Sonarr, Radarr, Prowlarr, Bazarr | ns propio | `<app>.danielriquelme.cl` | config local-path + media NFS `k8s-media-library` | ✅ |
+| qBittorrent | `qbittorrent` | `qbittorrent.danielriquelme.cl` · NodePort 30808 · BT 6881 por `hostPort` en k3s-node-1 | media NFS `k8s-media-library` | ✅ |
+| Seerr (ex-Overseerr) | `overseerr` | `seerr.danielriquelme.cl`, `overseerr.danielriquelme.cl` | local-path | ✅ |
 | FlareSolverr | `flaresolverr` | interno (Prowlarr) | — | ✅ |
-| Ollama / Open WebUI | `ollama-stack` | `k3s-node-0:31434` / `chat.danielriquelme.cl` | local-path (no depende de NFS) | ✅ GPU RTX 3070 |
-| ComfyUI | `comfyui` | `comfyui.danielriquelme.cl` | NFS `comfyui` | ⏸ 0 réplicas |
-| SwarmUI | `comfyui` | `swarmui.danielriquelme.cl` · NodePort 30190 · `swarmui.lan` | NFS `comfyui` (`swarmui/`, salidas en `output/swarmui`) | interfaz sobre ComfyUI, sin GPU propia |
-| WebODM | `webodm` | interno | local-path | ✅ |
-| AirPrint Canon MP250 | `canon-mp250-airprint` | LAN | — | ✅ |
+| Ollama / Open WebUI | `ollama-stack` | `k3s-node-0:31434` / `chat.danielriquelme.cl` · NodePort 30080 | local-path (no depende de NFS) | ✅ GPU |
+| ComfyUI | `comfyui` | `comfyui.danielriquelme.cl` · NodePort 30188 · `comfyui.lan` | NFS `homelab-storage/comfyui` | ✅ GPU ([README](cluster/apps/comfyui/README.md)) |
+| SwarmUI | `comfyui` | `swarmui.danielriquelme.cl` · NodePort 30190 · `swarmui.lan` | NFS `comfyui` (`swarmui/`, salidas en `output/swarmui`) | ✅ interfaz sobre ComfyUI, sin GPU propia |
+| SmartGallery | `comfyui` | `galeria.danielriquelme.cl` · NodePort 30189 · `galeria.lan` | NFS `comfyui` (`smartgallery/`) | ✅ galería de `output/` |
+| WebODM | `webodm` | NodePort 31808 (tailnet) | local-path | ✅ |
+| AirPrint Canon MP250 | `canon-mp250-airprint` | LAN · admin CUPS NodePort 31631 | — | ✅ |
 | noledigasanadie | `noledigasanadie` | `noledigasanadie.danielriquelme.cl` · NodePort 30891 | disco de pibot `/var/lib/homelab-noledigasanadie` (respaldo diario al NAS) | ✅ en pibot |
 | josekast.cl | `josekast` | `josekast.cl`, `www.josekast.cl` · NodePort 30890 | disco de pibot `/var/lib/homelab-josekast` (respaldo diario al NAS) | ✅ en pibot |
 | Cyano Curve | `cyano` | `cyano.danielriquelme.cl` · NodePort 30892 | disco de pibot `/var/lib/homelab-cyano` (respaldo diario al NAS) | ✅ en pibot |
-| Grafana + VictoriaMetrics | `monitoring` | `grafana.danielriquelme.cl` | local-path (Grafana) · NFS `nvme/k8s/victoria-metrics` (métricas, 90 días) | ✅ dashboards en `cluster/03-monitoring/monitoring/dashboards/` |
+| Grafana + VictoriaMetrics | `monitoring` | `grafana.danielriquelme.cl` | local-path (Grafana) · NFS `nvme/k8s/victoria-metrics` (métricas, 90 días) | ✅ dashboards en `cluster/03-monitoring/monitoring/dashboards/`, alertas a Telegram |
 
 ### Sitios estáticos (josekast.cl, noledigasanadie, cyano)
 
@@ -74,13 +76,13 @@ El dataset `nvme/k8s/webs` (antiguo origen NFS de josekast.cl) quedó sin uso; c
 ```
 ansible/            Inventario, playbooks (provisioning/, maintenance/), rol nvidia_gpu
 cluster/
-  00-infrastructure/  NVIDIA device plugin, RuntimeClass, CronJob de copia de etcd
+  00-infrastructure/  NVIDIA device plugin, RuntimeClass; backups/: CronJobs config-backup-*, copia de etcd
   01-networking/      Middleware de Traefik (Traefik lo provee k3s)
-  03-monitoring/      VictoriaMetrics, Grafana, node-exporter, kube-state-metrics, exporters de Proxmox y speedtest
-  04-media-stack/     Plex, *arr, qBittorrent, FlareSolverr
-  05-services/        Overseerr, Pingvin
-  06-external/        cloudflared
-  apps/               Immich, Minecraft, PostgreSQL, Ollama, ComfyUI, WebODM, …
+  03-monitoring/      VictoriaMetrics, vmalert, Alertmanager, Grafana, node-exporter, kube-state-metrics, exporters de Proxmox y speedtest
+  04-media-stack/     Plex, *arr, qBittorrent, FlareSolverr, PV de la media
+  05-services/        Seerr (ns overseerr), Pingvin
+  06-external/        cloudflared (túneles pve y pibot-webs)
+  apps/               Immich, Minecraft, PostgreSQL, Ollama, ComfyUI, WebODM, AirPrint, sitios estáticos, …
   kustomization.yml   Raíz (compila con `kubectl kustomize cluster`; incompleta, ver PENDIENTES)
 docs/               ARQUITECTURA.md, PENDIENTES.md, guides/
 proxmox/            Configuración versionada del host (ZFS, NFS, sanoid, restic, LXC nas)
@@ -132,7 +134,7 @@ sops --decrypt secret.sops.yaml | kubectl apply -f -
 
 Nunca versionar secretos sin cifrar. Respaldo de la clave: `scripts/backup-sops-keys.sh` / `restore-sops-keys.sh`.
 
-**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`.
+**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:40–02:47), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
 
 **Verificación rápida:**
 
