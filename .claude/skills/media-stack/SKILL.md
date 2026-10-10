@@ -17,7 +17,7 @@ $M unimported [--paths]            # al 100 % sin importar: moving (detecta cola
 $M stuck [--hours 2] [--states metaDL,stalledDL] [--apply [--orphans]]
 $M requeue --indexer RE|--title RE [--apply]   # quitar de cola con blocklist → el *arr busca otro release
 $M wait-search                     # esperar a que terminen las búsquedas de los *arr
-$M grabs [--minutes 60] [-v]       # releases tomados recientemente, por indexer
+$M grabs [--minutes 60] [-v] [--imported]   # releases tomados (o importados) recientemente
 $M imported [--apply]              # completos, fuera de cola e importados → borrar con archivos
 $M prefs [regex]   |   $M profiles radarr|sonarr [--sizes]   |   $M logs <app> [--since 6h] [--grep RE]
 $M update <app…|all> [--apply]     # rollout restart (imágenes :latest, pullPolicy Always)

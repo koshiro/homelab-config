@@ -278,13 +278,16 @@ def c_wait_search(a):
 def c_grabs(a):
     """Releases tomados por los *arr en los últimos N minutos, por indexer."""
     desde = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - a.minutes * 60))
+    ev, txt = (3, "importados") if a.imported else (1, "grabs")
     for app in ("sonarr", "radarr"):
-        rec = [r for r in arr(app, "history?pageSize=500&eventType=1&sortKey=date&sortDirection=descending")["records"]
+        rec = [r for r in arr(app, f"history?pageSize=500&eventType={ev}&sortKey=date&sortDirection=descending")["records"]
                if r["date"] >= desde]
-        print(f"{app}: {len(rec)} grabs en {a.minutes} min", dict(Counter(r["data"].get("indexer") for r in rec)))
+        print(f"{app}: {len(rec)} {txt} en {a.minutes} min",
+              "" if a.imported else dict(Counter(r["data"].get("indexer") for r in rec)))
         if a.verbose:
             for r in rec:
-                print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)} [{r['data'].get('indexer')}]")
+                idx = r["data"].get("indexer")
+                print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)}" + (f" [{idx}]" if idx else ""))
 
 
 def c_imported(a):
@@ -409,6 +412,7 @@ def main():
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")
     x.add_argument("--minutes", type=int, default=60); x.add_argument("-v", "--verbose", action="store_true")
+    x.add_argument("--imported", action="store_true", help="importaciones en vez de grabs")
     x.set_defaults(f=c_grabs)
     x = s.add_parser("imported", help="torrents ya importados y fuera de cola → borrar")
     x.add_argument("--apply", action="store_true"); x.add_argument("--limit", type=int, default=15)
