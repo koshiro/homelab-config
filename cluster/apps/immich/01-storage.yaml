@@ -1,5 +1,5 @@
 # Biblioteca de fotos. Desde 2026-09-30 en Proxmox (dataset ZFS nvme/k8s/immich, export NFS).
-# Copia original (solo lectura) en TrueNAS: carpeta immich-library del dataset raíz de homelab-storage.
+# La copia original en TrueNAS se descartó al recrear homelab-storage (2026-10-03).
 apiVersion: v1
 kind: PersistentVolume
 metadata:

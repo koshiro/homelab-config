@@ -80,7 +80,7 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 
 ## Pools ZFS al arrancar
 
-`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`; el `boot-pool` de TrueNAS se ve en `zpool import` pero **no** se importa solo (a propósito). Si se recrea el cache: `update-initramfs -u -k all`.
+`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`. El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
 
 ## Acceso fuera de banda (NanoKVM PCIe)
 

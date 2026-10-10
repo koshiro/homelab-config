@@ -1,5 +1,5 @@
 # Datos de archivos compartidos. Desde 2026-09-30 en Proxmox (dataset ZFS nvme/k8s/pingvin, export NFS).
-# Copia original (solo lectura) en TrueNAS: dataset homelab-storage/pingvin.
+# La copia original en TrueNAS se descartó al recrear homelab-storage (2026-10-03).
 apiVersion: v1
 kind: PersistentVolume
 metadata:
