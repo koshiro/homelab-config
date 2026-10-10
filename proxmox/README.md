@@ -91,7 +91,19 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 
 ## Pools ZFS al arrancar
 
-`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`. El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
+`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`. El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). `scratch` se importa con `zfs-import@scratch.service` (habilitado 2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
+
+## Discos y pools
+
+| Disco | Uso |
+|---|---|
+| `sda` SSD SATA GIGABYTE 240 GB | Arranque: `sda1-3` (BIOS, EFI, LVM `pve` de 112 GB). `sda4` (32 GiB, etiqueta `zfs-slog-homelab`): SLOG de `homelab-storage`. Quedan ~78 GiB sin particionar. Respaldo de la GPT previa: `/root/sda-gpt-backup-20261010.bin` |
+| `nvme0n1` + `nvme1n1` (512 GB) | Pool `nvme` (espejo, raíz) |
+| `sdb` Seagate 12 TB | Pool `homelab-storage` (un solo disco) |
+| `sde` WD 3 TB | Pool `respaldo` (réplica syncoid) |
+| `sdc` WD 1 TB (2,5") + `sdd` WD 2 TB (~10 años de uso) | Pool `scratch` (stripe, 2,6 TB, sin redundancia ni snapshots). `scratch/qbittorrent` (`recordsize=16K`, `sync=disabled`): descargas incompletas de qBittorrent vía NFS. Si muere un disco: recrear el pool y volver a descargar |
+
+**SLOG (2026-10-10)**: el export NFS es `sync` y cada COMMIT esperaba al ZIL en el mismo HDD de 12 TB (COMMIT ~1,2 s, WRITE ~91 ms en el cliente). Con el ZIL en `sda4` bajó a ~200 ms y ~20 ms. Es un SSD de consumo sin PLP y sin espejo: si falla solo, ZFS sigue sin él; se pierden datos únicamente si falla junto con una caída del host. Quitarlo: `zpool remove homelab-storage <id>-part4`.
 
 ## Acceso fuera de banda (NanoKVM PCIe)
 

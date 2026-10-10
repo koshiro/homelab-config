@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: qbittorrent-scratch-pv
+  labels:
+    pv-name: qbittorrent-scratch-pv
+spec:
+  capacity:
+    storage: 2Ti
+  accessModes:
+    - ReadWriteOnce
+  # Pool scratch en pve (stripe sdc+sdd, sync=disabled, recordsize=16K): solo descargas
+  # incompletas. Sin redundancia ni respaldo; si un disco muere se vuelve a descargar.
+  nfs:
+    server: 192.168.1.100
+    path: "/mnt/scratch/qbittorrent"
+  persistentVolumeReclaimPolicy: Retain
+  mountOptions:
+    - hard
+    - nfsvers=4.2
+    - noatime
+    - nodiratime
+    - rsize=1048576
+    - wsize=1048576
+    - tcp
+    - nconnect=8
