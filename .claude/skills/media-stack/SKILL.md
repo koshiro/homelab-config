@@ -1,108 +1,68 @@
 ---
 name: media-stack
-description: Administrar la suite arr (Sonarr, Radarr, Prowlarr, Bazarr), qBittorrent, Plex, Seerr y FlareSolverr del cluster k3s - cola de qBittorrent, torrents atascados en metaDL/stalled, limpieza de importados, perfiles de calidad y tamaños, indexers, actualizaciones de imagen, logs, seeding y rendimiento. Usar SIEMPRE que la tarea toque cualquiera de esas apps, antes de explorar el repo o los pods.
+description: Administrar la suite arr (Sonarr, Radarr, Prowlarr, Bazarr), qBittorrent, Plex, Seerr y FlareSolverr del cluster k3s - cola de qBittorrent, torrents atascados (metaDL/stalled/moving), descargas sin importar, limpieza, indexers, perfiles de calidad y tamaños, actualizaciones, logs, seeding y rendimiento. Usar SIEMPRE que la tarea toque cualquiera de esas apps, antes de explorar el repo o los pods. La skill es progresiva - al cerrar cada tarea se amplía con lo aprendido.
 ---
 
 # Suite arr + qBittorrent
 
-Objetivo: resolver con pocas llamadas. **No explorar el repo ni los pods para "ubicarse"**: todo lo necesario está
-aquí. Primera llamada casi siempre: `media status`.
+Objetivo: resolver con pocas llamadas y sin explorar. **No leer manifiestos ni listar pods para "ubicarse"**: el mapa
+está abajo y `references/` tiene el resto. Primera llamada casi siempre: `$M status` (o el subcomando de la receta).
 
 ```bash
-M="python3 -I .claude/skills/media-stack/media.py"   # desde la raíz del repo o del worktree
-$M status                         # pods, versión vs última, salud *arr, qBittorrent, discos, último filtro
-$M torrents [--state RE] [--name s] [--min-age H] [--limit N]
-$M queue [sonarr|radarr] [--all]  # solo ítems con problema salvo --all
+M="python3 -I .claude/skills/media-stack/media.py"   # desde la raíz del repo o del worktree; `$M -h` lista todo
+$M status                          # pods, versión vs última, salud *arr, qBittorrent, discos, último filtro
+$M torrents [--state RE] [--name s] [--min-age H] [--max-age H] [--limit N]
+$M queue [sonarr|radarr] [--all]   # cola *arr: solo ítems con problema salvo --all
+$M unimported [--paths]            # al 100 % sin importar: moving (detecta cola de movimientos trabada), avisos, huérfanos
 $M stuck [--hours 2] [--states metaDL,stalledDL] [--apply [--orphans]]
-$M imported [--apply]             # completos, fuera de cola e importados → borrar con archivos
-$M prefs [regex]                  # preferencias de qBittorrent relevantes (o las que matcheen regex)
-$M profiles radarr|sonarr [--sizes]   # perfiles, CF con puntaje, maximumSize del indexer, MB/min
-$M logs <app> [--since 6h] [--grep RE]   # warn/error deduplicados
-$M update <app…|all> [--apply]    # rollout restart (imágenes :latest, pullPolicy Always)
-$M api <sonarr|radarr|prowlarr> <ruta> [-X M] [-d JSON|@archivo] | jq …   # crudo, ruta sin /api/vN
-$M qb <ruta> [-d 'form=urlencoded']   # qBittorrent API v2 cruda; -d → POST
+$M requeue --indexer RE|--title RE [--apply]   # quitar de cola con blocklist → el *arr busca otro release
+$M wait-search                     # esperar a que terminen las búsquedas de los *arr
+$M grabs [--minutes 60] [-v]       # releases tomados recientemente, por indexer
+$M imported [--apply]              # completos, fuera de cola e importados → borrar con archivos
+$M prefs [regex]   |   $M profiles radarr|sonarr [--sizes]   |   $M logs <app> [--since 6h] [--grep RE]
+$M update <app…|all> [--apply]     # rollout restart (imágenes :latest, pullPolicy Always)
+$M api <sonarr|radarr|prowlarr> <ruta> [-X M] [-d JSON|@archivo] | jq …   # crudo; ruta sin /api/vN
+$M qb <ruta> [-d 'form=urlencoded']                                      # qBittorrent API v2 cruda
 ```
 
-Todo lo que borra o reinicia es **dry-run sin `--apply`**. Cada comando es una sola llamada simple, así que pasa la
-guarda del worktree (los compuestos con pipes/heredocs/`sops |` fueron rechazados en sesiones anteriores: si hace
-falta lógica extra, escribirla en un script en `$CLAUDE_JOB_DIR/tmp` y correrlo con `python3 -I`).
+- Todo lo que borra o reinicia es **dry-run sin `--apply`**. Borrados masivos (`imported`, `--orphans`): mostrar
+  conteo/GB y pedir confirmación antes (el clasificador del modo auto ya lo bloqueó una vez; la regla global es
+  detenerse y preguntar).
+- Cada comando es una llamada simple: pasa la guarda del worktree. Lógica extra → script en `$CLAUDE_JOB_DIR/tmp`
+  que haga `sys.path.insert(0, ".claude/skills/media-stack"); import media` y reutilice `media.arr`, `media.qb`,
+  `media.colas`, `media.importados`, `media.quitar_de_cola`. Nunca `sleep` encadenado: `wait-search` o un script en
+  background.
 
-## Mapa (no hace falta verificarlo)
+## Mapa
 
-| App | ns / deploy / contenedor | Puerto | Config | Notas |
-|-----|--------------------------|--------|--------|-------|
-| Sonarr | `sonarr` | 8989 v3 | PVC `sonarr-config-pvc` | API key en `/config/config.xml` |
-| Radarr | `radarr` | 7878 v3 | PVC `radarr-config` | idem |
-| Prowlarr | `prowlarr` | 9696 **v1** | `media-library/config/prowlarr` | idem; FlareSolverr en ns `flaresolverr` |
-| Bazarr | `bazarr` | svc 80 | `media-library/config/bazarr/config/config.yaml` | |
-| qBittorrent 5.x | `qbittorrent` | 8080 | `media-library/config/qbittorrent/qBittorrent/qBittorrent.conf` | Strategy Recreate; pod trae curl, jq, python3 |
-| Plex | `plex` | 32400 | PVC `plex-config-pvc` | |
-| Seerr | `overseerr` (`05-services/`) | svc 80 | | imagen `ghcr.io/seerr-team/seerr` |
+| App | ns = deploy = contenedor | API | Config |
+|-----|--------------------------|-----|--------|
+| Sonarr | `sonarr` | 8989 v3 | PVC `sonarr-config-pvc` (`/config/config.xml` con ApiKey) |
+| Radarr | `radarr` | 7878 v3 | PVC `radarr-config` |
+| Prowlarr | `prowlarr` | 9696 **v1** | `media-library/config/prowlarr` |
+| Bazarr | `bazarr` | svc 80 | `media-library/config/bazarr/config/config.yaml` |
+| qBittorrent 5.x | `qbittorrent` | 8080, sin login (localhost y 10.42.0.0/16) | conf y logs en el pod: `/config/qBittorrent/` |
+| Plex | `plex` | 32400 | PVC `plex-config-pvc` |
+| Seerr | `overseerr` (`cluster/05-services/`) | svc 80 | |
 
-- Manifiestos: `cluster/04-media-stack/<app>/` (Seerr en `cluster/05-services/overseerr/`). Todo en `k3s-node-1`
-  (afinidad `media-worker`, toleración `p2p`), por eso un reinicio de node-1 baja toda la suite.
-- Almacenamiento: NFS `192.168.1.100:/mnt/homelab-storage/k8s-media-library` montado en `/data` (HDD 12 TB + SLOG
-  `sda4`); `/data/downloads` y biblioteca `/data/media/{movies,series}` en el mismo FS → hardlinks. Incompletos en
-  `/incomplete` (pool `scratch` de pve, stripe sdc+sdd, `sync=disabled`, desechable, sin sanoid).
-- Acceso API: `kubectl exec` al pod de cada app (key leída de `config.xml` adentro); qBittorrent sin login para
-  `localhost` y `10.42.0.0/16` (Cloudflare Access protege el hostname público). **No usar sops, port-forward ni el
-  Secret** para consultar; el Secret SOPS `qbittorrent/arr-api-keys` (SONARR/RADARR_API_KEY) es solo para el CronJob.
-- NetworkPolicy real: `allow-arr-suite-communication` (ns con label `arr-suite=true` + kube-system).
-  `qbittorrent/networkpolicy.yml` del repo **no está aplicado**. El ns `qbittorrent` no tiene egress restringido.
-- Respaldo de config: CronJobs `config-backup-<app>` en cada ns (`cluster/00-infrastructure/backups/app-config-backup.yaml`).
+Manifiestos en `cluster/04-media-stack/<app>/`. Todo corre en `k3s-node-1`. Biblioteca y descargas en NFS `/data`
+(hardlinks); incompletos en `/incomplete` (pool `scratch`). Detalle, configuración decidida y trampas conocidas:
+**`references/hechos.md`**. Procedimientos por tipo de tarea: **`references/recetas.md`** (leer la receta que
+corresponda antes de actuar).
 
-## Configuración ya decidida (versionada en `qbittorrent/deployment.yml`, init container)
+## Ciclo de aprendizaje (obligatorio al cerrar cada tarea)
 
-El init reescribe `qBittorrent.conf` en cada arranque: **un cambio hecho solo por API se pierde al reiniciar**.
-Para persistir: `set_session <Clave> <valor>` (sección `[BitTorrent]`, prefijo `Session\`) o `set_webui`.
-`ExcludedFileNamesEnabled` va **sin** prefijo `Session\`. Para probar en vivo antes:
-`$M qb app/setPreferences -d 'json={"max_active_downloads":10}'`.
+La skill crece con el uso. Antes de dar la tarea por terminada, revisar qué hizo falta fuera de `media.py`:
 
-- Seeding: ratio 2 o 2880 min seedeando o 2880 min inactivo → **Stop** (no Remove); Radarr/Sonarr con
-  `removeCompletedDownloads` borran el torrent detenido y su hardlink en `downloads/`.
-- Cola: `MaxActiveTorrents 50`, `MaxActiveDownloads 10`, `MaxActiveUploads 5`, `dont_count_slow_torrents`.
-  `max_active_torrents` es tope duro de libtorrent que cuenta los stalled.
-- Puerto BT fijo 6881 (hostPort, reenviado en el router). `TempPath /incomplete/` solo afecta torrents nuevos.
-- `ExcludedFileNames` bloquea `.exe .scr .lnk .bat…`; el CronJob `qbittorrent/arr-filtro-archivos` (cada 10 min,
-  `cronjob-arr-filtro-archivos.yml`) saca de la cola *arr con blocklist los torrents con ejecutables o sin video.
-  Logs: `kubectl logs -n qbittorrent job/<último>`; prueba manual con `DRY_RUN=1`.
-- Radarr: perfiles `HD-1080p +` (id 4, 1080p+2160p+Remux) y `HD - 720p/1080p` (id 6); tope absoluto por release en
-  **Settings → Indexers → Maximum Size = 8192 MB** (`config/indexer.maximumSize`), no en los MB/min de
-  `qualitydefinition`. Para cambiar un perfil: GET `qualityprofile/<id>` → modificar → PUT el objeto completo.
-
-## Recetas
-
-**Torrents colgados en metaDL / stalledDL**: `$M stuck --hours 2` → revisar resumen por indexer →
-`$M stuck --hours 2 --apply`. Los quita vía el *arr (`queue/bulk` DELETE con `removeFromClient&blocklist`), así el
-*arr busca otro release. Huérfanos (sin *arr) solo con `--orphans`. Historial: casi todos los metaDL muertos venían
-del indexer **TorrentDownload**; si se repite, proponer deshabilitarlo en Prowlarr. Torrents recién agregados en
-metaDL (<1 h) suelen ser los reemplazos: no tocarlos.
-
-**Limpiar la cola de lo ya importado**: `$M imported` → **mostrar conteo y GB y pedir confirmación** (borrado masivo
-con archivos; el clasificador del modo auto lo bloqueó la primera vez, y la regla global es detenerse y preguntar) →
-`--apply`. Normalmente no hace falta: el límite de 2 días ya los detiene y los *arr los borran.
-
-**"Caution: Found executable file" / importPending**: lo resuelve el CronJob; verificar su último log. Si un release
-legítimo trae basura publicitaria (`.url`, `.txt`) no se blocklistea: el filtro solo mira ejecutables y ausencia de
-video.
-
-**Calidad / tamaño en Radarr o Sonarr**: `$M profiles radarr [--sizes]` y luego `$M api radarr … -X PUT -d @f.json`.
-Releer después de escribir y comparar con lo pedido.
-
-**Actualizar**: `$M status` dice si hay versión nueva de los *arr → `$M update <apps> --apply` (espera el rollout y
-muestra versión antes → después). qBittorrent y Plex cortan descargas/streams: avisar. No hay versión fija que
-editar en el repo (`:latest`), salvo que se decida fijar tags.
-
-**Rendimiento lento / NFS**: primero `$M status` (velocidad, estados) y `$M prefs`; históricamente la causa fue la
-cola de qBittorrent, no el NFS. NFS/ZFS del host: `proxmox/README.md` (no repetir el diagnóstico desde cero).
-
-**qBittorrent no arranca / pod pegado**: es `Recreate` con `hostPort 6881`; un segundo pod no puede convivir. Revisar
-`kubectl describe pod -n qbittorrent` y el init (`kubectl logs … -c setup-qbittorrent-unified`); el init no debe
-hacer `chown -R` sobre `downloads/` (NFS, no termina).
-
-## Cambios al repo
-
-Solo si cambia un manifiesto: rama `feat|fix/…` desde `main`, editar `cluster/04-media-stack/<app>/…`,
-`kubectl apply -k cluster/04-media-stack/<app>` (o `kubectl apply -f` del archivo), verificar con `$M`, PR y merge
-(`AGENTS.md`). Ajustes que viven en la BD de los *arr (perfiles, indexers, tamaños) no se versionan: dejarlos
-anotados en la respuesta. Si se aprende un hecho nuevo y estable, agregarlo a esta skill en el mismo PR.
+1. **¿Usaste un script ad hoc, un `jq` sobre `api`/`qb`, o más de 2 llamadas crudas para un mismo objetivo?**
+   Si es general (se repetiría con otros datos) → promoverlo a subcomando de `media.py` siguiendo sus convenciones:
+   salida compacta (una línea por ítem, `nombre()`/`cut()`, conteos con `Counter`), dry-run salvo `--apply`, ayuda
+   en el parser y una línea en el bloque de comandos de arriba. Si es específico pero reusable → `scripts/<nombre>.py`
+   importando `media`. Si fue de una sola vez → no agregar nada.
+2. **¿Descubriste un hecho no obvio** (ruta, clave de config, bug, causa raíz, decisión del usuario)? → una línea en
+   `references/hechos.md`, con fecha. Corregir o borrar lo que resultó falso.
+3. **¿Tipo de tarea nuevo o receta que falló?** → crear o ajustar la receta en `references/recetas.md`.
+4. **Registrar** una línea en `references/bitacora.md`: fecha | tarea | llamadas | qué faltó | qué se agregó.
+5. Probar lo nuevo contra el cluster (dry-run) y versionarlo: en el PR de la tarea, o en uno
+   `chore(media-stack): …` si la tarea no tocó el repo. Mantener este archivo por debajo de ~100 líneas: el detalle
+   va a `references/`.
