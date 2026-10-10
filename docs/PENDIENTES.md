@@ -1,6 +1,6 @@
 # Pendientes del homelab
 
-Última revisión: 2026-10-01. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-10-10. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
 
 Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este archivo detalla las tareas.
 
@@ -29,16 +29,16 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
    - 2026-10-02 08:29: reinicio con drenado + apagado de invitados + SysRq `s`/`b` (evita esperar al watchdog con el import colgado; <1 min). `homelab-storage` no se importa al arrancar. Disco 12 TB: SMART PASSED, 0 reasignados/pendientes/irrecuperables, log de errores vacío → daño **lógico** (escrituras corruptas por el cable/puerto). **Autotest SMART largo en curso** (`smartctl -t long`, termina ~2026-10-03 04:08; ver con `smartctl -l selftest /dev/disk/by-id/ata-ST12000NT001-3LX101_ZRT0164N`). Decisión pendiente tras el test: (A) segundo disco 12 TB → copiar el pool en solo lectura a un pool nuevo y luego espejo; (B) recrear el pool en el mismo disco y que *arr vuelva a descargar; (C) mantener solo lectura. Además: copia externa de los RAW (hoy solo en `respaldo`, WD 3 TB con 1 sector reasignado).
    - Incidente menor: un `zfs unmount -a` desmontó por unos minutos `nvme/k8s/{immich,backups}`, la raíz del LXC `nas` y `respaldo/*`; remontados + `exportfs -ra`, sin archivos escritos debajo de los puntos de montaje. Nunca usar `-a` con varios pools.
    - Configuración persistente respaldada en `nvme/k8s/backups/arr-config/20261002/` (entra en sanoid/syncoid/restic): `sonarr`, `radarr`, `prowlarr`, `bazarr`, `overseerr`, `plex` (5,5 GB) desde los PVC `local-path` de k3s-node-1; `k8s-media-library/config` (qBittorrent y configs antiguas); `backups/` del pool; e `inventario-k8s-media-library.tsv` (8 219 archivos de `media/` y `downloads/` con tamaño y fecha). Si la media de *arr se pierde: restaurar configs, escalar las apps y lanzar «Search All Missing» en Sonarr/Radarr.
-4. [ ] Si el enlace queda limpio y se sigue usando NCQ off: hacerlo persistente (regla udev o `libata.force=4.00:noncq`).
+4. [x] ~~NCQ off persistente~~: no hace falta. Tras el cambio de cable el disco trabaja con NCQ (`queue_depth` 32) y el pool recreado está ONLINE sin errores (2026-10-10).
    - **2026-10-03 — opción B ejecutada.** SMART largo sin errores (disco sano, daño solo lógico). Antes de destruir: copiados y verificados por checksum a `respaldo/rescate/{comfyui,webodm-db}` la config y las 2 164 imágenes de ComfyUI (sin modelos: lista en `MODELOS-NO-COPIADOS.txt`) y la BD vieja de WebODM; RAW verificados en `respaldo/rescate/media` (100 074/100 075: **`Raws/2016/January/16/_KOR3587.NEF` ilegible en el pool, recuperarlo de la copia externa**). Descartados a pedido: Time Machine, biblioteca vieja de Plex, PhotoPrism, `backup_cleanup`, `cluster-config`, OpenClaw, proyectos de WebODM y la media de *arr (6,2 TB, se vuelve a descargar). Lista de lo descargado: `nvme/k8s/backups/arr-config/20261002/arr-descargado-20261003.json` y `series-descargadas-20261003.md` (77 series; se agregan a mano en Sonarr; las 316 películas siguen monitoreadas en Radarr).
    - Pool nuevo: `zpool create` sobre el disco entero (ashift 12, lz4, recordsize 1M, xattr sa, posixacl), **sin SLOG ni cache** (el WD 2 TB `sdd` queda libre con la etiqueta vieja de log). Datasets `media` (RAW, restaurado con `zfs send` desde `@verificado-20261002`), `k8s-media-library` (config de qBittorrent, Prowlarr y Bazarr desde el tar + carpetas vacías) y `comfyui`. `zfs-import@homelab-storage.service` habilitado. Exportado por NFS desde Proxmox (`proxmox/etc/k8s.exports`).
    - [x] PV/PVC de `media-library-pvc` (6 namespaces) y `comfyui-workspace-pvc` recreados contra 192.168.1.100; borrados los huérfanos `plex-media`, `bazarr-media`, `prowlarr-media` (2026-10-03). Suite *arr y Plex con `replicas: 1`. Marcador `.pool-recreado-20261003` en `media/{peliculas,series}`: con la raíz vacía Radarr/Sonarr no actualizan nada (failsafe «root folder is empty»). Radarr: 346 películas monitoreadas faltantes, «Search All Missing» lanzado. Sonarr: sin búsqueda (las series se agregan a mano desde la lista).
-   - [ ] ComfyUI sigue en `replicas: 0`: falta volver a descargar los modelos (`MODELOS-NO-COPIADOS.txt`).
+   - [x] ComfyUI de vuelta con sus modelos (`replicas: 1`, más SwarmUI y smartgallery; dataset `homelab-storage/comfyui` 86 GB).
    - 2026-10-03: **Overseerr → Seerr 3.5.0** (Overseerr archivado en 2026-02). Misma URL, namespace y PVC; migración automática de la BD (1 usuario, 472 solicitudes); Radarr, Sonarr y Plex probados OK. Respaldo previo: `nvme/k8s/backups/overseerr/overseerr-config-pre-seerr-20261003.tar.gz`. Suite *arr y Plex verificadas en su última versión.
    - qBittorrent nunca persistió su cola (`BT_backup` iba al contenedor: `XDG_CONFIG_HOME` sin `XDG_DATA_HOME`). Corregido en el repo (`XDG_DATA_HOME=/data/config/qbittorrent/data`); se aplica al levantar la suite.
-5. [ ] Scrub completo y decidir futuro del pool: segundo disco para mirror, o migrar TrueNAS → ZFS directo en Proxmox.
-6. [ ] Rescatar el resto con espacio nuevo: `k8s-media-library` (6.2 TB), `media` (1.7 TB), `timemachine` (476 GB), `comfyui` (78 GB), `webodm` (8 GB), `backups`.
-7. [ ] Habilitar `qemu-guest-agent` en la VM 101.
+5. [ ] Scrub completo del pool recreado: aún no se ha hecho ninguno; el cron de `zfsutils-linux` lo lanza el 2.º domingo del mes (próximo 2026-10-11). Revisar `zpool status homelab-storage` después. Decidido: ZFS directo en Proxmox (hecho). Sigue abierto: segundo disco de 12 TB para espejo.
+6. [x] ~~Rescatar el resto~~: resuelto con la opción B (2026-10-03): lo valioso se copió y restauró, el resto se descartó o se vuelve a descargar.
+7. [x] ~~`qemu-guest-agent` en la VM 101~~: obsoleto, TrueNAS retirado. Queda `qm destroy 101` (ver § 4).
 
 ## 2. Rescate de minecraft, immich y pingvin ✅ (2026-09-30)
 
@@ -47,9 +47,9 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - Manifiestos apuntando a `192.168.1.100:/nvme/k8s/<app>`: `apps/minecraft/deployment.yml` (volumen inline), `apps/immich/01-storage.yaml`, `05-services/pingvin/pvc.yml` (StorageClass `nfs-proxmox`, PV estáticos `Retain`).
 - Los manifiestos de pingvin estaban **vacíos** en el repo; reconstruidos desde el estado vivo del cluster.
 - [x] Snapshots locales con **sanoid** en Proxmox (`/etc/sanoid/sanoid.conf`): horarios 24, diarios 14, semanales 4, mensuales 6 para `nvme/k8s/*` (2026-10-01).
-- [ ] Copia fuera del mirror NVMe: `syncoid` de `nvme/k8s` hacia `homelab-storage` cuando el disco de 12 TB esté estable (ver sección 1).
+- [x] Copia fuera del mirror NVMe: resuelto de otra forma. `syncoid-respaldo` replica `nvme/k8s` a `respaldo/k8s` cada noche y `restic-offsite` lo sube a R2.
 - [x] Minecraft actualizado a 26.2 + plugins y datapacks al día + terreno sin cambios regenerado (detalle en `cluster/apps/minecraft/DATA-SAFETY.md`).
-- [ ] **Minecraft → 26.3: esperar a que Geyser soporte Java 26.3.** Estado 2026-10-02: Paper 26.3 solo BETA (build 143; 26.2 STABLE build 129); Geyser 2.11.3-b1247 usa `mcprotocollib = 26.2` (ver `gradle/libs.versions.toml` en GeyserMC/Geyser); Floodgate b141, ViaVersion/ViaBackwards 5.12.0, Simple Voice Chat bukkit-2.6.24 y SkinsRestorer 15.12.6 ya soportan 26.3. Al subir: snapshot `zfs snapshot nvme/k8s/minecraft@pre-26.3` → `VERSION: "26.3"` en `deployment.yml` → aplicar → probar cliente Java y Bedrock → datapacks Vanilla Tweaks 26.3 → anotar en `DATA-SAFETY.md`.
+- [ ] **Minecraft → 26.3: esperar a que Geyser soporte Java 26.3.** Estado 2026-10-02: Paper 26.3 solo BETA (build 143; 26.2 STABLE build 129); Geyser 2.11.3-b1247 usa `mcprotocollib = 26.2` (ver `gradle/libs.versions.toml` en GeyserMC/Geyser); Revisado 2026-10-10: Geyser `master` sigue en `mcprotocollib = 26.2`. Floodgate b141, ViaVersion/ViaBackwards 5.12.0, Simple Voice Chat bukkit-2.6.24 y SkinsRestorer 15.12.6 ya soportan 26.3. Al subir: snapshot `zfs snapshot nvme/k8s/minecraft@pre-26.3` → `VERSION: "26.3"` en `deployment.yml` → aplicar → probar cliente Java y Bedrock → datapacks Vanilla Tweaks 26.3 → anotar en `DATA-SAFETY.md`.
 - [x] Base de datos de Immich en CloudNative-PG (`local-path`). `homelab-postgres-2` (k3s-node-3) divergió tras el apagado del 2026-10-01 (`pg_rewind` fallaba); recreada el 2026-10-02 borrando PVC + pod → `homelab-postgres-5`. Cluster 3/3 (primario `-4`, réplicas `-1` y `-5` en streaming).
 
 ## 3. Limpieza del cluster ✅ (2026-10-01)
@@ -58,23 +58,23 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [x] Recursos huérfanos eliminados (2026-10-01): Ingress `immich-manual-ingress` (el `immich-ingress` del repo pasó a entrypoint `web` sin TLS, igual que el resto), Service `immich-postgresql` (ExternalName), secret `immich-secrets`, `truenas-node-exporter` y servicios `truenas-exporter`/`truenas-node-exporter`, ns `traefik` vacío.
 - [x] Montajes NFS a TrueNAS (`/mnt/homelab-storage`, `/mnt/pool_medios`, `/mnt/pool_downloads`) comentados en `/etc/fstab` de los 3 workers (respaldo `/etc/fstab.bak-truenas-20261001`).
 - [x] Repo: manifiestos vacíos de Overseerr y namespaces/services/Ingress de la suite *arr y Plex reconstruidos desde el cluster (sin diff contra lo vivo).
-- [ ] Dataset `openclaw` en TrueNAS: borrar cuando el pool vuelva (app eliminada).
+- [x] Dataset `openclaw` en TrueNAS: desapareció al recrear el pool (2026-10-03).
 
 ## 4. Seguridad
 
 - [x] Immich: credenciales de DB desde el secret `homelab-postgres-app` (`DB_USERNAME`/`DB_PASSWORD`), sin contraseña en el manifiesto (2026-10-01).
 - [x] Secret `homelab-postgres-app` regenerado sin salto de línea (2026-10-01).
-- [ ] `/root/truenas-rescate/freenas-v1.db` en Proxmox contiene configuración y secretos cifrados de TrueNAS: borrar tras retirar TrueNAS (fase 3).
-- [ ] TrueNAS tenía un kubeconfig de admin en `/root/.kube` (zvol de la VM 101): se elimina con `qm destroy 101`.
+- [ ] `/root/truenas-rescate/freenas-v1.db` en Proxmox contiene configuración y secretos cifrados de TrueNAS: borrar tras retirar TrueNAS (fase 3). Sigue ahí al 2026-10-10.
+- [ ] TrueNAS tenía un kubeconfig de admin en `/root/.kube` (zvol de la VM 101): se elimina con `qm destroy 101`. La VM 101 sigue definida (detenida, discos `nvme/vm-101-disk-*` ~57 GB); también queda la plantilla 9001 `truenas-template`.
 
 - [x] Contraseña del vault rotada (2026-10-01): `ansible-vault rekey`, nueva contraseña fuera del repo en `~/.config/homelab/ansible-vault-pass` (guardarla también en el gestor de contraseñas), `.vault_password.txt` eliminado de git e ignorado. El historial solo contiene una versión antigua del vault con `vault_truenas_password` (TrueNAS se retira).
 - [x] `.truenas-api-key` fuera del índice de git (2026-10-01); sigue en el historial. Revocar la key en TrueNAS si la VM 101 vuelve a arrancar antes de `qm destroy`.
 - [x] Contraseña del rol `immich` rotada (2026-10-01); `homelab-postgres-superuser` (secret de bootstrap de CNPG) alineado con la misma.
 - [x] `WO_SECRET_KEY` de WebODM rotada (2026-10-01); `secret.sops.yml` ahora incluye `namespace: webodm`.
-- [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí**; decidir si se cifran o borran antes de commitear en ese repo.
-- [ ] **TrueNAS por tailnet:** Ingress público `truenas.danielriquelme.cl` eliminado (vivía en ns `media-stack`). Al recuperar TrueNAS: instalar Tailscale en TrueNAS (app oficial) o publicar `192.168.1.0/24` con un subnet router en pibot (`tailscale up --advertise-routes=192.168.1.0/24`).
-- [ ] **qBittorrent:** Ingress público eliminado; WebUI solo por LAN/tailnet en `http://k3s-node-0:30808`. Al reactivarlo: verificar login de la WebUI activo, y si se aplica `networkpolicy.yml`, permitir tráfico NodePort (hoy solo permite Traefik).
-- [ ] Recordatorio: el túnel Cloudflare tiene comodín `*.danielriquelme.cl → traefik`; **todo Ingress es público**. Evaluar Cloudflare Access para apps de administración (sonarr, radarr, prowlarr, bazarr).
+- [ ] Cookies movidas a `~/git/security-assessment/evidence/from-homelab-config/` — **no están ignoradas allí** (siguen sin trackear al 2026-10-10); decidir si se cifran o borran antes de commitear en ese repo.
+- [x] ~~TrueNAS por tailnet~~: obsoleto, TrueNAS retirado (el pool vive en Proxmox).
+- [x] **qBittorrent:** WebUI de vuelta en `qbittorrent.danielriquelme.cl` tras Cloudflare Access (2026-10-10, PR #31); NodePort 30808 queda para LAN/tailnet. `networkpolicy.yml` no está aplicado (solo `allow-arr-suite-communication`).
+- [x] Cloudflare Access para apps de administración: la app «Homelab admin» cubre grafana, comfyui, swarmui, galeria, chat, sonarr, radarr, prowlarr, bazarr y qbittorrent (verificado por API 2026-10-10). Recordatorio: el comodín `*.danielriquelme.cl → traefik` hace público todo Ingress; agregar a Access cada app de administración nueva.
 
 ## 4b. Postgres — respaldo robusto (pendiente)
 
@@ -165,4 +165,4 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 ## 9. Otros
 
 - [x] **webodm**: se mantiene con una sola instancia (webapp, worker, broker, db y un nodo de procesamiento `node-odx-1`, todos con 1 réplica). Los 3 PVC `local-path` (db, media, nodeodm) son necesarios; los 3 PV viejos de NFS se borran con el paso 3.
-- [x] Plex y la suite *arr levantados sobre el pool nuevo (2026-10-03). ComfyUI pendiente de modelos. (Ollama + Open WebUI reactivados 2026-09-30; usan local-path.)
+- [x] Plex y la suite *arr levantados sobre el pool nuevo (2026-10-03). ComfyUI de vuelta con modelos. (Ollama + Open WebUI reactivados 2026-09-30; usan local-path.)
