@@ -71,6 +71,16 @@ spec:
           # torrents nuevos: los existentes conservan su ruta.
           set_session TempPathEnabled true
           set_session TempPath /incomplete/
+          # No bajar ejecutables ni accesos directos (malware disfrazado de episodio o
+          # película): quedan con prioridad 0. El CronJob arr-filtro-archivos además
+          # saca esos torrents de Sonarr/Radarr con blocklist para que busquen otro.
+          # ExcludedFileNamesEnabled va sin el prefijo Session\ en qBittorrent 5.x.
+          set_session ExcludedFileNames '*.exe, *.scr, *.bat, *.cmd, *.com, *.pif, *.lnk, *.msi, *.vbs, *.vbe, *.js, *.jse, *.wsf, *.wsh, *.hta, *.ps1, *.cpl, *.jar, *.dll, *.apk, *.url'
+          if grep -q '^ExcludedFileNamesEnabled=' "$CFG"; then
+            sed -i 's|^ExcludedFileNamesEnabled=.*|ExcludedFileNamesEnabled=true|' "$CFG"
+          else
+            sed -i '/^\[BitTorrent\]/a ExcludedFileNamesEnabled=true' "$CFG"
+          fi
           # WebUI sin login para la red de pods: el público llega vía Traefik
           # (ya filtrado por Cloudflare Access) y los *arr hablan directo.
           # Ojo: networkpolicy.yml no está aplicado; en el cluster rige
