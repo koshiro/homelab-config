@@ -5,6 +5,8 @@ metadata:
   namespace: qbittorrent
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: qbittorrent
@@ -55,8 +57,17 @@ spec:
           set_session MaxActiveTorrents 50
           set_session MaxActiveDownloads 10
           set_session MaxActiveUploads 5
+          # Escucha BT en 6881 (hostPort en el nodo media-worker). Sin puerto
+          # aleatorio para que el reenvío del router coincida con lo anunciado.
+          set_session Port 6881
+          # incomplete/ y save path están en el mismo NFS: el move al terminar
+          # se serializa y se atasca (Radarr ve ~100% en "downloading").
+          # Descargar in-situ; *arr hace hardlink desde /data/downloads.
+          set_session TempPathEnabled false
           echo "Asegurando permisos..."
-          chown -R 1000:1000 /data/downloads /config/qBittorrent
+          # No chown -R en downloads/: en NFS recorre cientos de GB y el init no termina.
+          chown 1000:1000 /data/downloads /data/downloads/completed /data/downloads/incomplete
+          chown -R 1000:1000 /config/qBittorrent
         volumeMounts:
         - name: media-library
           mountPath: /data
@@ -84,8 +95,11 @@ spec:
         - containerPort: 8080
           name: webui
         - containerPort: 6881
+          hostPort: 6881
           name: bt-tcp
+          protocol: TCP
         - containerPort: 6881
+          hostPort: 6881
           name: bt-udp
           protocol: UDP
         volumeMounts:
