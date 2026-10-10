@@ -2,18 +2,50 @@
 # Parkour Spiral 2 y 3 de Hielke (https://hielkemaps.com), mapas 26.2 con datapacks propios, que
 # por eso necesitan ser el mundo principal de su propio Paper. No se exponen fuera del cluster:
 # solo se llega a ellos desde el proxy (NPC del lobby). El mundo se descarga en el primer arranque
-# (WORLD); el progreso (ranking, cronómetros) queda en el PVC. Para reiniciar un mapa: borrar el PVC.
+# (WORLD); el progreso (ranking, cronómetros) queda en el PVC. Para reiniciar un mapa: vaciar el dataset.
+# Datos en NFS de Proxmox (datasets nvme/k8s/minecraft-spiral2|3, export en proxmox/etc/k8s.exports;
+# sanoid + syncoid heredados de nvme/k8s) para que los pods no queden atados a un nodo (antes local-path
+# en node-3, que se quedaba sin RAM al juntar los tres servidores; 2026-10-10).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minecraft-spiral2-data-pv
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes: ["ReadWriteMany"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/minecraft-spiral2
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: minecraft-spiral2-data
   namespace: minecraft
 spec:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
+  accessModes: ["ReadWriteMany"]
+  storageClassName: nfs-proxmox
+  volumeName: minecraft-spiral2-data-pv
   resources:
     requests:
       storage: 3Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minecraft-spiral3-data-pv
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes: ["ReadWriteMany"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/minecraft-spiral3
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -21,8 +53,9 @@ metadata:
   name: minecraft-spiral3-data
   namespace: minecraft
 spec:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
+  accessModes: ["ReadWriteMany"]
+  storageClassName: nfs-proxmox
+  volumeName: minecraft-spiral3-data-pv
   resources:
     requests:
       storage: 3Gi
