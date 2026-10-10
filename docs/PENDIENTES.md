@@ -93,7 +93,7 @@ Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamient
 VM 103 y 104 no tenían `cpu:` en Proxmox → QEMU usa `kvm64` (sin x86-64-v2: NumPy reciente, Immich ML v3, PyTorch
 fallan). Immich ML está fijado a k3s-node-1 (`cpu: host`) por eso.
 - [x] 2026-10-08: `cpu: host` puesto en 103 y 104 **como cambio pendiente** (sin reiniciar; ver `proxmox/README.md` § VMs del cluster k3s).
-- [ ] **Al próximo stop/start de las VMs** (no basta un `reboot` dentro del invitado): drenar de a uno, `qm reboot 103` / `qm reboot 104`, uncordon, y confirmar con `grep -c sse4_2 /proc/cpuinfo` > 0 en cada nodo y `qm pending <vmid>` sin líneas `new`.
+- [x] 2026-10-10: stop/start de 103 y 104 hecho (drain + `qm shutdown`/`qm start`); `sse4_2` y `avx2` presentes, `qm pending` limpio.
 - [ ] Después: quitar el `nodeSelector` de Immich ML (`cluster/apps/immich/00-deployment.yaml`) y actualizar la tabla de nodos de `docs/DISENO-APPS.md`.
 
 ## 4d. Sitios estáticos independientes de Proxmox

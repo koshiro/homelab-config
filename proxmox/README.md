@@ -11,6 +11,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `systemd/drop-ins/syncoid-respaldo-notify.conf` | `/etc/systemd/system/syncoid-respaldo.service.d/notify.conf` |
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
+| `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
 | `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 8 GB; `update-initramfs -u`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
 | `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
@@ -26,18 +27,26 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 Configuración que se aparta de los valores por defecto de Proxmox (`qm config <vmid>`):
 
-| VM | Nombre | `cpu` | Notas |
-|---|---|---|---|
-| 102 | `k3s-node-1` | `host` | GPU RTX 3070 (`hostpci`) |
-| 103 | `k3s-node-2` | `host` (desde 2026-10-08, **pendiente de stop/start**) | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
-| 104 | `k3s-node-3` | `host` (desde 2026-10-08, **pendiente de stop/start**) | Igual que 103 |
+| VM | Nombre | `cpu` | `memory` | Notas |
+|---|---|---|---|---|
+| 102 | `k3s-node-1` | `host` | 24 GB | GPU RTX 3070 (`hostpci`): con passthrough la RAM queda fija entera en el host, sin balloon |
+| 103 | `k3s-node-2` | `host` (aplicado 2026-10-10) | 8 GB | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
+| 104 | `k3s-node-3` | `host` (aplicado 2026-10-10) | 12 GB (antes 16, bajada 2026-10-10) | Igual que 103 |
 
-Aplicado con `qm set 103 --cpu host` y `qm set 104 --cpu host` con las VMs encendidas: el tipo de CPU no se cambia en
-caliente, así que queda como cambio pendiente (`qm pending <vmid>`, en naranjo en la interfaz web) hasta el próximo
-**stop/start desde Proxmox** (`qm shutdown` + `qm start`, `qm reboot`, el botón *Reboot* de la interfaz o
-`playbook_graceful_shutdown_cluster.yml`). **Un `reboot` dentro del invitado no lo aplica**: la VM sigue con el
-mismo proceso QEMU. `playbook_graceful_shutdown_cluster.yml` y `playbook_startup_cluster.yml` avisan si alguna VM tiene
-cambios pendientes.
+**Presupuesto de RAM del host (64 GB):** VMs 102–104 = 44 GB + LXC 110 = 1 GB + ARC hasta 8 GB + host. La VM 105
+(`opencontracts-lab`, 12 GB, temporal) deja el host con ~8 GB libres; con 16 GB en node-3 el host llegó a llenar sus 8
+GB de swap con memoria de node-2/3. Antes de subir la RAM de una VM, revisar `free -m` y `swapon --show` en el host:
+el swap debe quedar cerca de 0. Para vaciarlo con RAM libre suficiente: `swapoff -a && swapon -a`.
+
+`cpu` y `memory` no se cambian en caliente: `qm set` los deja como cambio pendiente (`qm pending <vmid>`, en naranjo en
+la interfaz web) hasta el próximo **stop/start desde Proxmox** (`qm shutdown` + `qm start`, `qm reboot`, el botón
+*Reboot* de la interfaz o `playbook_graceful_shutdown_cluster.yml`). **Un `reboot` dentro del invitado no lo aplica**:
+la VM sigue con el mismo proceso QEMU. Procedimiento por nodo: `kubectl drain <nodo> --ignore-daemonsets
+--delete-emptydir-data`, `qm shutdown <vmid> && qm start <vmid>`, `kubectl uncordon <nodo>`. Si el nodo tiene el
+primario de Postgres (`kubectl -n postgresql get cluster homelab-postgres -o jsonpath='{.status.currentPrimary}'`),
+moverlo antes con `kubectl -n postgresql patch cluster homelab-postgres --subresource=status --type=merge -p
+'{"status":{"targetPrimary":"<otra instancia>"}}'`. `playbook_graceful_shutdown_cluster.yml` y
+`playbook_startup_cluster.yml` avisan si alguna VM tiene cambios pendientes.
 
 ## Pools ZFS al arrancar
 
