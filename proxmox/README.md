@@ -9,6 +9,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `systemd/*.service`, `systemd/*.timer` | `/etc/systemd/system/` |
 | `systemd/drop-ins/sanoid-notify.conf` | `/etc/systemd/system/sanoid.service.d/notify.conf` |
 | `systemd/drop-ins/syncoid-respaldo-notify.conf` | `/etc/systemd/system/syncoid-respaldo.service.d/notify.conf` |
+| `systemd/drop-ins/qemu-slice-sin-swap.conf` | `/etc/systemd/system.control/qemu.slice.d/50-MemorySwapMax.conf` (lo escribe `systemctl set-property qemu.slice MemorySwapMax=0`; en caliente) |
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
@@ -65,8 +66,17 @@ El host tiene 62 GB. **La suma de la `memory` de las VMs encendidas no debe pasa
 (`zfs_arc_max` 6 GB, bajado de 8 el 2026-10-10 para dar margen tras reiniciar VMs), el LXC `nas`, nfsd y el propio host. Hoy el cluster usa 44 GB (102: 24, 103: 8, 104: 12), así que
 **una VM extra de laboratorio (p. ej. la 105, 12 GB) no cabe con el cluster encendido** sin achicar otra.
 
-Por qué importa: los invitados llenan su RAM con caché de páginas NFS y el host no la recupera, así que con la RAM
-sobrecomprometida el swap del host se llena (estuvo al 100 % del 2026-10-08 al 10-10). Con presión de memoria, nfsd del
+Por qué importa: con la RAM sobrecomprometida el swap del host se llena (estuvo al 100 % del 2026-10-08 al 10-10).
+
+**Swap con RAM libre (bug de ZFS 2.4 + kernel 7.0, [openzfs#18893](https://github.com/openzfs/zfs/issues/18893)):**
+aunque sobren 15–20 GB, ZFS hace crecer sus caches de bloques de 1M (`spl_cache_grow_work` → `__vmalloc`) pidiendo
+bloques de orden 10; desde el kernel 7.0 ese intento despierta a `kswapd`, y como el host casi no tiene caché de
+páginas, kswapd encoge el ARC y manda a swap RAM fría de las VMs, que nunca vuelve. Mitigación desde 2026-10-10:
+`qemu.slice` con `MemorySwapMax=0` (las VMs no van a swap; los daemons del host y el LXC sí). Contrapartida: ante
+presión real el OOM killer actúa antes, por eso importa el presupuesto de arriba. Arreglo definitivo pendiente en
+`docs/PENDIENTES.md` § 4b3. Verificación: `cat /sys/fs/cgroup/qemu.slice/memory.swap.max` (debe ser `0`).
+
+Consecuencia antigua del swap lleno, por si vuelve a ocurrir: Con presión de memoria, nfsd del
 kernel 7.0 reduce los *slots* de la sesión NFSv4.1 de cada cliente, y el cliente 5.15 de los workers no la vuelve a
 agrandar: k3s-node-1 quedó con 1 slot (todo su I/O NFS en serie) y algunas escrituras quedaron reintentándose para
 siempre. Así terminó qBittorrent con un hilo en estado D que no se podía matar.
