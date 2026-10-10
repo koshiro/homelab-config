@@ -64,6 +64,19 @@ spec:
           # se serializa y se atasca (Radarr ve ~100% en "downloading").
           # Descargar in-situ; *arr hace hardlink desde /data/downloads.
           set_session TempPathEnabled false
+          # WebUI sin login para la red de pods: el público llega vía Traefik
+          # (ya filtrado por Cloudflare Access) y la NetworkPolicy solo deja
+          # entrar a Traefik y a los *arr.
+          grep -q '^\[Preferences\]' "$CFG" || printf '[Preferences]\n' >> "$CFG"
+          set_webui() {
+            if grep -q "^WebUI.$1=" "$CFG"; then
+              sed -i "s|^WebUI.$1=.*|WebUI\\\\$1=$2|" "$CFG"
+            else
+              sed -i "/^\[Preferences\]/a WebUI\\\\$1=$2" "$CFG"
+            fi
+          }
+          set_webui AuthSubnetWhitelistEnabled true
+          set_webui AuthSubnetWhitelist 10.42.0.0/16
           echo "Asegurando permisos..."
           # No chown -R en downloads/: en NFS recorre cientos de GB y el init no termina.
           chown 1000:1000 /data/downloads /data/downloads/completed /data/downloads/incomplete
