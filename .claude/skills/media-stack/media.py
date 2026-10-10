@@ -5,7 +5,7 @@ Todo va por `kubectl exec`: las API keys se leen dentro de cada pod (config.xml)
 responde sin login en localhost, así que no hace falta sops, port-forward ni secretos locales.
 Las acciones que borran o reinician son dry-run salvo que se pase --apply.
 """
-import argparse, json, re, subprocess, sys, time
+import argparse, calendar, html, json, re, subprocess, sys, time
 from collections import Counter
 
 ARRS = {"sonarr": (8989, "v3"), "radarr": (7878, "v3"), "prowlarr": (9696, "v1")}
@@ -17,8 +17,16 @@ if [ "$3" = 1 ]; then B="--data-binary @-"; else B=""; fi
 curl -sS -X "$1" -H "X-Api-Key: $K" -H "Content-Type: application/json" $B -w "\n%{http_code}" "http://localhost:$4/api/$5/$2"'''
 
 
-def sh(cmd, inp=None, check=True):
-    r = subprocess.run(cmd, input=inp, capture_output=True, text=True)
+TRANSITORIO = re.compile(r"connection reset|i/o timeout|EOF|TLS handshake|connection refused", re.I)
+
+
+def sh(cmd, inp=None, check=True, reintentos=0):
+    """reintentos solo para lecturas: el enlace Tailscale al API server se corta a veces."""
+    for i in range(reintentos + 1):
+        r = subprocess.run(cmd, input=inp, capture_output=True, text=True)
+        if not (r.returncode and TRANSITORIO.search(r.stderr)) or i == reintentos:
+            break
+        time.sleep(3)
     if check and r.returncode:
         sys.exit(f"ERROR {' '.join(cmd[:6])}…: {r.stderr.strip()[:400]}")
     return r.stdout
@@ -28,7 +36,8 @@ def arr(app, path, method="GET", body=None):
     port, ver = ARRS[app]
     data = json.dumps(body) if body is not None and not isinstance(body, str) else body
     out = sh(["kubectl", "exec", "-i", "-n", app, f"deploy/{app}", "-c", app, "--", "sh", "-c", ARR_SH, "_",
-              method, path.lstrip("/"), "1" if data else "0", str(port), ver], inp=data or "")
+              method, path.lstrip("/"), "1" if data else "0", str(port), ver], inp=data or "",
+             reintentos=2 if method == "GET" else 0)
     txt, _, code = out.rpartition("\n")
     if not code.startswith("2"):
         sys.exit(f"ERROR {app} {method} {path}: HTTP {code} {txt[:300]}")
@@ -41,7 +50,7 @@ def qb(path, form=None):
            "curl", "-sS", "-w", "\n%{http_code}", f"http://localhost:8080/api/v2/{path.lstrip('/')}"]
     if form is not None:
         cmd[-1:-1] = ["--data-binary", "@-"]
-    out = sh(cmd, inp=form or "")
+    out = sh(cmd, inp=form or "", reintentos=2 if form is None else 0)
     txt, _, code = out.rpartition("\n")
     if not code.startswith("2"):
         sys.exit(f"ERROR qbittorrent {path}: HTTP {code} {txt[:300]}")
@@ -54,6 +63,8 @@ def qb(path, form=None):
 def gb(n): return f"{n / 1e9:.1f}G"
 def horas(ts): return (time.time() - ts) / 3600
 def cut(s, n=60): return s if len(s) <= n else s[: n - 1] + "…"
+def utc(s): return calendar.timegm(time.strptime(s[:19], "%Y-%m-%dT%H:%M:%S"))
+def nombre(t, n=60): return cut(html.unescape(t["name"]), n)
 
 
 def colas():
@@ -76,7 +87,7 @@ def c_status(a):
             continue
         cs = st.get("containerStatuses", [])
         listo = all(c.get("ready") for c in cs)
-        edad = horas(time.mktime(time.strptime(st.get("startTime", m["creationTimestamp"]), "%Y-%m-%dT%H:%M:%SZ")) - time.timezone)
+        edad = horas(utc(st.get("startTime", m["creationTimestamp"])))
         print(f"  {m['namespace']:<13} {st.get('phase')}{'' if listo else '/NO-READY'} "
               f"r={sum(c.get('restartCount', 0) for c in cs)} {edad:.0f}h {p['spec'].get('nodeName')}")
     print("VERSIONES / SALUD")
@@ -107,13 +118,76 @@ def c_status(a):
 def c_torrents(a):
     ts = qb("torrents/info")
     rx = re.compile(a.state) if a.state else None
-    sel = [t for t in ts if (not rx or rx.search(t["state"])) and horas(t["added_on"]) >= a.min_age
+    sel = [t for t in ts if (not rx or rx.search(t["state"])) and a.min_age <= horas(t["added_on"]) <= a.max_age
            and (not a.name or a.name.lower() in t["name"].lower())]
     sel.sort(key=lambda t: -horas(t["added_on"]))
     print(f"{len(sel)}/{len(ts)} — estado edad% prog seeds tamaño cat hash nombre")
     for t in sel[: a.limit]:
-        print(f"{t['state']:<10} {horas(t['added_on']):5.0f}h {t['progress'] * 100:3.0f}% {t['num_seeds']:>3} "
-              f"{gb(t['size']):>6} {t['category'] or '-':<7} {t['hash'][:10]} {cut(t['name'], a.width)}")
+        print(f"{t['state']:<11} {horas(t['added_on']):5.0f}h {t['progress'] * 100:3.0f}% {t['num_seeds']:>3} "
+              f"{gb(t['size']):>6} {t['category'] or '-':<9} {t['hash'][:10]} {nombre(t, a.width)}")
+
+
+def importados():
+    """Hashes (minúsculas) con evento downloadFolderImported en Sonarr o Radarr."""
+    res = set()
+    for app in ("sonarr", "radarr"):
+        for h in arr(app, "history?pageSize=10000&eventType=3&sortKey=date&sortDirection=descending")["records"]:
+            if h.get("downloadId"):
+                res.add(h["downloadId"].lower())
+    return res
+
+
+QB_LOGS = "/config/qBittorrent/logs"  # rotan cada pocos minutos por los "Performance alert"
+
+
+def diagnostico_movimientos():
+    """qBittorrent mueve de a un torrent (FIFO). Si el job de cabeza no termina, la cola entera se traba."""
+    out = sh(["kubectl", "exec", "-n", "qbittorrent", "deploy/qbittorrent", "-c", "qbittorrent", "--", "sh", "-c",
+              f"cd {QB_LOGS} && cat $(ls -tr) | grep -E 'started\\. Process|Enqueued torrent move|Moved torrent|"
+              "move canceled|Failed to move'"], check=False).splitlines()
+    ultimo_ok = next((l for l in reversed(out) if "Moved torrent" in l or "started. Process" in l), None)
+    pendientes = out[out.index(ultimo_ok) + 1:] if ultimo_ok else out
+    encolados = [l for l in pendientes if "Enqueued" in l]
+    if ultimo_ok:
+        mins = (time.time() - utc(ultimo_ok[4:23])) / 60  # el pod usa TZ=Etc/UTC
+        print(f"último movimiento terminado (o arranque) hace {mins:.0f} min; encolados desde entonces: {len(encolados)}")
+        if encolados and mins > 30:
+            cabeza = re.search(r'Torrent: "([^"]+)"', encolados[0])
+            print(f"  AVISO cola de movimientos trabada; cabeza: {cabeza.group(1) if cabeza else '?'}. "
+                  "setLocation no sirve (\"currently moving\"): `update qbittorrent --apply` los reencola al arrancar")
+
+
+def c_unimported(a):
+    """Torrents al 100 % que el *arr no importó: moviéndose, con aviso en la cola o huérfanos."""
+    cola, imp = colas(), importados()
+    grupos = {}
+    for t in qb("torrents/info"):
+        if t["progress"] < 1:
+            continue
+        h = t["hash"].lower()
+        items = cola.get(h, [])
+        if t["state"] == "moving":
+            g = "moving (qBittorrent copiando a save_path; el *arr espera)"
+        elif items:
+            it = items[0][1]
+            g = f"en cola {items[0][0]}: {it.get('trackedDownloadState')}/{it.get('trackedDownloadStatus')}"
+        elif h not in imp:
+            g = "fuera de cola y sin import en el historial"
+        else:
+            continue
+        grupos.setdefault(g, []).append((t, items))
+    if not grupos:
+        print("todo lo completo está importado")
+    if any(g.startswith("moving") for g in grupos):
+        diagnostico_movimientos()
+    for g, lst in grupos.items():
+        print(f"{g}: {len(lst)}")
+        for t, items in lst[: a.limit]:
+            msgs = [m for s in (items[0][1].get("statusMessages", []) if items else []) for m in s.get("messages", [])]
+            ruta = t.get("content_path", "")
+            print(f"  {horas(t['added_on']):4.0f}h {gb(t['size']):>6} {t['category'] or '-':<9} {nombre(t, a.width)}"
+                  + (f"\n      {cut(ruta, 90)}" if a.paths else "")
+                  + (f"\n      — {cut(msgs[0], 110)}" if msgs else ""))
 
 
 def c_queue(a):
@@ -149,7 +223,7 @@ def c_stuck(a):
         else:
             huerfanos.append(t)
         idx = (items[0][1].get("indexer") or "").replace(" (Prowlarr)", "") if items else "SIN *arr"
-        print(f"{t['state']:<9} {horas(t['added_on']):5.0f}h {t['num_seeds']:>2}s {idx:<15} {cut(t['name'], a.width)}")
+        print(f"{t['state']:<9} {horas(t['added_on']):5.0f}h {t['num_seeds']:>2}s {idx:<15} {nombre(t, a.width)}")
     print(f"→ {len(ts)} atascados; en cola *arr: { {k: len(v) for k, v in por_arr.items()} }; huérfanos: {len(huerfanos)}")
     idxs = Counter((it[1].get("indexer") or "?") for t in ts for it in cola.get(t["hash"].lower(), []))
     if idxs:
@@ -166,20 +240,57 @@ def c_stuck(a):
         print(f"  qbittorrent: {len(huerfanos)} huérfanos borrados")
 
 
+def c_requeue(a):
+    """Quita de la cola *arr (con blocklist) los ítems que matcheen indexer/título, y el *arr busca otro release."""
+    rx_i = re.compile(a.indexer, re.I) if a.indexer else None
+    rx_t = re.compile(a.title, re.I) if a.title else None
+    if not (rx_i or rx_t):
+        sys.exit("indicar --indexer y/o --title")
+    for app, unk in (("sonarr", "includeUnknownSeriesItems"), ("radarr", "includeUnknownMovieItems")):
+        rec = [r for r in arr(app, f"queue?pageSize=2000&{unk}=true")["records"]
+               if (not rx_i or rx_i.search(r.get("indexer") or "")) and (not rx_t or rx_t.search(r["title"]))]
+        for r in rec[: a.limit]:
+            print(f"  {app} {r.get('trackedDownloadState')} {cut(html.unescape(r['title']), 60)} [{r.get('indexer')}]")
+        if rec and a.apply:
+            quitar_de_cola(app, [r["id"] for r in rec], blocklist=not a.no_blocklist)
+        print(f"{app}: {len(rec)} {'quitados (búsqueda lanzada)' if a.apply else 'coinciden'}")
+    if not a.apply:
+        print("dry-run: --apply los quita (removeFromClient + blocklist) y el *arr busca otro; luego `wait-search`")
+
+
+def c_wait_search(a):
+    """Espera a que terminen los comandos de búsqueda de Sonarr/Radarr."""
+    fin = time.time() + a.timeout
+    while True:
+        pend = {app: sum(1 for c in arr(app, "command") if "Search" in c["name"] and c["status"] in ("queued", "started"))
+                for app in ("sonarr", "radarr")}
+        if not any(pend.values()) or time.time() > fin:
+            break
+        time.sleep(15)
+    print("búsquedas terminadas" if not any(pend.values()) else f"pendientes {pend}")
+
+
+def c_grabs(a):
+    """Releases tomados por los *arr en los últimos N minutos, por indexer."""
+    desde = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - a.minutes * 60))
+    for app in ("sonarr", "radarr"):
+        rec = [r for r in arr(app, "history?pageSize=500&eventType=1&sortKey=date&sortDirection=descending")["records"]
+               if r["date"] >= desde]
+        print(f"{app}: {len(rec)} grabs en {a.minutes} min", dict(Counter(r["data"].get("indexer") for r in rec)))
+        if a.verbose:
+            for r in rec:
+                print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)} [{r['data'].get('indexer')}]")
+
+
 def c_imported(a):
     """Torrents completos, fuera de la cola de los *arr y ya importados (hardlink en la biblioteca)."""
-    cola = colas()
-    importados = set()
-    for app in ("sonarr", "radarr"):
-        for h in arr(app, "history?pageSize=10000&eventType=3&sortKey=date&sortDirection=descending")["records"]:
-            if h.get("downloadId"):
-                importados.add(h["downloadId"].lower())
+    cola, imp = colas(), importados()
     ts = [t for t in qb("torrents/info") if t["progress"] >= 1 and t["hash"].lower() not in cola
-          and t["hash"].lower() in importados]
+          and t["hash"].lower() in imp]
     print(f"{len(ts)} torrents importados y fuera de cola, {gb(sum(t['size'] for t in ts))} en downloads/",
           dict(Counter(t["state"] for t in ts)))
     for t in ts[: a.limit]:
-        print(f"  {t['state']:<10} {gb(t['size']):>6} {cut(t['name'], a.width)}")
+        print(f"  {t['state']:<10} {gb(t['size']):>6} {nombre(t, a.width)}")
     if not a.apply:
         print("dry-run: --apply los borra con deleteFiles=true (la biblioteca conserva su hardlink). "
               "Borrado masivo: confirmar con el usuario antes.")
@@ -270,6 +381,7 @@ def main():
     x.add_argument("--state", help="regex de estado (metaDL|stalledDL…)")
     x.add_argument("--name", help="subcadena del nombre")
     x.add_argument("--min-age", type=float, default=0, help="horas desde que se agregó")
+    x.add_argument("--max-age", type=float, default=1e9, help="horas desde que se agregó")
     x.add_argument("--limit", type=int, default=40); x.add_argument("--width", type=int, default=60)
     x.set_defaults(f=c_torrents)
     x = s.add_parser("queue", help="cola de sonarr/radarr (solo problemas salvo --all)")
@@ -280,6 +392,19 @@ def main():
     x.add_argument("--apply", action="store_true"); x.add_argument("--orphans", action="store_true")
     x.add_argument("--width", type=int, default=55)
     x.set_defaults(f=c_stuck)
+    x = s.add_parser("unimported", help="torrents al 100 %% sin importar (moving, aviso en cola, huérfanos)")
+    x.add_argument("--limit", type=int, default=20); x.add_argument("--width", type=int, default=60)
+    x.add_argument("--paths", action="store_true", help="muestra content_path")
+    x.set_defaults(f=c_unimported)
+    x = s.add_parser("requeue", help="quitar de la cola *arr por indexer/título con blocklist → nueva búsqueda")
+    x.add_argument("--indexer"); x.add_argument("--title"); x.add_argument("--apply", action="store_true")
+    x.add_argument("--no-blocklist", action="store_true"); x.add_argument("--limit", type=int, default=30)
+    x.set_defaults(f=c_requeue)
+    x = s.add_parser("wait-search", help="esperar a que terminen las búsquedas de los *arr")
+    x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
+    x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")
+    x.add_argument("--minutes", type=int, default=60); x.add_argument("-v", "--verbose", action="store_true")
+    x.set_defaults(f=c_grabs)
     x = s.add_parser("imported", help="torrents ya importados y fuera de cola → borrar")
     x.add_argument("--apply", action="store_true"); x.add_argument("--limit", type=int, default=15)
     x.add_argument("--width", type=int, default=70)
