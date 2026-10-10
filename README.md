@@ -2,7 +2,7 @@
 
 Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de Kubernetes en `cluster/`, secretos con SOPS/age y exposición pública vía Cloudflare Tunnel.
 
-> **Estado (2026-10-10):** TrueNAS retirado (VM 101 detenida, pendiente de `qm destroy`). ZFS, NFS y snapshots viven en el host Proxmox (`192.168.1.100`). `homelab-storage` se recreó el 2026-10-03 en el disco de 12 TB (**un solo disco, sin redundancia**) y todas las apps están arriba: Immich, Minecraft y Pingvin desde `nvme/k8s`; Plex, la suite *arr, qBittorrent y ComfyUI desde `homelab-storage`. Todos los workers con `cpu: host` desde 2026-10-10. Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+> **Estado (2026-10-10):** TrueNAS retirado (VM 101 y plantilla 9001 destruidas el 2026-10-10). ZFS, NFS y snapshots viven en el host Proxmox (`192.168.1.100`). `homelab-storage` se recreó el 2026-10-03 en el disco de 12 TB (**un solo disco, sin redundancia**) y todas las apps están arriba: Immich, Minecraft y Pingvin desde `nvme/k8s`; Plex, la suite *arr, qBittorrent y ComfyUI desde `homelab-storage`. Todos los workers con `cpu: host` desde 2026-10-10. Ver **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Arquitectura objetivo (capas de almacenamiento, respaldos, fases): **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
 ## Arquitectura
 

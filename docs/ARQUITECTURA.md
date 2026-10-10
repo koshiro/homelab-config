@@ -48,7 +48,7 @@ flowchart TB
 
 | Pool | Discos | Uso | Notas |
 |---|---|---|---|
-| `nvme` | 2 × NVMe 512 GB, mirror | Discos de VMs, `nvme/k8s/<app>` (Immich, Minecraft, Pingvin, futuras apps con datos de valor) | ~260 GB libres; +57 GB al borrar los zvols de TrueNAS |
+| `nvme` | 2 × NVMe 512 GB, mirror | Discos de VMs, `nvme/k8s/<app>` (Immich, Minecraft, Pingvin, futuras apps con datos de valor) | ~260 GB libres (zvols de TrueNAS borrados 2026-10-10) |
 | `homelab-storage` | Seagate 12 TB (único) | `k8s-media-library` (6.2 TB), `media` (1.7 TB, RAW), `timemachine`, `comfyui`, `backup/` (réplicas y vzdump) | Sin redundancia → solo datos reemplazables o copias. Montaje en `/mnt/homelab-storage` para no cambiar rutas de los PV |
 | `respaldo` | WD 3 TB (WD30EZRX, SATA6G_6) | Réplica de `nvme/k8s` y de dumps de Postgres | Disco viejo (1 sector reasignado): es *copia*, nunca original |
 | — | WD 2 TB (WD20EURS, SATA6G_5, enlace SATA II 3 Gbps) | **Retirar** del pool (SLOG en HDD no aporta; 89 000 h) | Opcional: tercer destino frío |
@@ -120,11 +120,11 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 - [x] Pool `respaldo` en `sde` (zstd) + `syncoid-respaldo.timer` diario 03:30; retención réplica 30 d / 8 sem / 12 meses.
 - [x] CronJob `immich-db-backup` (03:15, `pg_dump` de la base `immich`, retención 14 días) → `nvme/k8s/backups/postgres`. Réplica corrupta reemplazada (`homelab-postgres-4`), cluster 3/3.
 - [x] CronJob `backups/etcd-snapshot-copy` (00:30 y 12:30, en pibot) → `nvme/k8s/backups/etcd` (retención 30 días).
-- [x] Rescatado del boot-pool de TrueNAS a `/root/truenas-rescate/` en Proxmox: scripts, `freenas-v1.db`, cronjobs, shares NFS/SMB (texto).
+- [x] Rescatado del boot-pool de TrueNAS a `/root/truenas-rescate/` en Proxmox: scripts, `freenas-v1.db`, cronjobs, shares NFS/SMB (texto). Borrado el 2026-10-10 al retirar TrueNAS.
 - [x] LXC 110 `nas` (Debian 12, `192.168.1.21`, uids 1000/3000-3002 mapeados 1:1): Samba 4.17 con shares `timemachine` (fruit idéntico a TrueNAS, cuota 1 TB), `archivo` y `prueba` (temporal en `nvme/nas-prueba`). Pendiente: contraseñas SMB y `tailscale up`.
 - [ ] Alertas por **Telegram**: `smartd` + `zed` + fallos de sanoid/syncoid/backups (falta token del bot y chat_id).
 - [ ] Offsite R2: restic de `nvme/k8s/{immich,minecraft}` + dumps Postgres (falta token de API de Cloudflare con permiso R2).
-- [x] Repo: PV de media y ComfyUI con `server: 192.168.1.100` (sin aplicar) + `scripts/fase1-migrar-pvs-nfs.sh` para los 10 PV vivos (incluye 3 que solo existen en el cluster).
+- [x] Repo: PV de media y ComfyUI con `server: 192.168.1.100` (sin aplicar) + `scripts/fase1-migrar-pvs-nfs.sh` para los 10 PV vivos (incluye 3 que solo existen en el cluster; script retirado el 2026-10-10, queda en el historial).
 - [x] Rama `consolidacion/fase-0` fusionada en `main` (2026-10-01, sin push).
 
 
@@ -146,8 +146,8 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 
 ### Fase 3 — Retirar TrueNAS y limpiar
 
-1. Con la réplica en `homelab-storage/backup/k8s` verificada: borrar las copias viejas en `homelab-storage` (`immich-library`, carpeta `minecraft-server` y su dataset vacío con snapshots, `pingvin`, `openclaw`, `photoprism`, `ollama`, `open-webui`, `plex-config`, `system-*`, `temp`, `staging`, `logs`, `config-backups`, `web-backup`, `backup_cleanup_*`, `archived-immich-redis-*`).
-2. `qm destroy 101` y plantilla 9001 `truenas-template` (libera ~57 GB en `nvme`). Referencias a TrueNAS en el repo ya eliminadas (2026-10-01: inventario, playbooks, scripts, exporters); las skills locales del editor se retiraron el 2026-10-08 (su contenido vigente pasó a `AGENTS.md` y `docs/DISENO-APPS.md`).
+1. ~~Borrar las copias viejas en `homelab-storage`~~: obsoleto, el pool se recreó el 2026-10-03. Lista original: borrar las copias viejas en `homelab-storage` (`immich-library`, carpeta `minecraft-server` y su dataset vacío con snapshots, `pingvin`, `openclaw`, `photoprism`, `ollama`, `open-webui`, `plex-config`, `system-*`, `temp`, `staging`, `logs`, `config-backups`, `web-backup`, `backup_cleanup_*`, `archived-immich-redis-*`).
+2. [x] `qm destroy 101` y plantilla 9001 `truenas-template` (2026-10-10; libera ~57 GB en `nvme`), más `/root/truenas-rescate/` y la etiqueta vieja de log en el WD 2 TB. Referencias a TrueNAS en el repo ya eliminadas (2026-10-01: inventario, playbooks, scripts, exporters); las skills locales del editor se retiraron el 2026-10-08 (su contenido vigente pasó a `AGENTS.md` y `docs/DISENO-APPS.md`).
 3. vzdump semanal de VMs 102–104 → `homelab-storage/backup/vzdump` (retención 4).
 
 ### Fase 4 — Operación
