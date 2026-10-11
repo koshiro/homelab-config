@@ -263,6 +263,73 @@ def c_requeue(a):
         print("dry-run: --apply los quita (removeFromClient + blocklist) y el *arr busca otro; luego `wait-search`")
 
 
+YA_IMPORTADO = re.compile(r"already imported|Not an upgrade|Existing file", re.I)
+NUM_EP = r"(?:\b[Ss]\d{1,2}[Ee]|\s-\s)(\d{1,4})(?:v\d+)?\b"  # S03E07 o anime " - 07"; no el CRC
+
+
+def c_manual(a):
+    """Importación manual de lo bloqueado en la cola de Sonarr: propone, --apply importa, --clean quita lo ya importado.
+
+    Sonarr propone serie/episodios por archivo. Si no reconoce la serie ("Unknown Series", típico en anime con
+    título alternativo), --series/--season/--offset fijan el destino: episodio = número del archivo + offset.
+    """
+    rx = re.compile(a.title, re.I) if a.title else None
+    rec = [r for r in arr("sonarr", "queue?pageSize=2000&includeUnknownSeriesItems=true")["records"]
+           if r.get("trackedDownloadState") in ("importBlocked", "importPending", "importFailed")
+           and (not rx or rx.search(r["title"]))]
+    descargas = {}
+    for r in rec:
+        descargas.setdefault(r["downloadId"], []).append(r)
+    serie, eps = None, {}
+    if a.series:
+        ss = [s for s in arr("sonarr", "series") if re.search(a.series, s["title"], re.I)]
+        if len(ss) != 1:
+            sys.exit(f"--series debe identificar una serie: {[s['title'] for s in ss]}")
+        serie = ss[0]
+        eps = {(e["seasonNumber"], e["episodeNumber"]): e for e in arr("sonarr", f"episode?seriesId={serie['id']}")}
+    importar, limpiar, sin_destino = [], [], 0
+    for did, items in descargas.items():
+        print(f"{cut(items[0]['title'], 85)}")
+        archivos = arr("sonarr", f"manualimport?downloadId={did}&filterExistingFiles=false")
+        for f in archivos:
+            rej = [x["reason"] for x in f.get("rejections", [])]
+            sid = f.get("series", {}).get("id")
+            ids = [e["id"] for e in f.get("episodes", [])]
+            dest = f"S{f.get('seasonNumber')}E" + ",".join(str(e["episodeNumber"]) for e in f.get("episodes", []))
+            if serie and (sid in (None, serie["id"])):
+                m = re.findall(NUM_EP, f["relativePath"])
+                e = eps.get((a.season, int(m[0]) + a.offset)) if m and a.season is not None else None
+                if e:
+                    sid, ids = serie["id"], [e["id"]]
+                    dest = f"S{a.season}E{e['episodeNumber']} {cut(e.get('title') or '', 30)}"
+                    rej = [x for x in rej if x not in ("Unknown Series",) and not x.startswith("Unable to")]
+            if rej and all(YA_IMPORTADO.search(x) for x in rej):
+                estado = "ya importado"
+            elif sid and ids and not rej:
+                estado = "importable"
+                importar.append({"path": f["path"], "seriesId": sid, "episodeIds": ids, "quality": f["quality"],
+                                 "languages": f.get("languages", []), "releaseGroup": f.get("releaseGroup"),
+                                 "downloadId": did, "indexerFlags": f.get("indexerFlags", 0),
+                                 "releaseType": f.get("releaseType", "unknown")})
+            else:
+                estado, sin_destino = "SIN DESTINO", sin_destino + 1
+            print(f"  {estado:<12} {cut(f['relativePath'], 72):<72} → {dest if ids else '?'}"
+                  + (f"  ({cut('; '.join(rej), 60)})" if rej and estado != "ya importado" else ""))
+        if archivos and all(any(YA_IMPORTADO.search(x["reason"]) for x in f.get("rejections", [])) for f in archivos):
+            limpiar.append(items)
+    print(f"→ {len(importar)} importables, {len(limpiar)} descargas sin nada que importar, {sin_destino} sin destino")
+    if sin_destino:
+        print("  sin destino: fijarlo con --series RE --season N [--offset K] (episodio = número del archivo + K)")
+    if a.apply and importar:
+        cmd = arr("sonarr", "command", "POST", {"name": "ManualImport", "files": importar, "importMode": "auto"})
+        print(f"  ManualImport lanzado (comando {cmd['id']}); revisar con `grabs --imported --minutes 10 -v`")
+    if a.clean and limpiar:
+        quitar_de_cola("sonarr", [r["id"] for items in limpiar for r in items], blocklist=True)
+        print(f"  {len(limpiar)} descargas quitadas de cola y de qBittorrent con blocklist (la biblioteca queda intacta)")
+    if not (a.apply or a.clean):
+        print("dry-run: --apply importa lo importable; --clean quita (con blocklist) lo que no tiene nada que importar")
+
+
 def c_wait_search(a):
     """Espera a que terminen los comandos de búsqueda de Sonarr/Radarr."""
     fin = time.time() + a.timeout
@@ -408,6 +475,12 @@ def main():
     x.add_argument("--indexer"); x.add_argument("--title"); x.add_argument("--apply", action="store_true")
     x.add_argument("--no-blocklist", action="store_true"); x.add_argument("--limit", type=int, default=30)
     x.set_defaults(f=c_requeue)
+    x = s.add_parser("manual", help="importación manual de lo bloqueado en Sonarr (propone; --apply / --clean)")
+    x.add_argument("--title", help="regex sobre el título del release")
+    x.add_argument("--series", help="regex de la serie destino cuando Sonarr no la reconoce")
+    x.add_argument("--season", type=int); x.add_argument("--offset", type=int, default=0)
+    x.add_argument("--apply", action="store_true"); x.add_argument("--clean", action="store_true")
+    x.set_defaults(f=c_manual)
     x = s.add_parser("wait-search", help="esperar a que terminen las búsquedas de los *arr")
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")

@@ -6,3 +6,4 @@
 | 2026-10-10 | (antes de la skill) limpiar importados | 18 | cruce cola/historial a mano | — |
 | 2026-10-10 | Sacar atascados, eliminar TorrentDownload, re-buscar | 12 | filtro por indexer, esperar búsquedas, grabs por indexer | `requeue`, `wait-search`, `grabs`, `torrents --max-age`, nombres con `html.unescape` |
 | 2026-10-10 | Descargas al 100 % sin importar | ~30 | cruce qBittorrent/cola/historial; logs rotados; causa raíz NFS (mountstats, prueba con cp) | `unimported` detecta cola trabada y scratch en NFS 4.2; fix PV scratch a 4.1; hechos y receta |
+| 2026-10-11 | Revisar "mala" importación + importaciones manuales (Fire Force Part 2, SAC sin S4) | ~14 | proponer destino por archivo, POST ManualImport, limpiar pack sin nada que importar | `manual` (propone, `--series/--season/--offset`, `--apply`, `--clean`); receta y hechos |
