@@ -40,6 +40,17 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
    episodefile/<id> -X DELETE` (borra el archivo de la biblioteca; la descarga queda). Antes, verificar que el mapeo
    esté de verdad mal: el 2026-10-11 el "mal importado" era correcto.
 
+## Anime que Sonarr no encuentra (búsqueda vacía o mal mapeada)
+1. Ver qué consulta manda Sonarr: `$M api prowlarr "history?pageSize=60&sortKey=date&sortDirection=descending"` →
+   `data.query` y `data.queryResults`. Comparar con cómo nombra el grupo en Nyaa
+   (`$M grab "<romaji>" --indexer 4`). Probar el parse: `$M api sonarr "parse?title=<urlencoded>"`.
+2. Si el título o la división de temporadas no coincide (ver hechos § Anime): no tocar Nyaa ni la serie. Elegir el
+   release (preferir Erai-raws/ToonsHub, 1080p, batch) → `$M grab "<consulta>" --indexer 4 --match RE --apply
+   [--pick N]` (categoría `tv-sonarr`).
+3. Al completar: `$M manual --title RE --series RE --season N --offset K` → mostrar la tabla y pedir autorización →
+   `--apply`.
+4. Serie anime nueva: tipo `anime`, perfil `Anime` y tag `erai` si se quiere marcar.
+
 ## Limpiar la cola de lo ya importado
 `$M imported` → mostrar conteo y GB → **pedir confirmación** → `--apply`. Normalmente innecesario: el límite de 2 días
 ya los detiene y los *arr los borran.

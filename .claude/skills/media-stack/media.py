@@ -5,7 +5,7 @@ Todo va por `kubectl exec`: las API keys se leen dentro de cada pod (config.xml)
 responde sin login en localhost, así que no hace falta sops, port-forward ni secretos locales.
 Las acciones que borran o reinician son dry-run salvo que se pase --apply.
 """
-import argparse, calendar, html, json, re, subprocess, sys, time
+import argparse, calendar, html, json, re, subprocess, sys, time, urllib.parse
 from collections import Counter
 
 ARRS = {"sonarr": (8989, "v3"), "radarr": (7878, "v3"), "prowlarr": (9696, "v1")}
@@ -357,6 +357,28 @@ def c_grabs(a):
                 print(f"  {r['date'][11:16]} {cut(r['sourceTitle'], 70)}" + (f" [{idx}]" if idx else ""))
 
 
+def c_grab(a):
+    """Buscar en Prowlarr y mandar un release a qBittorrent con la categoría del *arr. Para lo que Sonarr no
+    reconoce (títulos sin mapeo XEM): luego se importa con `manual --series … --season …`."""
+    q = urllib.parse.quote(a.query)
+    res = arr("prowlarr", f"search?query={q}&type=search&limit=100"
+              + (f"&indexerIds={a.indexer}" if a.indexer else ""))
+    res = [r for r in res if re.search(a.match or "", r["title"], re.I) and r.get("guid")]
+    res.sort(key=lambda r: -(r.get("seeders") or 0))
+    print(f"{len(res)} resultados para «{a.query}»" + (f" ~ /{a.match}/" if a.match else ""))
+    for i, r in enumerate(res[: a.limit]):
+        print(f"  {i:>2} {r.get('seeders') or 0:>4}s {gb(r['size']):>6} {cut(r.get('indexer', ''), 10):<10} "
+              f"{cut(r['title'], 90)}")
+    if not res or not a.apply:
+        print("dry-run: --apply [--pick N] manda el resultado N (por defecto 0) a qBittorrent")
+        return
+    r = res[a.pick]
+    # el guid de Nyaa y similares ya es el magnet; si no, la URL proxy de Prowlarr (alcanzable desde qBittorrent)
+    url = r["guid"] if str(r["guid"]).startswith("magnet:") else r.get("magnetUrl") or r["downloadUrl"]
+    out = qb("torrents/add", urllib.parse.urlencode({"urls": url, "category": a.category}))
+    print(f"agregado a qBittorrent [{a.category}]: {cut(r['title'], 80)} → {out}")
+
+
 def c_imported(a):
     """Torrents completos, fuera de la cola de los *arr y ya importados (hardlink en la biblioteca)."""
     cola, imp = colas(), importados()
@@ -487,6 +509,11 @@ def main():
     x.add_argument("--minutes", type=int, default=60); x.add_argument("-v", "--verbose", action="store_true")
     x.add_argument("--imported", action="store_true", help="importaciones en vez de grabs")
     x.set_defaults(f=c_grabs)
+    x = s.add_parser("grab", help="buscar en Prowlarr y mandar un release a qBittorrent (lo que Sonarr no reconoce)")
+    x.add_argument("query"); x.add_argument("--indexer", type=int, help="id de Prowlarr (Nyaa.si = 4)")
+    x.add_argument("--match", help="regex sobre el título"); x.add_argument("--limit", type=int, default=15)
+    x.add_argument("--pick", type=int, default=0); x.add_argument("--category", default="tv-sonarr")
+    x.add_argument("--apply", action="store_true"); x.set_defaults(f=c_grab)
     x = s.add_parser("imported", help="torrents ya importados y fuera de cola → borrar")
     x.add_argument("--apply", action="store_true"); x.add_argument("--limit", type=int, default=15)
     x.add_argument("--width", type=int, default=70)

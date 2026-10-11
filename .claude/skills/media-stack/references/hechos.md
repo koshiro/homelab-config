@@ -55,3 +55,19 @@
 - 2026-10-11: `manualimport?downloadId=…` sin serie conocida devuelve rechazo permanente "Unknown Series" y sin
   episodios; el POST `command` ManualImport acepta `seriesId`/`episodeIds` explícitos igual. Los CRC `[35D8E195]`
   parecen "E195": el número de episodio se toma solo de `SxxEyy` o ` - NN`.
+
+## Anime (decidido 2026-10-11)
+- Preferir siempre **[Erai-raws]** y **[ToonsHub]** (traen subs en español latino). Custom formats de Sonarr
+  `Anime: Erai-raws` (`^\[Erai-raws\]`, 100), `Anime: ToonsHub` (`^\[ToonsHub\]`, 100) y `Subs latino`
+  (`SPA-LA|ES-LA|Latino|LatAm|Multi-Subs`, 10) en el perfil **`Anime` (id 7)**: grupos `Anime 1080p` (BD+WEB+HDTV) y
+  `Anime 720p`, cutoff 1080p con `cutoffFormatScore 100`. Agrupar es lo que hace ganar al grupo: en Sonarr la calidad
+  pesa antes que el puntaje CF, y un BD-1080p suelto le ganaría a un WEB de Erai. Toda serie tipo `anime` o con tag
+  `erai` va con este perfil. Se borró el release profile "required Erai-raws en Nyaa" porque dejaba fuera a ToonsHub.
+- Nyaa.si (Prowlarr id 4): `sonarr_compatibility` y `strip_s01` **apagados a propósito**. El modo compatibilidad
+  agrega "S01" a títulos sin temporada y rompe la numeración absoluta (" - NN") de las series tipo anime.
+- Sonarr busca anime con la numeración de escena (TheXEM) y los títulos alternativos de sus servicios; no admite
+  títulos ni mapeos propios. Si el grupo usa otro título u otra división de temporadas, la búsqueda vuelve vacía:
+  `grab` + `manual`. Caso **GitS SAC (tvdb 73749)**: S3/S4 de TVDB = SAC_2045 T1/T2; XEM los junta como escena
+  S3x1-24 y busca "Ghost in the Shell SAC_2045 18". Erai publica "Koukaku Kidoutai - SAC_2045 Season 2 - NN" (Sonarr
+  no lo asocia a la serie) y "SAC_2045 S02E03" lo mapea a 2x3 (2nd GIG). Las búsquedas por temporada de esta serie
+  tardan >5 min (episodio × título alternativo × indexer).
