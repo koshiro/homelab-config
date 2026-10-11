@@ -50,3 +50,8 @@
 - Historial: `eventType=1` grab, `eventType=3` downloadFolderImported. `data.indexer` trae el indexer del grab.
 - Salud persistente conocida: Radarr avisa "The Shadow's Edge removed from TMDb"; Prowlarr con indexers caídos
   (Internet Archive, kickasstorrents.ws, Magnet Cat). No son urgentes.
+- 2026-10-11: Erai-raws nombra las segundas partes "San no Shou Part 2 - NN" y Sonarr las deja en "Unknown Series";
+  en TVDB Fire Force S3 son 25 episodios continuos (Part 2 - NN = S3E(12+NN)). `manual --offset 12` lo resuelve.
+- 2026-10-11: `manualimport?downloadId=…` sin serie conocida devuelve rechazo permanente "Unknown Series" y sin
+  episodios; el POST `command` ManualImport acepta `seriesId`/`episodeIds` explícitos igual. Los CRC `[35D8E195]`
+  parecen "E195": el número de episodio se toma solo de `SxxEyy` o ` - NN`.

@@ -22,9 +22,23 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
      background con `$M torrents --state '^moving$' --limit 0`). Si la cola corre pero lento, es la copia
      /incomplete → /data (~100 MB/s): esperar.
    - **en cola con aviso** (`importPending`/`importBlocked`/`importFailed`): leer el mensaje; ejecutables o sin video
-     → lo resuelve el CronJob del filtro; otros → `$M logs sonarr|radarr --grep 'Import'`.
+     → lo resuelve el CronJob del filtro; "Series title mismatch"/"already imported" → receta siguiente; otros →
+     `$M logs sonarr|radarr --grep 'Import'`.
    - **fuera de cola y sin import**: torrents agregados a mano o cuyo ítem se borró del *arr; preguntar antes de
      borrarlos o importarlos (Manual Import vía API `manualimport`).
+
+## Importaciones manuales (Sonarr): proponer y esperar autorización
+1. `$M manual` → por archivo: `importable` (Sonarr ya sabe el destino), `ya importado`, `SIN DESTINO` (típico anime
+   con título alternativo: "Unknown Series").
+2. Sin destino: verificar numeración contra `$M api sonarr "episode?seriesId=N"` (fecha de emisión, absoluto) y fijar
+   `--title RE --series RE --season N --offset K` (episodio = número del archivo + K; p. ej. "Part 2 - 01" → S3E13
+   con offset 12). Releer el dry-run: **mostrar tabla archivo → SxxEyy y pedir autorización**.
+3. `--apply` (comando ManualImport, modo auto = hardlink; el torrent sigue sembrando) → `$M grabs --imported -v`.
+4. Descargas sin nada que importar (pack con menos episodios de los que Sonarr esperaba): `--clean` las quita de
+   cola y de qBittorrent con blocklist. Son hardlinks de la biblioteca: casi no liberan espacio; avisarlo.
+5. Revertir una importación: `$M api sonarr "history?..."` → `data.fileId` del evento → `$M api sonarr
+   episodefile/<id> -X DELETE` (borra el archivo de la biblioteca; la descarga queda). Antes, verificar que el mapeo
+   esté de verdad mal: el 2026-10-11 el "mal importado" era correcto.
 
 ## Limpiar la cola de lo ya importado
 `$M imported` → mostrar conteo y GB → **pedir confirmación** → `--apply`. Normalmente innecesario: el límite de 2 días
