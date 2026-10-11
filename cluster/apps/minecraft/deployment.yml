@@ -22,16 +22,6 @@ spec:
     spec:
       # Tiempo para guardado graceful: save-all + /stop antes de SIGKILL (evita pérdida de datos)
       terminationGracePeriodSeconds: 90
-      # Afinidad no estricta, pero preferiblemente en media-worker por cercanía de red
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/media-worker
-                operator: In
-                values: ["true"]
       initContainers:
         # Addon OneBlock de BentoBox: no es un plugin de Modrinth, va en plugins/BentoBox/addons/.
         # Versión fijada; para actualizar cambiar AONEBLOCK_VERSION (releases en GitHub BentoBoxWorld/AOneBlock).
