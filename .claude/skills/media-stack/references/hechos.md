@@ -71,3 +71,7 @@
   S3x1-24 y busca "Ghost in the Shell SAC_2045 18". Erai publica "Koukaku Kidoutai - SAC_2045 Season 2 - NN" (Sonarr
   no lo asocia a la serie) y "SAC_2045 S02E03" lo mapea a 2x3 (2nd GIG). Las búsquedas por temporada de esta serie
   tardan >5 min (episodio × título alternativo × indexer).
+- GitS: revisado el 2026-10-11, ningún SAC_2045 pisó S1/S2 (títulos de TVDB = archivos). Pero con el perfil `Anime`
+  un "[ToonsHub] … SAC_2045 S02E03" sumaría 110 y **reemplazaría 2x3 de 2nd GIG**; por eso S1-S3 (completas) quedaron
+  **sin monitorear**. No volver a monitorearlas. Mismo riesgo en cualquier anime cuyas temporadas de TVDB no
+  coincidan con las del grupo: dejar sin monitorear lo completo.
