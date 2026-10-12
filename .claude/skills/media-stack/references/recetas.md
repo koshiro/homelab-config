@@ -42,6 +42,10 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
    autorización; `DELETE episodefile/<id>` de lo mal puesto → `ManualImport` con `downloadId`. Confirmar episodios
    dudosos por el título en los subtítulos (`strings -n 8 archivo | grep -m3 "Title"`). Cerrar con `$M rename "<serie>"`
    si los nombres del grupo no coinciden con TVDB (Plex se guía por el nombre).
+4c. **Pack mixto serie + películas** (p. ej. "Complete Series + Movies"): script con `media.arr` que mapee cada archivo
+   a episodio (Sonarr, `downloadId`) o `movieId` (Radarr, `folder=` si la categoría es de Sonarr), dry-run con la tabla
+   y luego `ManualImport` en cada *arr. Lo que exista en ambos (película que TVDB cuenta como temporada, OVA en dos
+   partes) va a un solo lado y se desmonitorea en el otro.
 5. Revertir una importación: `$M api sonarr "history?..."` → `data.fileId` del evento → `$M api sonarr
    episodefile/<id> -X DELETE` (borra el archivo de la biblioteca; la descarga queda). Antes, verificar que el mapeo
    esté de verdad mal: el 2026-10-11 el "mal importado" era correcto.
