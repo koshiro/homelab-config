@@ -330,6 +330,39 @@ def c_manual(a):
         print("dry-run: --apply importa lo importable; --clean quita (con blocklist) lo que no tiene nada que importar")
 
 
+def c_rename(a):
+    """Renombra los archivos de una serie con el formato de Sonarr aunque el renombrado global esté apagado.
+
+    Sirve tras importar packs cuyos nombres no coinciden con TVDB (p. ej. "S03E01" del grupo dentro de Season 2):
+    Plex se guía por el nombre del archivo. Activa renameEpisodes solo mientras dura la operación (también el
+    dry-run, porque la vista previa sale vacía con el renombrado apagado) y lo restaura siempre.
+    """
+    ss = [s for s in arr("sonarr", "series") if re.search(a.series, s["title"], re.I)]
+    if len(ss) != 1:
+        sys.exit(f"la regex debe identificar una serie: {[s['title'] for s in ss]}")
+    sid = ss[0]["id"]
+    naming = arr("sonarr", "config/naming")
+    if not naming["renameEpisodes"]:
+        arr("sonarr", "config/naming", "PUT", {**naming, "renameEpisodes": True})
+    try:
+        ren = arr("sonarr", f"rename?seriesId={sid}")
+        for r in ren[: a.limit]:
+            print(f"  {cut(r['existingPath'], 55):<55} → {cut(r['newPath'], 60)}")
+        print(f"{ss[0]['title']}: {len(ren)} archivos {'a renombrar' if not a.apply else 'renombrando'}")
+        if a.apply and ren:
+            cmd = arr("sonarr", "command", "POST",
+                      {"name": "RenameFiles", "seriesId": sid, "files": [r["episodeFileId"] for r in ren]})
+            ruta, fin = f"command/{cmd['id']}", time.time() + 120
+            while (st := arr("sonarr", ruta)["status"]) not in ("completed", "failed") and time.time() < fin:
+                time.sleep(3)
+            print(f"  RenameFiles {st}")
+    finally:
+        if not naming["renameEpisodes"]:
+            arr("sonarr", "config/naming", "PUT", naming)
+    if not a.apply:
+        print("dry-run: --apply renombra (hardlinks: el torrent sigue sembrando)")
+
+
 def c_wait_search(a):
     """Espera a que terminen los comandos de búsqueda de Sonarr/Radarr."""
     fin = time.time() + a.timeout
@@ -503,6 +536,10 @@ def main():
     x.add_argument("--season", type=int); x.add_argument("--offset", type=int, default=0)
     x.add_argument("--apply", action="store_true"); x.add_argument("--clean", action="store_true")
     x.set_defaults(f=c_manual)
+    x = s.add_parser("rename", help="renombrar archivos de una serie con el formato de Sonarr (dry-run; --apply)")
+    x.add_argument("series", help="regex de la serie"); x.add_argument("--apply", action="store_true")
+    x.add_argument("--limit", type=int, default=15)
+    x.set_defaults(f=c_rename)
     x = s.add_parser("wait-search", help="esperar a que terminen las búsquedas de los *arr")
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")

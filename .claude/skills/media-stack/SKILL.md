@@ -19,6 +19,7 @@ $M requeue --indexer RE|--title RE [--apply]   # quitar de cola con blocklist �
 $M wait-search                     # esperar a que terminen las búsquedas de los *arr
 $M grabs [--minutes 60] [-v] [--imported]   # releases tomados (o importados) recientemente
 $M manual [--title RE] [--series RE --season N --offset K] [--apply|--clean]   # import manual Sonarr
+$M rename "<serie RE>" [--apply]       # renombrar con el formato de Sonarr (renombrado global apagado)
 $M grab "<consulta>" [--indexer 4] [--match RE] [--apply [--pick N]]   # Prowlarr → qBittorrent (anime sin mapeo)
 $M imported [--apply]              # completos, fuera de cola e importados → borrar con archivos
 $M prefs [regex]   |   $M profiles radarr|sonarr [--sizes]   |   $M logs <app> [--since 6h] [--grep RE]

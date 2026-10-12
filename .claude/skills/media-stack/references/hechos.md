@@ -75,3 +75,11 @@
   un "[ToonsHub] … SAC_2045 S02E03" sumaría 110 y **reemplazaría 2x3 de 2nd GIG**; por eso S1-S3 (completas) quedaron
   **sin monitorear**. No volver a monitorearlas. Mismo riesgo en cualquier anime cuyas temporadas de TVDB no
   coincidan con las del grupo: dejar sin monitorear lo completo.
+- Packs multi-temporada con subcarpetas "<Serie> S2/": Sonarr importa solo el primer archivo de cada carpeta y
+  rechaza el resto con "Episode 2x06 was unexpected considering the … S2 folder name" (2026-10-11, Mushi-Shi Judas).
+  El archivo importado queda con el nombre de la carpeta raíz y puede caer en un especial equivocado. Arreglo: receta
+  § Importaciones manuales, paso 4b.
+- Mushi-Shi (id 160): el pack Judas numera S1 26, S2 11, S3 10; TVDB S1 26, S2 20. Judas S2E11 ("Path of
+  Overgrowth") = S00E02 "Path of Thorns"; Judas S03E01-10 = S02E11-20. Reimportado y renombrado el 2026-10-11.
+- Renombrado global de Sonarr apagado (`renameEpisodes=false`): `rename?seriesId=` sale vacío. `$M rename` lo
+  activa solo durante la operación.
