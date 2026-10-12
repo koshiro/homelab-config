@@ -83,3 +83,11 @@
   Overgrowth") = S00E02 "Path of Thorns"; Judas S03E01-10 = S02E11-20. Reimportado y renombrado el 2026-10-11.
 - Renombrado global de Sonarr apagado (`renameEpisodes=false`): `rename?seriesId=` sale vacío. `$M rename` lo
   activa solo durante la operación.
+- Initial D (Sonarr 159, TVDB 70900): pack Judas "Complete Series + Movies" repartido el 2026-10-11. Sonarr S01-S06 +
+  S00E01/02 (Extra Stage partes 1-2); Radarr Third Stage (586), Battle Stage 1/2, Extra Stage 2, Legend 1-3.
+  Desmonitoreados para no duplicar: Sonarr S03E01 (= Third Stage) y Radarr 592 (Extra Stage, son 2 archivos).
+- Radarr `manualimport?downloadId=` sale vacío si el torrent está en categoría `tv-sonarr`: usar
+  `manualimport?folder=<ruta urlencoded>` (devuelve `Unknown Movie`; se fija con `movieId`).
+- Sin Tailscale (`/Applications/Tailscale.app/Contents/MacOS/Tailscale status` → stopped) `k3s-node-0` no resuelve:
+  kubeconfig temporal con `server: https://192.168.1.15:6443` + `tls-server-name: k3s-node-0` y `KUBECONFIG=` (LAN).
+- En zsh `$M …` no se separa en palabras: usar `alias M=…` o llamar `python3 -I …/media.py` directo.
