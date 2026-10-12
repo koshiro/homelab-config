@@ -42,6 +42,9 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
    autorización; `DELETE episodefile/<id>` de lo mal puesto → `ManualImport` con `downloadId`. Confirmar episodios
    dudosos por el título en los subtítulos (`strings -n 8 archivo | grep -m3 "Title"`). Cerrar con `$M rename "<serie>"`
    si los nombres del grupo no coinciden con TVDB (Plex se guía por el nombre).
+4d. **Plex no muestra una temporada que Sonarr tiene completa**: `$M plex "<serie>"` compara ambos. Si faltan, casi
+   siempre son archivos con el nombre del grupo (Erai "SAC_2045 Season 2 - 01" en una S4 de TVDB): `$M rename
+   "<serie>" --apply`, que además pide el escaneo a Plex.
 4c. **Pack mixto serie + películas** (p. ej. "Complete Series + Movies"): script con `media.arr` que mapee cada archivo
    a episodio (Sonarr, `downloadId`) o `movieId` (Radarr, `folder=` si la categoría es de Sonarr), dry-run con la tabla
    y luego `ManualImport` en cada *arr. Lo que exista en ambos (película que TVDB cuenta como temporada, OVA en dos

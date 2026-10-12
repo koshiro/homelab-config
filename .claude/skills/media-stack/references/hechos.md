@@ -91,3 +91,6 @@
 - Sin Tailscale (`/Applications/Tailscale.app/Contents/MacOS/Tailscale status` → stopped) `k3s-node-0` no resuelve:
   kubeconfig temporal con `server: https://192.168.1.15:6443` + `tls-server-name: k3s-node-0` y `KUBECONFIG=` (LAN).
 - En zsh `$M …` no se separa en palabras: usar `alias M=…` o llamar `python3 -I …/media.py` directo.
+- Plex (2026-10-12): monta la biblioteca como `/media/series` y `/media/peliculas` (no `/data/media`); sección de series
+  = 2. Sonarr **no tiene conexión a Plex**: tras renombrar o importar a mano, Plex no se entera hasta su escaneo
+  periódico; `rename --apply` y `plex --scan` lo piden. GitS SAC S4 (Erai) no salía en Plex por los nombres del grupo.

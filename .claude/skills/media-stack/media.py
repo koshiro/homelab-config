@@ -60,6 +60,23 @@ def qb(path, form=None):
         return txt
 
 
+PLEX_SH = r'''T=$(sed -n 's:.*PlexOnlineToken="\([^"]*\)".*:\1:p' "/config/Library/Application Support/Plex Media Server/Preferences.xml")
+U="http://localhost:32400/$1"; shift
+curl -sS -G -H "Accept: application/json" -w "\n%{http_code}" "$U" --data-urlencode "X-Plex-Token=$T" "$@"'''
+PLEX_SERIES = 2  # sección "Programas de TV"; Plex monta /data/media como /media
+
+
+def plex(api, **params):
+    """API de Plex desde su pod (token de Preferences.xml); params van como query."""
+    extra = [x for k, v in params.items() for x in ("--data-urlencode", f"{k}={v}")]
+    out = sh(["kubectl", "exec", "-n", "plex", "deploy/plex", "-c", "plex", "--", "sh", "-c", PLEX_SH, "_",
+              api.lstrip("/"), *extra], reintentos=2)
+    txt, _, code = out.rpartition("\n")
+    if not code.startswith("2"):
+        sys.exit(f"ERROR plex {api}: HTTP {code} {txt[:300]}")
+    return json.loads(txt)["MediaContainer"] if txt.strip() else None
+
+
 def gb(n): return f"{n / 1e9:.1f}G"
 def horas(ts): return (time.time() - ts) / 3600
 def cut(s, n=60): return s if len(s) <= n else s[: n - 1] + "…"
@@ -361,6 +378,35 @@ def c_rename(a):
             arr("sonarr", "config/naming", "PUT", naming)
     if not a.apply:
         print("dry-run: --apply renombra (hardlinks: el torrent sigue sembrando)")
+    elif ren:
+        plex_scan(ss[0])  # Sonarr no tiene conexión a Plex: sin esto Plex sigue con los nombres viejos
+
+
+def plex_scan(serie):
+    ruta = serie["path"].replace("/data/media/", "/media/", 1)
+    plex(f"library/sections/{PLEX_SERIES}/refresh", path=ruta)
+    print(f"  Plex: escaneo pedido de {ruta} (ver con `plex \"{serie['title']}\"` en ~1 min)")
+
+
+def c_plex(a):
+    """Temporadas y episodios que Plex ve de una serie, para comparar con Sonarr; --scan reescanea su carpeta."""
+    ss = [s for s in arr("sonarr", "series") if re.search(a.series, s["title"], re.I)]
+    if len(ss) != 1:
+        sys.exit(f"la regex debe identificar una serie: {[s['title'] for s in ss]}")
+    if a.scan:
+        plex_scan(ss[0])
+        return
+    son = {s["seasonNumber"]: s["statistics"]["episodeFileCount"] for s in ss[0]["seasons"]}
+    guid = f"tvdb://{ss[0]['tvdbId']}"
+    shows = [d for d in plex(f"library/sections/{PLEX_SERIES}/all", includeGuids=1).get("Metadata", [])
+             if any(g["id"] == guid for g in d.get("Guid", []))]
+    if not shows:
+        sys.exit(f"Plex no tiene {guid} (sin escanear o mal emparejada): `plex \"{a.series}\" --scan`")
+    for sh_ in shows:
+        print(f"{sh_['title']} (Plex ratingKey {sh_['ratingKey']})")
+        for t in plex(f"library/metadata/{sh_['ratingKey']}/children").get("Metadata", []):
+            n = t.get("index", 0)
+            print(f"  T{n:<2} plex {t['leafCount']:>3}  sonarr {son.get(n, '-'):>3}  {t['title']}")
 
 
 def c_wait_search(a):
@@ -540,6 +586,9 @@ def main():
     x.add_argument("series", help="regex de la serie"); x.add_argument("--apply", action="store_true")
     x.add_argument("--limit", type=int, default=15)
     x.set_defaults(f=c_rename)
+    x = s.add_parser("plex", help="temporadas que Plex ve de una serie vs archivos en Sonarr (--scan reescanea)")
+    x.add_argument("series", help="regex de la serie"); x.add_argument("--scan", action="store_true")
+    x.set_defaults(f=c_plex)
     x = s.add_parser("wait-search", help="esperar a que terminen las búsquedas de los *arr")
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")
