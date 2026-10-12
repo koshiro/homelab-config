@@ -36,6 +36,12 @@ Ojo: `requeue` también saca los que estaban bajando bien (se pierde el progreso
 3. `--apply` (comando ManualImport, modo auto = hardlink; el torrent sigue sembrando) → `$M grabs --imported -v`.
 4. Descargas sin nada que importar (pack con menos episodios de los que Sonarr esperaba): `--clean` las quita de
    cola y de qBittorrent con blocklist. Son hardlinks de la biblioteca: casi no liberan espacio; avisarlo.
+4b. **Pack ya importado a medias** (fuera de cola; Sonarr tomó 1 archivo por carpeta): `manual` no lo ve. Script en
+   `$CLAUDE_JOB_DIR/tmp` con `media.arr`: `manualimport?downloadId=<HASH>&filterExistingFiles=false` (no `folder=`:
+   devuelve la biblioteca), mapear cada archivo a (temporada, episodio) de TVDB, mostrar la tabla y pedir
+   autorización; `DELETE episodefile/<id>` de lo mal puesto → `ManualImport` con `downloadId`. Confirmar episodios
+   dudosos por el título en los subtítulos (`strings -n 8 archivo | grep -m3 "Title"`). Cerrar con `$M rename "<serie>"`
+   si los nombres del grupo no coinciden con TVDB (Plex se guía por el nombre).
 5. Revertir una importación: `$M api sonarr "history?..."` → `data.fileId` del evento → `$M api sonarr
    episodefile/<id> -X DELETE` (borra el archivo de la biblioteca; la descarga queda). Antes, verificar que el mapeo
    esté de verdad mal: el 2026-10-11 el "mal importado" era correcto.
