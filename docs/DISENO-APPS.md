@@ -569,15 +569,19 @@ Modificar el `Cluster` de CNPG afecta a Immich: aplicar con `kubectl apply -f` s
 
 ### 4.6 Respaldo de un PVC `local-path`
 
-Todo PVC `local-path` con algo que no se regenere necesita su CronJob. Copiar un bloque de
+Todo PVC `local-path` con algo que no se regenere necesita su CronJob. Lo mismo para estado en un `hostPath`
+(`config-backup-canon-mp250-cups`) o en `homelab-storage`, que es un solo disco sin réplica
+(`config-backup-qbittorrent`, con `subPath`). Copiar un bloque de
 `cluster/00-infrastructure/backups/app-config-backup.yaml` (p. ej. `config-backup-pingvin`) y cambiar:
 - `metadata.name: config-backup-miapp`, `namespace: miapp`
-- `schedule`: siguiente minuto libre de la franja `2:40–2:47` (`timeZone: America/Santiago`)
+- `schedule`: siguiente minuto libre de la franja `2:40–2:48` (`timeZone: America/Santiago`)
 - `APP: miapp` y `EXCLUDES` (caches, logs, miniaturas regenerables)
 - `claimName` del PVC
 
 El script ya copia las SQLite con `.backup` (consistentes con la app corriendo). Añadir `miapp` al bucle
-`for a in …` de `proxmox/bin/check-backups.sh` y copiar el script al host. Restaurar: escalar a 0, copiar
+`for a in …` de `proxmox/bin/check-backups.sh` y copiar el script al host. **Aplicar el CronJob en el mismo
+momento** (`kubectl apply -f …/app-config-backup.yaml` y un `kubectl create job --from=cronjob/…` de prueba):
+si el chequeo llega al host antes que el CronJob al cluster, avisa «nunca» cada mañana. Restaurar: escalar a 0, copiar
 `nvme/k8s/backups/apps/miapp/data/` sobre el PVC, `chown -R 1000:1000`, escalar a 1.
 
 ### 4.7 Servicio solo por tailnet (administración)

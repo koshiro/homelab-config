@@ -6,3 +6,5 @@ Type=oneshot
 # mbuffer avisa en cada dataset si no hay HOME
 Environment=HOME=/root
 ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation --exclude=nvme/k8s/victoria-metrics nvme/k8s respaldo/k8s
+# ComfyUI vive en homelab-storage (un solo disco): workflows y output no se regeneran
+ExecStart=/usr/sbin/syncoid --no-sync-snap --no-privilege-elevation homelab-storage/comfyui respaldo/comfyui

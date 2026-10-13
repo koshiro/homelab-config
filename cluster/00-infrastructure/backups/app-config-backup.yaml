@@ -542,8 +542,10 @@ spec:
               env:
                 - name: APP
                   value: grafana
+                # plugins/: los preinstalados que Grafana vuelve a bajar al arrancar (~250 MB)
                 - name: EXCLUDES
-                  value: ""
+                  value: |
+                    /plugins/
               command:
                 - /bin/sh
                 - -ec
@@ -851,6 +853,201 @@ spec:
                 - name: backups
                   mountPath: /backups
           volumes:
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+# qBittorrent guarda su config dentro de media-library (homelab-storage, un solo disco, sin sanoid):
+# subPath config/qbittorrent. BT_backup (estado de los torrents) sí se copia; GeoDB se vuelve a descargar.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-qbittorrent
+  namespace: qbittorrent
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "48 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: qbittorrent
+                - name: EXCLUDES
+                  value: |
+                    /logs/
+                    /.cache/
+                    GeoDB/
+                    ipc-socket
+                    lockfile
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  printf '%s\n' "$EXCLUDES" | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  subPath: config/qbittorrent
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: media-library-pvc
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+# ComfyUI: solo user/ (workflows, ajustes, config del Manager y comfyui.db). Modelos, output y venv
+# quedan en homelab-storage/comfyui, que syncoid replica a respaldo/comfyui (proxmox/systemd).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-comfyui
+  namespace: comfyui
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "48 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: comfyui
+                - name: EXCLUDES
+                  value: |
+                    *.log
+                    /__manager/cache/
+                    /comfyui.db.lock
+                    /comfyui.db.bkp
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  # las DB se copian aparte con la API de backup de SQLite (copia consistente con la app corriendo)
+                  { printf '%s\n' "$EXCLUDES"; printf '%s\n' '*-wal' '*-shm' '*-journal'; } | grep . > /tmp/ex
+                  # 24 = archivos que desaparecieron durante la copia (temporales de la app): no es error
+                  rsync -a --delete --delete-excluded --exclude-from=/tmp/ex /src/ "$d/data/" || [ $? -eq 24 ]
+                  cd /src
+                  find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while read -r f; do
+                    [ -f "$d/data/$f" ] || continue
+                    sqlite3 "$f" ".backup '$d/data/$f.tmp'" && mv "$d/data/$f.tmp" "$d/data/$f"
+                  done
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  subPath: user
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              persistentVolumeClaim:
+                claimName: comfyui-workspace-pvc
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups
+---
+# Impresora Canon MP250 (CUPS en pibot, hostPath): printers.conf, ppd/ y ssl/.
+# Restaurar: copiar /nvme/k8s/backups/apps/canon-mp250-cups/data/ a /var/lib/homelab-canon-mp250-cups
+# en pibot (vía /tmp, como los sitios estáticos) y reiniciar el pod.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-canon-mp250-cups
+  namespace: canon-mp250-airprint
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "48 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          nodeName: pibot
+          containers:
+            - name: backup
+              image: alpine:3.22
+              env:
+                - name: APP
+                  value: canon-mp250-cups
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync
+                  d=/backups/apps/$APP
+                  mkdir -p "$d/data"
+                  rsync -a --delete /src/ "$d/data/"
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              hostPath:
+                path: /var/lib/homelab-canon-mp250-cups
+                type: Directory
             - name: backups
               nfs:
                 server: 192.168.1.100

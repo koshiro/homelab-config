@@ -20,9 +20,11 @@ chk "snapshot etcd"          "$(newest_file /nvme/k8s/backups/etcd "etcd-snapsho
 # CronJobs config-backup-* (cluster/00-infrastructure/backups/app-config-backup.yaml y
 # webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
-         minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie cyano grafana; do
+         minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie cyano grafana \
+         qbittorrent comfyui canon-mp250-cups; do
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
+chk "réplica respaldo/comfyui" "$(newest_snap respaldo/comfyui)" 26
 for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs; do
   chk "sanoid nvme/k8s/$d"   "$(newest_snap "nvme/k8s/$d")" 2
   chk "réplica respaldo/$d"  "$(newest_snap "respaldo/k8s/$d")" 26
