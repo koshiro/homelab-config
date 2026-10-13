@@ -25,7 +25,7 @@ for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 chk "réplica respaldo/comfyui" "$(newest_snap respaldo/comfyui)" 26
-for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs; do
+for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs claude-remote; do
   chk "sanoid nvme/k8s/$d"   "$(newest_snap "nvme/k8s/$d")" 2
   chk "réplica respaldo/$d"  "$(newest_snap "respaldo/k8s/$d")" 26
 done

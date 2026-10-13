@@ -1,0 +1,30 @@
+# Home completo del pod (/Users/daniel: repos, ~/.claude, herramientas en ~/.local) en el dataset ZFS
+# nvme/k8s/claude-remote, export NFS en proxmox/etc/k8s.exports. Snapshots sanoid + réplica syncoid heredados de
+# nvme/k8s. NFS y no local-path: repos + node_modules superan los 2 GiB y así el pod no queda atado a un nodo.
+# La BD de Syncthing (SQLite) NO va aquí: vive en un emptyDir.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: claude-remote-home-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/claude-remote
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claude-remote-home
+  namespace: claude-remote
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-proxmox
+  volumeName: claude-remote-home-pv
+  resources:
+    requests:
+      storage: 50Gi

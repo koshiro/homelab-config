@@ -15,3 +15,5 @@
 /nvme/k8s/minecraft-spiral3 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 # Descargas incompletas de qBittorrent (2026-10-10): pool scratch, stripe sdc+sdd, desechable (sin snapshots ni respaldo)
 /mnt/scratch/qbittorrent 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+# Home del pod claude-remote (2026-10-13): repos, ~/.claude y herramientas de Claude Code en modo Remote Control
+/nvme/k8s/claude-remote 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
