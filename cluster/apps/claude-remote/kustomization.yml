@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: claude-remote
+resources:
+  - namespace.yml
+  - rbac.yml
+  - pv-pvc.yml
+  - deployment.yml
+  - service.yml
+  - networkpolicy.yml
+configMapGenerator:
+  - name: claude-remote-files
+    files:
+      - files/bootstrap.sh
+      - files/ssh_config
+      - files/stignore
+      - files/syncthing-config.xml
+# Secret (aplicar aparte): sops -d cluster/apps/claude-remote/secret.sops.yml | kubectl apply -f -

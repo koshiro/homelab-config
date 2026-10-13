@@ -1,0 +1,120 @@
+# Claude Code en modo Remote Control (claude.ai/code y app móvil) sobre homelab-config, SAC y cyano.
+# - HOME=/Users/daniel y repos en /Users/daniel/git/<repo>: mismas rutas que el Mac, así los directorios de memoria
+#   (~/.claude/projects/-Users-daniel-git-<repo>/memory) coinciden en ambos lados.
+# - Sidecar Syncthing: sincroniza en ambos sentidos con el Mac solo lo que deja pasar files/stignore (memoria,
+#   skills, CLAUDE.md, settings, hooks). Los repos se sincronizan por git, nunca por Syncthing.
+# - Sin imagen propia (no hay registry): imagen devcontainers + files/bootstrap.sh que instala las herramientas en
+#   ~/.local del NFS una sola vez. Requiere sudo (apt de paquetes menores en cada arranque).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-remote
+  namespace: claude-remote
+  labels:
+    app: claude-remote
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # una sola instancia de Syncthing y de Remote Control
+  selector:
+    matchLabels:
+      app: claude-remote
+  template:
+    metadata:
+      labels:
+        app: claude-remote
+    spec:
+      hostname: claude-remote
+      serviceAccountName: claude-remote
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000                       # para leer el Secret montado (0440)
+        fsGroupChangePolicy: OnRootMismatch # el dataset ya es 1000:1000; sin chown recursivo del NFS
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        # .stignore se escribe SIEMPRE antes de que arranque Syncthing: sin él sincronizaría todo ~/.claude
+        # (credenciales y sesiones incluidas).
+        - name: syncthing-init
+          image: syncthing/syncthing:2.1.6
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /home-nfs/.claude/.stfolder /st
+              cp /files/stignore /home-nfs/.claude/.stignore
+              cp /files/syncthing-config.xml /st/config.xml
+              cp /secrets/syncthing-cert.pem /st/cert.pem
+              cp /secrets/syncthing-key.pem /st/key.pem
+              chmod 600 /st/key.pem
+          volumeMounts:
+            - {name: home, mountPath: /home-nfs}
+            - {name: st, mountPath: /st}
+            - {name: files, mountPath: /files}
+            - {name: secrets, mountPath: /secrets}
+      containers:
+        - name: claude
+          image: mcr.microsoft.com/devcontainers/base:2.2.3-bookworm
+          command: ["/bin/bash", "/files/bootstrap.sh"]
+          env:
+            - {name: HOME, value: /Users/daniel}
+            - {name: TZ, value: America/Santiago}
+            - {name: SOPS_AGE_KEY_FILE, value: /Users/daniel/.config/sops/age/keys.txt}
+            - {name: CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX, value: claude-remote}
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef: {name: claude-remote, key: GH_TOKEN}
+          resources:
+            requests: {cpu: 200m, memory: 1Gi}
+            limits: {memory: 4Gi}
+          volumeMounts:
+            - {name: home, mountPath: /Users/daniel}
+            - {name: files, mountPath: /files}
+            - {name: secrets, mountPath: /secrets}
+        - name: syncthing
+          image: syncthing/syncthing:2.1.6
+          command: ["syncthing", "serve", "--home=/st", "--no-browser", "--gui-address=127.0.0.1:8384"]
+          env:
+            - {name: STNOUPGRADE, value: "1"}
+            - {name: TZ, value: America/Santiago}
+          ports:
+            - {name: sync, containerPort: 22000, protocol: TCP}
+          livenessProbe:
+            exec:
+              command: ["wget", "-qO-", "http://127.0.0.1:8384/rest/noauth/health"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # Solo ~/.claude: Syncthing no ve los repos ni el resto del home.
+            - {name: home, mountPath: /Users/daniel/.claude, subPath: .claude}
+            - {name: st, mountPath: /st}
+      volumes:
+        - name: home
+          persistentVolumeClaim:
+            claimName: claude-remote-home
+        - name: files
+          configMap:
+            name: claude-remote-files
+            defaultMode: 0755
+        - name: secrets
+          secret:
+            secretName: claude-remote
+            defaultMode: 0440
+        - name: st
+          emptyDir: {}

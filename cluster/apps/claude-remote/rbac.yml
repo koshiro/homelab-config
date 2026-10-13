@@ -1,0 +1,20 @@
+# kubectl dentro del pod usa esta ServiceAccount (config in-cluster). cluster-admin a propósito: paridad con el
+# kubeconfig del Mac, decidido por el usuario el 2026-10-13. Revocar = borrar este ClusterRoleBinding.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-remote
+  namespace: claude-remote
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: claude-remote-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: claude-remote
+    namespace: claude-remote

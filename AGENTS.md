@@ -14,6 +14,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 | Suite arr, qBittorrent, Plex, Seerr (cola, atascos, calidad, actualizar) | **`.claude/skills/media-stack/SKILL.md`** | CLI `media.py` con salida compacta; leerla antes de explorar el repo o los pods |
 | Respaldos y su verificación | `proxmox/README.md` § Tareas programadas, `cluster/00-infrastructure/backups/` | sanoid/syncoid/restic en el host + CronJobs `config-backup-*`, dump de Postgres y copia de etcd |
 | Pi master (voltaje, boot, overclock, apagarla) | `pibot/README.md` | |
+| Claude remoto (Remote Control desde claude.ai/móvil), memoria y skills sincronizadas con el Mac | `cluster/apps/claude-remote/README.md` | Pod con los repos en `/Users/daniel/git` y Syncthing de `~/.claude` (lista blanca) |
 | Secretos SOPS / age | `README.md` § Operación y las reglas de abajo | |
 | Arquitectura objetivo, pendientes | `docs/ARQUITECTURA.md`, `docs/PENDIENTES.md` | |
 | Pentest web, evidencias, DTPlus / intranet | Repo hermano **`~/git/security-assessment`** (su `AGENTS.md`) | No recrear `security-assessment/` dentro de este repo |

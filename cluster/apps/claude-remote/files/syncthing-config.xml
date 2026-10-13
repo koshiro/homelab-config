@@ -1,0 +1,29 @@
+<!-- Config inicial del Syncthing del pod (se copia a un emptyDir en cada arranque; los cambios por GUI se pierden).
+     Sin descubrimiento global ni relays: el Mac (L4WW5TC…) se conecta al NodePort 30894 del pod. -->
+<configuration version="52">
+    <folder id="claude-home" label="~/.claude" path="/Users/daniel/.claude" type="sendreceive" rescanIntervalS="3600" fsWatcherEnabled="true" fsWatcherDelayS="2" ignorePerms="false" autoNormalize="true">
+        <device id="NTOZFMJ-VJU7SNX-B24QXJM-RIHVXZC-BN7RKTK-GVAORZ5-GZYMDUY-O5C6XAJ"></device>
+        <device id="L4WW5TC-RIU64M4-TRPNCE7-SHIX3JF-2SJ7XTW-KMX2ZDG-JAZGS5X-MVK7XQP"></device>
+        <versioning type="trashcan">
+        </versioning>
+    </folder>
+    <device id="NTOZFMJ-VJU7SNX-B24QXJM-RIHVXZC-BN7RKTK-GVAORZ5-GZYMDUY-O5C6XAJ" name="claude-remote" compression="metadata">
+        <address>dynamic</address>
+    </device>
+    <device id="L4WW5TC-RIU64M4-TRPNCE7-SHIX3JF-2SJ7XTW-KMX2ZDG-JAZGS5X-MVK7XQP" name="mac-daniel" compression="metadata">
+        <address>dynamic</address>
+    </device>
+    <gui enabled="true" tls="false">
+        <address>127.0.0.1:8384</address>
+    </gui>
+    <options>
+        <listenAddress>tcp://0.0.0.0:22000</listenAddress>
+        <globalAnnounceEnabled>false</globalAnnounceEnabled>
+        <localAnnounceEnabled>false</localAnnounceEnabled>
+        <relaysEnabled>false</relaysEnabled>
+        <natEnabled>false</natEnabled>
+        <urAccepted>-1</urAccepted>
+        <crashReportingEnabled>false</crashReportingEnabled>
+        <autoUpgradeIntervalH>0</autoUpgradeIntervalH>
+    </options>
+</configuration>

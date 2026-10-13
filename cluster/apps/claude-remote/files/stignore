@@ -1,0 +1,12 @@
+// Lista blanca de ~/.claude que Syncthing sincroniza entre el Mac y el pod claude-remote.
+// Gana el primer patrón que coincide: las exclusiones van antes de las inclusiones y "*" al final.
+// Copia idéntica en el Mac: ~/.claude/.stignore (Syncthing no sincroniza este archivo).
+(?d).DS_Store
+(?d)**/.DS_Store
+/skills/synced
+!/CLAUDE.md
+!/settings.json
+!/hooks
+!/skills
+!/projects/*/memory
+*

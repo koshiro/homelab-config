@@ -1,0 +1,22 @@
+# ~/.ssh/config del pod: en el pod no hay MagicDNS de Tailscale, así que los nombres del tailnet que usan el
+# inventario de Ansible y la documentación se resuelven a las IPs de la LAN.
+Host k3s-node-0 pibot
+    HostName 192.168.1.15
+    User daniel
+Host k3s-node-1 k3s-node-1-k3s
+    HostName 192.168.1.131
+    User daniel
+Host k3s-node-2 k3s-node-2-k3s
+    HostName 192.168.1.132
+    User daniel
+Host k3s-node-3 k3s-node-3-k3s
+    HostName 192.168.1.133
+    User daniel
+Host pve proxmox 192.168.1.100
+    HostName 192.168.1.100
+    User root
+Host *
+    # Llave propia del pod (ed25519). Se instala como id_rsa porque el inventario fija ansible_ssh_private_key_file.
+    IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking accept-new
+    ServerAliveInterval 30

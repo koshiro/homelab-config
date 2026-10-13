@@ -1,0 +1,24 @@
+# Entrada: solo el puerto de Syncthing (llega por NodePort desde LAN/tailnet). Salida libre a propósito: el pod opera
+# el homelab igual que el Mac (API de k8s, SSH a nodos y pve, GitHub, Anthropic, Cloudflare).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: claude-remote
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-syncthing
+  namespace: claude-remote
+spec:
+  podSelector:
+    matchLabels:
+      app: claude-remote
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 22000}
