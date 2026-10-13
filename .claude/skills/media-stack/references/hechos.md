@@ -74,6 +74,9 @@
   S3x1-24 y busca "Ghost in the Shell SAC_2045 18". Erai publica "Koukaku Kidoutai - SAC_2045 Season 2 - NN" (Sonarr
   no lo asocia a la serie) y "SAC_2045 S02E03" lo mapea a 2x3 (2nd GIG). Las búsquedas por temporada de esta serie
   tardan >5 min (episodio × título alternativo × indexer).
+- **Link Click S1 (2026-10-13)**: TVDB mete el especial "Marrying by Contesting" como S0E1 (absoluto 6), y Sonarr
+  (XEM) parsea `S01E06` de packs BD (Mehul) como S0E1; S1E6 queda vacío. El archivo es S1E6 (subs: "Search of the
+  Child"): `DELETE episodefile` + `ManualImport` con `episodeIds` fijos. Ojo: el BD trae solo los 11 normales.
 - **Link Click (tvdb 402033, 2026-10-12)**: TVDB S3 = Bridon Arc (precuela, 6 ep.) y S4 = la "Season 3" real.
   VARYG/CR nombran la S3 real "S03Exx" (el S4E1 entró como S3E1), Bridon sale como "Bridon Arc S01Exx" (Sonarr lo
   toma como 3x0N pero el import falla con "not found in the grabbed release") y Yameii/ToonsHub usan la numeración de
@@ -99,6 +102,10 @@
   `manualimport?folder=<ruta urlencoded>` (devuelve `Unknown Movie`; se fija con `movieId`).
 - Sin Tailscale (`/Applications/Tailscale.app/Contents/MacOS/Tailscale status` → stopped) `k3s-node-0` no resuelve:
   kubeconfig temporal con `server: https://192.168.1.15:6443` + `tls-server-name: k3s-node-0` y `KUBECONFIG=` (LAN).
+- Las fechas de la API de los *arr y qBittorrent están en UTC; el usuario está en GMT-3 (Chile): reportar en hora
+  local (2026-10-13).
+- `manualimport?downloadId=` devuelve vacío si Sonarr ya no rastrea la descarga (fuera de cola): usar
+  `folder=<content_path del torrent>` (2026-10-13).
 - En zsh `$M …` no se separa en palabras: usar `alias M=…` o llamar `python3 -I …/media.py` directo.
 - Plex (2026-10-12): monta la biblioteca como `/media/series` y `/media/peliculas` (no `/data/media`); sección de series
   = 2. Sonarr **no tiene conexión a Plex**: tras renombrar o importar a mano, Plex no se entera hasta su escaneo
