@@ -17,6 +17,8 @@ MARKS="$HOME/.local/share/bootstrap"
 # 1. Paquetes del sistema
 sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
   tmux jq rsync ripgrep xz-utils python3-venv dnsutils iputils-ping >/dev/null || log "AVISO: apt falló"
+# OpenSSH toma el home de /etc/passwd (/home/vscode), no de $HOME: sin esto ignora ~/.ssh/config.
+sudo usermod -d "$HOME" vscode
 
 # 2. Secretos y configuración (se reescriben en cada arranque desde el Secret y el ConfigMap)
 mkdir -p ~/.local/bin "$MARKS" ~/git ~/.ssh ~/.config/sops/age ~/.config/homelab

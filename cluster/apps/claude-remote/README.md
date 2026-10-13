@@ -34,7 +34,8 @@ kubectl apply -k cluster/apps/claude-remote
 # Primer login (una vez; el token queda en el NFS)
 kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- bash -lc 'claude auth login'
 
-# Ver las ventanas de Remote Control (Ctrl-b d para salir)
+# Ver las ventanas de Remote Control (Ctrl-b d para salir). La primera vez cada repo pregunta
+# "Trust …? [y/N]" y "Enable Remote Control? (y/n)": responder y en cada ventana (queda guardado en ~/.claude.json)
 kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- tmux attach -t rc
 
 # Logs del arranque, conflictos de Syncthing
