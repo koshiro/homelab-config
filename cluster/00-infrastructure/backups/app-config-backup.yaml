@@ -924,8 +924,8 @@ spec:
                 server: 192.168.1.100
                 path: /nvme/k8s/backups
 ---
-# ComfyUI: solo user/ (workflows, ajustes, config del Manager y comfyui.db). Modelos, output y venv
-# quedan en homelab-storage/comfyui, que syncoid replica a respaldo/comfyui (proxmox/systemd).
+# ComfyUI: solo user/ (workflows, ajustes, config del Manager y comfyui.db) para R2. input y output
+# van por rsync a respaldo/comfyui (proxmox/systemd/syncoid-respaldo.service); los modelos no se respaldan.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
