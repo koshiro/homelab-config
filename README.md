@@ -134,7 +134,7 @@ sops --decrypt secret.sops.yaml | kubectl apply -f -
 
 Nunca versionar secretos sin cifrar. Respaldo de la clave: `scripts/backup-sops-keys.sh` / `restore-sops-keys.sh`.
 
-**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:40–02:47), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
+**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:40–02:48), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
 
 **Verificación rápida:**
 

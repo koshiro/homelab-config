@@ -6,3 +6,8 @@ Type=oneshot
 # mbuffer avisa en cada dataset si no hay HOME
 Environment=HOME=/root
 ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation --exclude=nvme/k8s/victoria-metrics nvme/k8s respaldo/k8s
+# ComfyUI vive en homelab-storage (un solo disco): solo lo que no se regenera (sin models/, venv/ ni
+# código); la historia la dan los snapshots de sanoid sobre respaldo/comfyui
+ExecStart=/usr/bin/rsync -a --delete --relative --exclude=*.log --exclude=/user/__manager/cache/ \
+  /mnt/homelab-storage/comfyui/./user /mnt/homelab-storage/comfyui/./input \
+  /mnt/homelab-storage/comfyui/./output /mnt/homelab-storage/comfyui/./swarmui/Data /respaldo/comfyui/
