@@ -55,6 +55,9 @@
 - 2026-10-11: `manualimport?downloadId=…` sin serie conocida devuelve rechazo permanente "Unknown Series" y sin
   episodios; el POST `command` ManualImport acepta `seriesId`/`episodeIds` explícitos igual. Los CRC `[35D8E195]`
   parecen "E195": el número de episodio se toma solo de `SxxEyy` o ` - NN`.
+- Prowlarr devuelve `magnetUrl`/`downloadUrl` como `http://localhost:9696/<indexer>/download?…`: desde qBittorrent
+  hay que pedirlo a `prowlarr.prowlarr.svc.cluster.local:9696` (lo hace `agregar_torrent`). Con localhost,
+  qBittorrent 5 responde `pending_count: 1` y lo descarta en silencio (2026-10-12, release de Knaben).
 
 ## Anime (decidido 2026-10-11)
 - Preferir siempre **[Erai-raws]** y **[ToonsHub]** (traen subs en español latino). Custom formats de Sonarr
@@ -71,6 +74,12 @@
   S3x1-24 y busca "Ghost in the Shell SAC_2045 18". Erai publica "Koukaku Kidoutai - SAC_2045 Season 2 - NN" (Sonarr
   no lo asocia a la serie) y "SAC_2045 S02E03" lo mapea a 2x3 (2nd GIG). Las búsquedas por temporada de esta serie
   tardan >5 min (episodio × título alternativo × indexer).
+- **Link Click (tvdb 402033, 2026-10-12)**: TVDB S3 = Bridon Arc (precuela, 6 ep.) y S4 = la "Season 3" real.
+  VARYG/CR nombran la S3 real "S03Exx" (el S4E1 entró como S3E1), Bridon sale como "Bridon Arc S01Exx" (Sonarr lo
+  toma como 3x0N pero el import falla con "not found in the grabbed release") y Yameii/ToonsHub usan la numeración de
+  TVDB. Tsundere-Raws (VOSTFR) mete todos los alias entre paréntesis: el alias que cuenta es el que va antes del
+  número. Sonarr no permite cambiar la fuente de metadatos (solo TVDB vía Skyhook) ni mapeos propios: por eso
+  existe `buscar`.
 - GitS: revisado el 2026-10-11, ningún SAC_2045 pisó S1/S2 (títulos de TVDB = archivos). Pero con el perfil `Anime`
   un "[ToonsHub] … SAC_2045 S02E03" sumaría 110 y **reemplazaría 2x3 de 2nd GIG**; por eso S1-S3 (completas) quedaron
   **sin monitorear**. No volver a monitorearlas. Mismo riesgo en cualquier anime cuyas temporadas de TVDB no

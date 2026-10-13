@@ -7,6 +7,7 @@ Las acciones que borran o reinician son dry-run salvo que se pase --apply.
 """
 import argparse, calendar, html, json, re, subprocess, sys, time, urllib.parse
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 
 ARRS = {"sonarr": (8989, "v3"), "radarr": (7878, "v3"), "prowlarr": (9696, "v1")}
 NAMESPACES = ["sonarr", "radarr", "prowlarr", "bazarr", "qbittorrent", "flaresolverr", "plex", "overseerr"]
@@ -282,6 +283,20 @@ def c_requeue(a):
 
 YA_IMPORTADO = re.compile(r"already imported|Not an upgrade|Existing file", re.I)
 NUM_EP = r"(?:\b[Ss]\d{1,2}[Ee]|\s-\s)(\d{1,4})(?:v\d+)?\b"  # S03E07 o anime " - 07"; no el CRC
+# rechazos que dependen de cómo Sonarr parseó el nombre: se ignoran cuando el destino viene fijado (flags o etiqueta)
+FORZABLE = re.compile(r"Unknown Series|^Unable to|not found in the grabbed release|unexpected considering", re.I)
+ETIQ_EP = re.compile(r"^ep-(\d+)-([\d.]+)$")  # etiqueta qBittorrent puesta por `buscar --apply`: ep-<serie>-<ep>[.<ep>]
+
+
+def etiquetas_ep():
+    """hash → (seriesId, [episodeIds]) desde las etiquetas ep-… de qBittorrent."""
+    out = {}
+    for t in qb("torrents/info?category=tv-sonarr"):
+        for tag in (x.strip() for x in t.get("tags", "").split(",")):
+            m = ETIQ_EP.match(tag)
+            if m:
+                out[t["hash"].lower()] = (int(m[1]), [int(x) for x in m[2].split(".")])
+    return out
 
 
 def c_manual(a):
@@ -289,6 +304,7 @@ def c_manual(a):
 
     Sonarr propone serie/episodios por archivo. Si no reconoce la serie ("Unknown Series", típico en anime con
     título alternativo), --series/--season/--offset fijan el destino: episodio = número del archivo + offset.
+    Las descargas que `buscar --apply` etiquetó (ep-<serie>-<ep>) traen su destino sin flags.
     """
     rx = re.compile(a.title, re.I) if a.title else None
     rec = [r for r in arr("sonarr", "queue?pageSize=2000&includeUnknownSeriesItems=true")["records"]
@@ -304,6 +320,10 @@ def c_manual(a):
             sys.exit(f"--series debe identificar una serie: {[s['title'] for s in ss]}")
         serie = ss[0]
         eps = {(e["seasonNumber"], e["episodeNumber"]): e for e in arr("sonarr", f"episode?seriesId={serie['id']}")}
+    etiq = etiquetas_ep() if descargas else {}
+    eps_etiq = {}
+    for sid in {s for s, _ in etiq.values()}:
+        eps_etiq.update({e["id"]: e for e in arr("sonarr", f"episode?seriesId={sid}")})
     importar, limpiar, sin_destino = [], [], 0
     for did, items in descargas.items():
         print(f"{cut(items[0]['title'], 85)}")
@@ -313,13 +333,20 @@ def c_manual(a):
             sid = f.get("series", {}).get("id")
             ids = [e["id"] for e in f.get("episodes", [])]
             dest = f"S{f.get('seasonNumber')}E" + ",".join(str(e["episodeNumber"]) for e in f.get("episodes", []))
+            fijado = None
             if serie and (sid in (None, serie["id"])):
                 m = re.findall(NUM_EP, f["relativePath"])
                 e = eps.get((a.season, int(m[0]) + a.offset)) if m and a.season is not None else None
-                if e:
-                    sid, ids = serie["id"], [e["id"]]
-                    dest = f"S{a.season}E{e['episodeNumber']} {cut(e.get('title') or '', 30)}"
-                    rej = [x for x in rej if x not in ("Unknown Series",) and not x.startswith("Unable to")]
+                fijado = (serie["id"], [e]) if e else None
+            elif did.lower() in etiq and len(archivos) == 1:
+                s, eids = etiq[did.lower()]
+                fijado = (s, [eps_etiq[i] for i in eids if i in eps_etiq])
+            if fijado and fijado[1]:
+                sid, ids = fijado[0], [e["id"] for e in fijado[1]]
+                e = fijado[1][0]
+                dest = (f"S{e['seasonNumber']}E" + ",".join(str(x["episodeNumber"]) for x in fijado[1])
+                        + f" {cut(e.get('title') or '', 30)}")
+                rej = [x for x in rej if not FORZABLE.search(x)]
             if rej and all(YA_IMPORTADO.search(x) for x in rej):
                 estado = "ya importado"
             elif sid and ids and not rej:
@@ -452,10 +479,176 @@ def c_grab(a):
         print("dry-run: --apply [--pick N] manda el resultado N (por defecto 0) a qBittorrent")
         return
     r = res[a.pick]
-    # el guid de Nyaa y similares ya es el magnet; si no, la URL proxy de Prowlarr (alcanzable desde qBittorrent)
+    agregar_torrent(r, a.category)
+    print(f"agregado a qBittorrent [{a.category}]: {cut(r['title'], 80)}")
+
+
+def agregar_torrent(r, categoria, etiqueta=None):
+    """Release de Prowlarr → qBittorrent. El guid de Nyaa y similares ya es el magnet; si no, la URL proxy de
+    Prowlarr, que viene como localhost:9696 y desde el pod de qBittorrent hay que pedirla al Service."""
     url = r["guid"] if str(r["guid"]).startswith("magnet:") else r.get("magnetUrl") or r["downloadUrl"]
-    out = qb("torrents/add", urllib.parse.urlencode({"urls": url, "category": a.category}))
-    print(f"agregado a qBittorrent [{a.category}]: {cut(r['title'], 80)} → {out}")
+    url = url.replace("://localhost:9696/", "://prowlarr.prowlarr.svc.cluster.local:9696/")
+    form = {"urls": url, "category": categoria} | ({"tags": etiqueta} if etiqueta else {})
+    out = qb("torrents/add", urllib.parse.urlencode(form))
+    # qBittorrent 5 responde {success_count, pending_count, failure_count}; 4.x, "Ok."
+    if out != "Ok." and not (isinstance(out, dict) and not out.get("failure_count")):
+        sys.exit(f"ERROR qBittorrent rechazó {cut(r['title'], 60)}: {out}")
+
+
+# buscar: mapeo propio release → episodio de TVDB para lo que Sonarr numera mal (anime con arcos/precuelas)
+# " - 07" o "  07": LimeTorrents y otros cambian el guion por un espacio
+TOKEN_EP = re.compile(r"\b[Ss](\d{1,2})[Ee](\d{1,4})(?:v\d)?\b"
+                      r"|\bSeason\s*(\d{1,2})\s(?:-\s|\s)?\s*(\d{1,4})(?:v\d)?\b|\s(?:-\s|\s)(\d{1,4})(?:v\d)?\b")
+TOKEN_PACK = re.compile(r"\b[Ss](\d{1,2})\b(?!\s*[Ee]\d)|\bSeason\s*(\d{1,2})\b", re.I)
+FIN_TITULO = re.compile(r"\b(\d{3,4}p|REPACK|PROPER|CR|AMZN|NF|BSITE|WEB|WEB-?DL|BD|Blu-?ray|HEVC|x26[45]|H[ .]?26[45]"
+                        r"|AAC|DUAL|SUBFRENCH|VOSTFR|MULTI|English|Dub)\b|[\[\(]", re.I)
+SUBS_AJENOS = re.compile(r"VOSTFR|SUBFRENCH|\bFRENCH\b|\bITA\b|\bGER(MAN)?\b|\bRUS\b|VOSTA|\bHINDI\b", re.I)
+GRUPO_PREF = re.compile(r"^\s*\[(Erai-raws|ToonsHub)\]", re.I)
+
+
+def norm(s):
+    return re.sub(r"[^a-z0-9]+", " ", html.unescape(s or "").lower()).strip()
+
+
+def mapear_release(titulo, alias, eps_sxe, eps_abs, eps_tit):
+    """(clave, episodio|None, confianza). clave = ('ep', S, E) o ('pack', S); None si es otra serie.
+
+    El título de la serie es lo que va ANTES del número (los grupos meten todos los alias entre paréntesis
+    después). Alias con temporada de escena (Bridon Arc → S3) fija la temporada; el título del episodio, si
+    viene y coincide con TVDB, manda sobre el número del grupo (VARYG "S03E01 The Forgotten Past" = S4E1)."""
+    cuerpo = re.sub(r"^\s*(\[[^\]]*\]\s*)+", "", html.unescape(titulo)).replace("_", " ")
+    m = TOKEN_EP.search(cuerpo)
+    if not m:
+        p = TOKEN_PACK.search(cuerpo)
+        if not p or norm(cuerpo[:p.start()]) not in alias:
+            return None
+        esc = alias[norm(cuerpo[:p.start()])]
+        s = int(p[1] or p[2])
+        return ("pack", esc if esc and s in (1, esc) else s), None, "pack"
+    principal = norm(cuerpo[:m.start()])
+    if principal not in alias:
+        return None
+    esc = alias[principal]
+    if m[1]:
+        s, n = int(m[1]), int(m[2])
+        s = esc if esc and s in (1, esc) else s
+        ep, conf = eps_sxe.get((s, n)), "alias" if esc else "número"
+    elif m[3]:  # "Season 3 - 09": la temporada del grupo suele ser un alias propio ("Shiguang Dailiren Season 3")
+        s, n = int(m[3]), int(m[4])
+        con_temp = alias.get(f"{principal} season {s}") or alias.get(f"{principal} s{s}")
+        if con_temp:
+            ep, conf = eps_sxe.get((con_temp, n)), "alias"
+        else:
+            ep, conf = eps_sxe.get((esc if esc and s in (1, esc) else s, n)), "alias" if esc else "número"
+    else:
+        n = int(m[5])
+        ep, conf = (eps_sxe.get((esc, n)), "alias") if esc else (eps_abs.get(n), "absoluto")
+    t = norm(FIN_TITULO.split(cuerpo[m.end():], 1)[0])
+    if len(t) >= 5:
+        hit = eps_tit.get(t) or next((e for k, e in eps_tit.items() if len(k) >= 8 and
+                                      (k.startswith(t) or t.startswith(k))), None)
+        if hit and hit is not ep:
+            ep, conf = hit, ("título≠número" if ep else "título")
+        elif hit:
+            conf = "título"
+    return (("ep", ep["seasonNumber"], ep["episodeNumber"]) if ep else None), ep, conf
+
+
+def c_buscar(a):
+    """Buscar en Prowlarr los episodios faltantes de una serie con mapeo propio (alias con temporada de escena,
+    título del episodio, numeración absoluta) en vez del parser de Sonarr. --apply manda el mejor candidato de
+    cada episodio a qBittorrent con la etiqueta ep-<serie>-<ep>, que `manual --apply` usa como destino."""
+    ss = [s for s in arr("sonarr", "series") if re.search(a.series, s["title"], re.I)]
+    if len(ss) != 1:
+        sys.exit(f"la regex debe identificar una serie: {[s['title'] for s in ss][:10]}")
+    serie = ss[0]
+    eps = arr("sonarr", f"episode?seriesId={serie['id']}")
+    eps_sxe = {(e["seasonNumber"], e["episodeNumber"]): e for e in eps}
+    eps_abs = {e["absoluteEpisodeNumber"]: e for e in eps if e.get("absoluteEpisodeNumber")}
+    eps_tit = {norm(e["title"]): e for e in eps if e.get("title") and norm(e["title"]) not in ("tba", "tbd")}
+    alias = {norm(serie["title"]): None, norm(re.sub(r"\s*\(\d{4}\)$", "", serie["title"])): None}
+    for t in serie.get("alternateTitles", []):
+        alias.setdefault(norm(t["title"]), t.get("sceneSeasonNumber") or t.get("seasonNumber"))
+    hoy = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    sel = {tuple(int(x) for x in re.findall(r"\d+", s)) for s in a.ep or []}
+    buscados = [e for e in eps if (sel and (e["seasonNumber"], e["episodeNumber"]) in sel) or
+                (not sel and e["monitored"] and not e["hasFile"] and (e.get("airDateUtc") or "9") <= hoy
+                 and e["seasonNumber"] > 0 and a.season in (None, e["seasonNumber"]))]
+    if not buscados:
+        print(f"{serie['title']}: nada que buscar (faltantes monitoreados ya emitidos)")
+        return
+    temporadas = {e["seasonNumber"] for e in buscados}
+    en_cola = {r["episodeId"] for r in arr("sonarr", f"queue?seriesId={serie['id']}&pageSize=500")["records"]
+               if r.get("episodeId")}
+    consultas = list(dict.fromkeys([serie["title"]] + [t["title"] for t in serie.get("alternateTitles", [])
+                                   if (t.get("sceneSeasonNumber") or t.get("seasonNumber")) in temporadas]
+                                   + (a.query or [])))[: a.max_queries]
+    def prowlarr(q):  # cada búsqueda espera a todos los indexers: en paralelo
+        return arr("prowlarr", f"search?query={urllib.parse.quote(q)}&type=search&limit=100"
+                   + (f"&indexerIds={a.indexer}" if a.indexer else ""))
+
+    res = {}
+    with ThreadPoolExecutor(len(consultas)) as ex:
+        resultados = [r for lote in ex.map(prowlarr, consultas) for r in lote]
+    for r in resultados:
+        k = (r.get("infoHash") or norm(r["title"])).lower()
+        if r.get("guid") and (k not in res or (r.get("seeders") or 0) > (res[k].get("seeders") or 0)):
+            res[k] = r
+    por_ep, packs, ajenos, precoces = {}, {}, 0, 0
+    for r in res.values():
+        mp = mapear_release(r["title"], alias, eps_sxe, eps_abs, eps_tit)
+        if not mp:
+            ajenos += 1
+            continue
+        clave, ep, conf = mp
+        if clave and clave[0] == "pack":
+            packs.setdefault(clave[1], []).append(r)
+            continue
+        if not ep:
+            continue
+        emision = calendar.timegm(time.strptime(ep["airDateUtc"][:10], "%Y-%m-%d")) if ep.get("airDateUtc") else 0
+        if (r.get("publishDate") or "9") < time.strftime("%Y-%m-%d", time.gmtime(emision - 86400)):
+            precoces += 1  # publicado antes de emitirse: el número del grupo apunta a otra temporada
+            continue
+        por_ep.setdefault(ep["id"], []).append((conf, r))
+
+    def orden(cr):
+        conf, r = cr
+        # mapeo por título o alias antes que el grupo preferido: un "S03E01" a secas puede ser otra temporada
+        return (bool(SUBS_AJENOS.search(r["title"])), conf in ("número", "título≠número"),
+                not GRUPO_PREF.search(r["title"]),
+                "1080p" not in r["title"], -(r.get("seeders") or 0))
+
+    print(f"{serie['title']} (tvdb {serie['tvdbId']}, {serie['seriesType']}) — {len(buscados)} episodios, "
+          f"{len(consultas)} consultas, {len(res)} releases ({ajenos} de otra serie/sin mapeo, "
+          f"{precoces} publicados antes de la emisión)")
+    elegir = {}
+    for p in a.pick or []:
+        n = [int(x) for x in re.findall(r"\d+", p)]
+        if len(n) == 3:
+            elegir[(n[0], n[1])] = n[2]
+    mandar = []
+    for e in sorted(buscados, key=lambda e: (e["seasonNumber"], e["episodeNumber"])):
+        cands = sorted(por_ep.get(e["id"], []), key=orden)
+        marca = " [en cola]" if e["id"] in en_cola else ""
+        print(f"S{e['seasonNumber']}E{e['episodeNumber']} {cut(e.get('title') or '', 40)} "
+              f"({(e.get('airDate') or '?')}){marca}" + ("" if cands else "  — sin candidatos"))
+        for i, (conf, r) in enumerate(cands[: a.limit]):
+            print(f"  {i:>2} {r.get('seeders') or 0:>4}s {gb(r['size']):>6} {conf:<13} {cut(r['title'], 82)}")
+        i = elegir.get((e["seasonNumber"], e["episodeNumber"]), 0)
+        if cands and i < len(cands) and (not marca or a.force):
+            mandar.append((e, cands[i][1]))
+    for s in sorted(temporadas & set(packs)):
+        for r in sorted(packs[s], key=lambda r: -(r.get("seeders") or 0))[:3]:
+            print(f"  pack S{s} {r.get('seeders') or 0:>4}s {gb(r['size']):>6} {cut(r['title'], 80)}  (grab --match)")
+    if not a.apply:
+        print("dry-run: --apply manda el candidato 0 de cada episodio sin cola (--pick S3E1=N elige otro; --force "
+              "incluye los en cola) con etiqueta ep-…; al completar, `manual --apply` los importa a ese episodio")
+        return
+    for e, r in mandar:
+        agregar_torrent(r, a.category, f"ep-{serie['id']}-{e['id']}")
+        print(f"  → S{e['seasonNumber']}E{e['episodeNumber']}: {cut(r['title'], 80)}")
+    print(f"{len(mandar)} enviados a qBittorrent [{a.category}]")
 
 
 def c_imported(a):
@@ -600,6 +793,16 @@ def main():
     x.add_argument("--match", help="regex sobre el título"); x.add_argument("--limit", type=int, default=15)
     x.add_argument("--pick", type=int, default=0); x.add_argument("--category", default="tv-sonarr")
     x.add_argument("--apply", action="store_true"); x.set_defaults(f=c_grab)
+    x = s.add_parser("buscar", help="faltantes de una serie en Prowlarr con mapeo propio (anime con arcos/precuelas)")
+    x.add_argument("series", help="regex de la serie"); x.add_argument("--season", type=int)
+    x.add_argument("--ep", action="append", help="S3E1 (repetible; incluye episodios con archivo)")
+    x.add_argument("--query", action="append", help="consulta extra (repetible)")
+    x.add_argument("--max-queries", type=int, default=6); x.add_argument("--indexer", type=int)
+    x.add_argument("--limit", type=int, default=4, help="candidatos por episodio")
+    x.add_argument("--pick", action="append", help="S3E1=N: candidato N para ese episodio")
+    x.add_argument("--force", action="store_true", help="manda también los que ya están en cola")
+    x.add_argument("--category", default="tv-sonarr"); x.add_argument("--apply", action="store_true")
+    x.set_defaults(f=c_buscar)
     x = s.add_parser("imported", help="torrents ya importados y fuera de cola → borrar")
     x.add_argument("--apply", action="store_true"); x.add_argument("--limit", type=int, default=15)
     x.add_argument("--width", type=int, default=70)
