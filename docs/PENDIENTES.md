@@ -103,8 +103,11 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
 - [x] Comprobado 2026-10-14: `memory.swap.current` de 102/103/104 en 0. El swap del host (1,1 GB de 8 GB) es todo de
   `system.slice` (demonios Perl de PVE fríos: pveproxy, pvedaemon, pve-ha-*), sin swap-out activo. ARC en ~2,2 GB
   de 6 GB: sigue encogido, como se esperaba hasta el arreglo definitivo.
-- [ ] Alerta por tasa de swap-out del host (`increase(node_vmstat_pswpout{instance="pve"}[1h])` > ~100 MiB), además
-  de `SwapHostProxmox` al 50 %.
+- [x] Alerta `SwapOutHostProxmox` (2026-10-14): swap-out del host > 256 MiB/h durante 15 min, además de
+  `SwapHostProxmox` al 50 %. Con 100 MiB/h sonaría casi a diario: la línea base es 0–60 MiB/h con ráfagas de
+  0,4–1,7 GB/h (13-10 08:00 y 14-10 desde las 19:00) que vuelven a entrar, por eso el uso total se queda en ~1 GB.
+- Estado 2026-10-14: PR #19276 sigue en borrador; el host tiene `proxmox-kernel-7.0.14-20` y está disponible el
+  7.0.14-23 (sin el fix).
 - [ ] **Arreglo definitivo** (elegir uno y programarlo en una ventana de mantención):
   - ZFS con el fix: seguir [PR #19276](https://github.com/openzfs/zfs/pull/19276) (borrador al 2026-10-10; quita
     `__GFP_KSWAPD_RECLAIM` del intento de orden alto en `kv_alloc`). Cuando llegue a un `zfs` 2.4.x de Proxmox o a

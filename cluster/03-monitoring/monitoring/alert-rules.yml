@@ -71,6 +71,15 @@ groups:
         annotations:
           summary: "Swap del host Proxmox al {{ $value | printf \"%.0f\" }} %"
           description: "RAM del host sobrecomprometida: nfsd reduce los slots NFS de los workers y el I/O se cuelga. Apagar VMs de sobra (presupuesto en proxmox/README.md)."
+      - alert: SwapOutHostProxmox
+        # Bug ZFS 2.4 + kernel 7.0 (PENDIENTES § 4b3): kswapd manda a swap aun con RAM libre y el uso total
+        # no sube porque las páginas vuelven a entrar. Línea base 0–60 MiB/h; ráfagas de 0,4–1,7 GB/h.
+        expr: increase(node_vmstat_pswpout{job="pve-host"}[1h]) * 4096 / 1048576 > 256
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host Proxmox: {{ $value | printf \"%.0f\" }} MiB a swap en 1 h"
+          description: "Swap-out sostenido con el bug de kswapd. Ver qué despierta kswapd (PENDIENTES § 4b3) y el ARC (node_zfs_arc_size)."
       - alert: TemperaturaPibotAlta
         expr: max by (instance) (node_thermal_zone_temp{instance="pibot"}) > 75
         for: 10m
