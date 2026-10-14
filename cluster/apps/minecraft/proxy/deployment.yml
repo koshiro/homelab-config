@@ -38,7 +38,7 @@ spec:
           volumeMounts:
             - name: work
               mountPath: /work
-        # Compila el plugin propio (proxy/plugin/): /lobby y skins de Bedrock.
+        # Compila el plugin propio (proxy/plugin/): /lobby, skins de Bedrock y filtro de hostname.
         - name: build-lobby-plugin
           image: eclipse-temurin:25-jdk
           command: ["/bin/sh", "-c"]
@@ -100,6 +100,10 @@ spec:
               value: skinsrestorer
             - name: MINECRAFT_VERSION
               value: "26.2"
+            # Hostnames aceptados en el handshake (plugin/HostnameFilter.java): el resto (escáneres
+            # que entran por IP) se descarta sin respuesta al ping y sin llegar al whitelist
+            - name: ALLOWED_HOSTS
+              value: "minecraft.danielriquelme.cl"
             # Firma de las skins de Bedrock (plugin/BedrockSkins.java); cuenta en account.mineskin.org
             # Jugadores Java que entran con la identidad de un jugador Bedrock (plugin/BedrockSkins.java):
             # .ArrozK en Java (PC de su madre) = .ArrozK en Bedrock (tablet), mismo inventario

@@ -13,5 +13,6 @@ configMapGenerator:
     files:
       - plugin/LobbyPlugin.java
       - plugin/BedrockSkins.java
+      - plugin/HostnameFilter.java
       - plugin/velocity-plugin.json
 # Secreto (aplicar aparte): sops -d secret-velocity.sops.yaml | kubectl apply -f -

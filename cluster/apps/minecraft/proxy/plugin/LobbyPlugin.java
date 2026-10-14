@@ -20,7 +20,8 @@ import org.slf4j.Logger;
  * Si ya está en el principal, el comando sigue su curso y lo resuelve el alias /lobby del
  * propio Paper (mvtp w:lobby), así funciona igual desde OneBlock o el mundo familiar.
  *
- * También registra {@link BedrockSkins} (skin actual de Bedrock vista desde Java).
+ * También registra {@link BedrockSkins} (skin actual de Bedrock vista desde Java) y
+ * {@link HostnameFilter} (descarta escáneres que no usan el dominio).
  */
 public class LobbyPlugin {
     private static final String PRINCIPAL = "principal";
@@ -41,6 +42,7 @@ public class LobbyPlugin {
     @Subscribe
     public void onInit(ProxyInitializeEvent event) {
         proxy.getEventManager().register(this, new BedrockSkins(proxy, logger, dataDir));
+        proxy.getEventManager().register(this, new HostnameFilter(logger));
     }
 
     @Subscribe
