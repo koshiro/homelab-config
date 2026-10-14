@@ -1,6 +1,6 @@
 # Pendientes del homelab
 
-Última revisión: 2026-10-10. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-10-14. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
 
 Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este archivo detalla las tareas.
 
@@ -31,12 +31,12 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
    - Configuración persistente respaldada en `nvme/k8s/backups/arr-config/20261002/` (entra en sanoid/syncoid/restic): `sonarr`, `radarr`, `prowlarr`, `bazarr`, `overseerr`, `plex` (5,5 GB) desde los PVC `local-path` de k3s-node-1; `k8s-media-library/config` (qBittorrent y configs antiguas); `backups/` del pool; e `inventario-k8s-media-library.tsv` (8 219 archivos de `media/` y `downloads/` con tamaño y fecha). Si la media de *arr se pierde: restaurar configs, escalar las apps y lanzar «Search All Missing» en Sonarr/Radarr.
 4. [x] ~~NCQ off persistente~~: no hace falta. Tras el cambio de cable el disco trabaja con NCQ (`queue_depth` 32) y el pool recreado está ONLINE sin errores (2026-10-10).
    - **2026-10-03 — opción B ejecutada.** SMART largo sin errores (disco sano, daño solo lógico). Antes de destruir: copiados y verificados por checksum a `respaldo/rescate/{comfyui,webodm-db}` la config y las 2 164 imágenes de ComfyUI (sin modelos: lista en `MODELOS-NO-COPIADOS.txt`) y la BD vieja de WebODM; RAW verificados en `respaldo/rescate/media` (100 074/100 075: **`Raws/2016/January/16/_KOR3587.NEF` ilegible en el pool, recuperarlo de la copia externa**). Descartados a pedido: Time Machine, biblioteca vieja de Plex, PhotoPrism, `backup_cleanup`, `cluster-config`, OpenClaw, proyectos de WebODM y la media de *arr (6,2 TB, se vuelve a descargar). Lista de lo descargado: `nvme/k8s/backups/arr-config/20261002/arr-descargado-20261003.json` y `series-descargadas-20261003.md` (77 series; se agregan a mano en Sonarr; las 316 películas siguen monitoreadas en Radarr).
-   - Pool nuevo: `zpool create` sobre el disco entero (ashift 12, lz4, recordsize 1M, xattr sa, posixacl), **sin SLOG ni cache** (el WD 2 TB `sdd` queda libre; su etiqueta vieja de log se borró con `zpool labelclear` el 2026-10-10). Datasets `media` (RAW, restaurado con `zfs send` desde `@verificado-20261002`), `k8s-media-library` (config de qBittorrent, Prowlarr y Bazarr desde el tar + carpetas vacías) y `comfyui`. `zfs-import@homelab-storage.service` habilitado. Exportado por NFS desde Proxmox (`proxmox/etc/k8s.exports`).
+   - Pool nuevo: `zpool create` sobre el disco entero (ashift 12, lz4, recordsize 1M, xattr sa, posixacl), sin cache (el WD 2 TB `sdd` perdió su etiqueta vieja de log con `zpool labelclear`). **Actualizado 2026-10-10:** SLOG en `sda4` (32 GB del SSD de arranque GIGABYTE) y `sdc`+`sdd` forman el pool desechable `scratch` (stripe, incompletos de qBittorrent). Los nombres `sdX` cambian entre arranques: hoy el 12 TB es `sdb`; usar `/dev/disk/by-id/`. Datasets `media` (RAW, restaurado con `zfs send` desde `@verificado-20261002`), `k8s-media-library` (config de qBittorrent, Prowlarr y Bazarr desde el tar + carpetas vacías) y `comfyui`. `zfs-import@homelab-storage.service` habilitado. Exportado por NFS desde Proxmox (`proxmox/etc/k8s.exports`).
    - [x] PV/PVC de `media-library-pvc` (6 namespaces) y `comfyui-workspace-pvc` recreados contra 192.168.1.100; borrados los huérfanos `plex-media`, `bazarr-media`, `prowlarr-media` (2026-10-03). Suite *arr y Plex con `replicas: 1`. Marcador `.pool-recreado-20261003` en `media/{peliculas,series}`: con la raíz vacía Radarr/Sonarr no actualizan nada (failsafe «root folder is empty»). Radarr: 346 películas monitoreadas faltantes, «Search All Missing» lanzado. Sonarr: sin búsqueda (las series se agregan a mano desde la lista).
    - [x] ComfyUI de vuelta con sus modelos (`replicas: 1`, más SwarmUI y smartgallery; dataset `homelab-storage/comfyui` 86 GB).
    - 2026-10-03: **Overseerr → Seerr 3.5.0** (Overseerr archivado en 2026-02). Misma URL, namespace y PVC; migración automática de la BD (1 usuario, 472 solicitudes); Radarr, Sonarr y Plex probados OK. Respaldo previo: `nvme/k8s/backups/overseerr/overseerr-config-pre-seerr-20261003.tar.gz`. Suite *arr y Plex verificadas en su última versión.
    - qBittorrent nunca persistió su cola (`BT_backup` iba al contenedor: `XDG_CONFIG_HOME` sin `XDG_DATA_HOME`). Corregido en el repo (`XDG_DATA_HOME=/data/config/qbittorrent/data`); se aplica al levantar la suite.
-5. [ ] Scrub completo del pool recreado: aún no se ha hecho ninguno; el cron de `zfsutils-linux` lo lanza el 2.º domingo del mes (próximo 2026-10-11). Revisar `zpool status homelab-storage` después. Decidido: ZFS directo en Proxmox (hecho). Sigue abierto: segundo disco de 12 TB para espejo.
+5. [x] Scrub completo del pool recreado (2026-10-11): 8 h 30 min, 0 B reparados, 0 errores, pool ONLINE. Los 4 pools sanos (`zpool status -x`). Decidido: ZFS directo en Proxmox (hecho). Sigue abierto: segundo disco de 12 TB para espejo.
 6. [x] ~~Rescatar el resto~~: resuelto con la opción B (2026-10-03): lo valioso se copió y restauró, el resto se descartó o se vuelve a descargar.
 7. [x] ~~`qemu-guest-agent` en la VM 101~~: obsoleto; la VM 101 se destruyó el 2026-10-10 (ver § 4).
 
@@ -100,7 +100,9 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
 - [x] 2026-10-10: swap vaciado (`swapoff -a && swapon -a`) y `systemctl set-property qemu.slice MemorySwapMax=0`
   (versionado en `proxmox/systemd/drop-ins/qemu-slice-sin-swap.conf`). Mitiga el swap, no la causa: kswapd sigue
   despertando y el ARC sigue oscilando.
-- [ ] Comprobar tras una noche de respaldos: `memory.swap.current` de `/sys/fs/cgroup/qemu.slice/10{2,3,4}.scope` en 0.
+- [x] Comprobado 2026-10-14: `memory.swap.current` de 102/103/104 en 0. El swap del host (1,1 GB de 8 GB) es todo de
+  `system.slice` (demonios Perl de PVE fríos: pveproxy, pvedaemon, pve-ha-*), sin swap-out activo. ARC en ~2,2 GB
+  de 6 GB: sigue encogido, como se esperaba hasta el arreglo definitivo.
 - [ ] Alerta por tasa de swap-out del host (`increase(node_vmstat_pswpout{instance="pve"}[1h])` > ~100 MiB), además
   de `SwapHostProxmox` al 50 %.
 - [ ] **Arreglo definitivo** (elegir uno y programarlo en una ventana de mantención):
@@ -170,8 +172,14 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - [x] Login de Grafana con el JWT de Cloudflare Access (todos los correos de la política entran como admin).
 
 **Pendiente:**
-- [ ] Tras una semana (~2026-10-15), revisar `vm_rows` y uso del dataset (`zfs list nvme/k8s/victoria-metrics`); ajustar retención o drops de cAdvisor si se acerca a la quota (ya hay alerta `DatasetCercaDeQuota`).
-- [ ] Ajustar umbrales de alertas si generan ruido la primera semana.
+- [x] Revisado 2026-10-14: 530 M filas, 196 MB de datos (215 MB con snapshots) en ~6 días ≈ 33 MB/día → ~3 GB a 90 días, 10 % de la quota. Sin cambios de retención ni drops.
+- [x] Alertas de la primera semana revisadas (2026-10-14). Todas respondieron a hechos reales: `NodoCaido`/`TargetCaido` y
+  `DeploymentIncompleto` (cloudflared, pingvin, node-odx-1) por el cambio planificado 104 → 105 del 2026-10-11 09:52–11:06;
+  `SwapHostProxmox` antes del drop-in de `qemu.slice`; `DiscoSectoresNuevos` en `sdd` (WD 2 TB de ~89 500 h, pool
+  `scratch`) por `Current_Pending_Sector` 0 → 1 el 2026-10-13. Único ajuste: `DiscoCaliente` en HDD/SSD de 50 a 55 °C
+  (en el scrub llegaron a 51–53 °C, dentro de especificación).
+- [ ] Vigilar `sdd`: si `Current_Pending_Sector` sigue subiendo o pasa a reasignados, sacarlo de `scratch` (recrear el pool
+  solo con `sdc`; es desechable).
 - [ ] Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) si hace falta; no es parte del monitoreo.
 
 ## 6. GitOps con Flux

@@ -130,9 +130,9 @@ groups:
           summary: "NVMe {{ $labels.device }} desgastado o con errores de medio"
           description: "Valor {{ $value }}. smartctl -a /dev/{{ $labels.device }}."
       - alert: DiscoCaliente
-        expr: (smart_temperature_celsius{device!~"nvme.*"} > 50) or (smart_temperature_celsius{device=~"nvme.*"} > 70)
+        expr: (smart_temperature_celsius{device!~"nvme.*"} > 55) or (smart_temperature_celsius{device=~"nvme.*"} > 70)
         for: 15m
         labels: {severity: warning}
         annotations:
           summary: "{{ $labels.device }} a {{ $value }} °C"
-          description: "Lleva 15 min sobre el umbral (HDD/SSD 50 °C, NVMe 70 °C)."
+          description: "Lleva 15 min sobre el umbral (HDD/SSD 55 °C, NVMe 70 °C)."
