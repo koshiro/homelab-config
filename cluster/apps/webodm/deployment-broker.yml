@@ -32,7 +32,7 @@ spec:
                       - k3s-node-3
       containers:
         - name: redis
-          image: redis:7.0.10
+          image: redis:8.10.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: redis
