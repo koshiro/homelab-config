@@ -207,6 +207,21 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`.
 - [ ] Hasta entonces el flujo real es `kubectl apply -k` / `kubectl apply -f`. `kubectl kustomize cluster` compila (verificado 2026-09-30).
 
+## 6b. Actualizaciones con Renovate (2026-10-15)
+
+`renovate.json` en la raíz: PR los sábados (06–12, hora de Chile), agrupados en `monitoreo`, `utilidades`,
+`cloudflare`, `immich`, `media` y `cnpg-respaldos`; los saltos mayores llevan la etiqueta `mayor` y nunca se proponen
+saltos mayores de Postgres. CUDA, el device plugin y WebODM (por digest) son mensuales. **Sin automerge** mientras no
+haya Flux: tras mergear un PR de Renovate hay que aplicar la carpeta tocada con `kubectl apply -k`.
+Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
+`npx --package renovate@44 -- renovate --platform=local --dry-run=full` (solo lee archivos con commit).
+
+- [x] Las 17 imágenes `latest`/sin tag fijadas a la versión que corría (resuelta por digest); WebODM por digest.
+- [ ] Instalar la GitHub App de Renovate en `koshiro/homelab-config` (https://github.com/apps/renovate).
+- [ ] Aplicar los tags fijos tras el merge (reinicia los pods tocados, Minecraft incluido por el sidecar DDNS).
+- [ ] Al llegar Flux (§6): automerge de `monitoreo`, `utilidades` y `cloudflare` en parches y menores.
+- [ ] El operador CNPG (1.27.0, instalado fuera del repo) no lo ve Renovate: versionarlo en `cluster/` y subirlo.
+
 ## 7. IoT
 
 - [ ] Mosquitto/Meshtastic: no hay manifiestos en el repo (la carpeta `cluster/07-iot/` ya no existe). Si se retoma, partir de cero.

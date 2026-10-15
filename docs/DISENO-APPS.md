@@ -713,7 +713,7 @@ Después:
 
 - **Ingress «privado»**: no existe; el comodín lo publica. qBittorrent y TrueNAS tuvieron Ingress públicos que hubo que
   quitar (`PENDIENTES.md` §4).
-- **`latest`** (heredado en varias apps antiguas): no copiarlo en apps nuevas.
+- **`latest`**: eliminado el 2026-10-15 (tags fijos y Renovate, `PENDIENTES.md` §6b). Una imagen sin versiones publicadas se fija por digest (`img:latest@sha256:…`), que Renovate también actualiza.
 - **Contraseña en el manifiesto** (Immich la tuvo en `DB_URL`): siempre `secretKeyRef`.
 - **App Python/ML en node-2/3**: falla con `NumPy was built with baseline optimizations (X86_V2)`.
 - **Sitio que «debería» sobrevivir a Proxmox pero usa NFS, Traefik o CoreDNS**: no sobrevive.
