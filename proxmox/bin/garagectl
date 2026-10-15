@@ -1,0 +1,3 @@
+#!/bin/sh
+# CLI de Garage con la configuración y el secreto RPC del host: garagectl status, garagectl bucket info cnpg-backups.
+GARAGE_RPC_SECRET_FILE=/etc/garage/rpc_secret exec /usr/local/bin/garage -c /etc/garage.toml "$@"

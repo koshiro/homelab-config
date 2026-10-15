@@ -1,0 +1,7 @@
+# Los secretos *.sops.yaml se aplican aparte con hl.py sops apply.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-postgres-cluster.yaml
+  - 03-objectstore.yaml
+  - 04-scheduled-backup.yaml

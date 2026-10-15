@@ -1,9 +1,6 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"postgresql.cnpg.io/v1","kind":"Cluster","metadata":{"annotations":{},"name":"homelab-postgres","namespace":"postgresql"},"spec":{"bootstrap":{"initdb":{"database":"immich","owner":"immich","secret":{"name":"homelab-postgres-superuser"}}},"instances":3,"storage":{"size":"100Gi","storageClass":"local-path"}}}
   name: homelab-postgres
   namespace: postgresql
 spec:
@@ -32,6 +29,12 @@ spec:
       name: cnpg-default-monitoring
     disableDefaultQueries: false
     enablePodMonitor: false
+  # Respaldo base + WAL a Garage (S3 local en pve) con el plugin Barman Cloud → PITR. Ver 03-objectstore.yaml.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: garage
   postgresGID: 26
   postgresUID: 26
   postgresql:
@@ -85,108 +88,3 @@ spec:
     size: 100Gi
     storageClass: local-path
   switchoverDelay: 3600
-  availableArchitectures:
-  - goArch: amd64
-    hash: 433bae32a2e3e459a2a181d67ed2b0dfcf67f359480b9646bbdc8ad8e2dd4ef1
-  - goArch: arm64
-    hash: 981f8452ecf423a37802c14018b7a73bfd25c1c2e82ec19de9c85cd54912adb7
-  certificates:
-    clientCASecret: homelab-postgres-ca
-    expirations:
-      homelab-postgres-ca: 2026-02-28 03:22:38 +0000 UTC
-      homelab-postgres-replication: 2026-02-28 03:22:38 +0000 UTC
-      homelab-postgres-server: 2026-02-28 03:22:38 +0000 UTC
-    replicationTLSSecret: homelab-postgres-replication
-    serverAltDNSNames:
-    - homelab-postgres-rw
-    - homelab-postgres-rw.postgresql
-    - homelab-postgres-rw.postgresql.svc
-    - homelab-postgres-rw.postgresql.svc.cluster.local
-    - homelab-postgres-r
-    - homelab-postgres-r.postgresql
-    - homelab-postgres-r.postgresql.svc
-    - homelab-postgres-r.postgresql.svc.cluster.local
-    - homelab-postgres-ro
-    - homelab-postgres-ro.postgresql
-    - homelab-postgres-ro.postgresql.svc
-    - homelab-postgres-ro.postgresql.svc.cluster.local
-    serverCASecret: homelab-postgres-ca
-    serverTLSSecret: homelab-postgres-server
-  cloudNativePGCommitHash: 8b442dcc3
-  cloudNativePGOperatorHash: 433bae32a2e3e459a2a181d67ed2b0dfcf67f359480b9646bbdc8ad8e2dd4ef1
-  conditions:
-  - lastTransitionTime: "2025-10-05T01:16:36Z"
-    message: A single, unique system ID was found across reporting instances.
-    reason: Unique
-    type: ConsistentSystemID
-  - lastTransitionTime: "2025-11-14T14:06:57Z"
-    message: Cluster is Ready
-    reason: ClusterIsReady
-    type: Ready
-  - lastTransitionTime: "2025-11-14T14:05:56Z"
-    message: Continuous archiving is working
-    reason: ContinuousArchivingSuccess
-    type: ContinuousArchiving
-  configMapResourceVersion:
-    metrics:
-      cnpg-default-monitoring: "692655"
-  currentPrimary: homelab-postgres-3
-  currentPrimaryTimestamp: "2025-11-14T14:05:55.717835Z"
-  healthyPVC:
-  - homelab-postgres-1
-  - homelab-postgres-2
-  - homelab-postgres-3
-  image: ghcr.io/cloudnative-pg/postgresql:17.5
-  instanceNames:
-  - homelab-postgres-1
-  - homelab-postgres-2
-  - homelab-postgres-3
-  instances: 3
-  instancesReportedState:
-    homelab-postgres-1:
-      ip: 10.42.2.184
-      isPrimary: false
-      timeLineID: 5
-    homelab-postgres-2:
-      ip: 10.42.4.50
-      isPrimary: false
-      timeLineID: 5
-    homelab-postgres-3:
-      ip: 10.42.5.100
-      isPrimary: true
-      timeLineID: 5
-  instancesStatus:
-    healthy:
-    - homelab-postgres-1
-    - homelab-postgres-2
-    - homelab-postgres-3
-  latestGeneratedNode: 3
-  managedRolesStatus: {}
-  pgDataImageInfo:
-    image: ghcr.io/cloudnative-pg/postgresql:17.5
-    majorVersion: 17
-  phase: Cluster in healthy state
-  poolerIntegrations:
-    pgBouncerIntegration: {}
-  pvcCount: 3
-  readService: homelab-postgres-r
-  readyInstances: 3
-  secretsResourceVersion:
-    applicationSecretVersion: "692616"
-    clientCaSecretVersion: "26610415"
-    replicationSecretVersion: "26610417"
-    serverCaSecretVersion: "26610415"
-    serverSecretVersion: "26610416"
-  switchReplicaClusterStatus: {}
-  systemID: "7547539890263117846"
-  targetPrimary: homelab-postgres-3
-  targetPrimaryTimestamp: "2025-11-14T14:05:24.164273Z"
-  timelineID: 5
-  topology:
-    instances:
-      homelab-postgres-1: {}
-      homelab-postgres-2: {}
-      homelab-postgres-3: {}
-    nodesUsed: 3
-    successfullyExtracted: true
-  writeService: homelab-postgres-rw

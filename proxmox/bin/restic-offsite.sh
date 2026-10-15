@@ -6,7 +6,8 @@ set -euo pipefail
 set -a; . /root/.secrets/restic-r2.env; set +a
 SNAP=restic-offsite
 MNT=/run/restic-offsite
-DATASETS=(nvme/k8s/immich nvme/k8s/minecraft nvme/k8s/backups nvme/k8s/webs)
+# garage = respaldos base + WAL de CNPG (PITR, ~2–3 GB con retención de 30 días).
+DATASETS=(nvme/k8s/immich nvme/k8s/minecraft nvme/k8s/backups nvme/k8s/webs nvme/k8s/garage)
 cleanup() {
   for d in "${DATASETS[@]}"; do
     mountpoint -q "$MNT/$d" && umount "$MNT/$d"

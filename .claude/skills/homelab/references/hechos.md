@@ -53,5 +53,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Tras reiniciar pibot, flannel tarda 1–2 min: 502 transitorio hacia pods de la Pi.
 - Pods GPU con «NVML Unknown Error» tras `daemon-reload` en node-1 → `kubectl -n nvidia-device-plugin rollout restart
   ds` y reiniciar los pods con GPU (avisar antes por Plex).
+- `systemctl enable zfs-import@homelab-storage` → `%I` cambia `-` por `/` y busca `homelab/storage`: escapar con
+  `systemd-escape` → `zfs-import@homelab\x2dstorage.service` (falló en el reinicio de pve del 2026-10-15).
+- `ssh root@pve` no responde tras `reboot` aunque `uptime` diga que arrancó hace rato → esperar con `until`; el
+  2026-10-15 tardó ~20 min en contestar por SSH (arrancó en ~4).
+- CronJob `arr-filtro-archivos` con Jobs `Error` «Connection refused» → Sonarr/Radarr/qBittorrent caídos o
+  reiniciando; desde 2026-10-15 el script omite la corrida en vez de fallar.
 - ComfyUI web (comfyui.danielriquelme.cl) pide Cloudflare Access → para probar la UI usar el NodePort `http://192.168.1.15:30188`.
 - ComfyUI ≥0.38: el panel Media Assets y el escaneo de output/ requieren `--enable-assets` (BD en `/app/user/comfyui.db`). Las fechas del primer escaneo son la hora del escaneo, no la del archivo. Las rutas `x.png [output]` de LoadImage se validan solo contra el historial en memoria: tras reiniciar quedan como faltantes y bloquean Run; se reseleccionan desde Media Assets (el usuario no quiere un nodo propio).

@@ -1,0 +1,37 @@
+# Destino de los respaldos de CNPG: Garage en pve (proxmox/etc/garage.toml), bucket cnpg-backups.
+# Credenciales en 02-garage-secret.sops.yaml (hl.py sops apply). Los datos quedan en nvme/k8s/garage, que entra en
+# sanoid, syncoid a respaldo y restic a R2.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: garage
+  namespace: postgresql
+spec:
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: s3://cnpg-backups/
+    endpointURL: http://192.168.1.100:3900
+    s3Credentials:
+      accessKeyId:
+        name: garage-cnpg
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: garage-cnpg
+        key: ACCESS_SECRET_KEY
+      region:
+        name: garage-cnpg
+        key: ACCESS_REGION
+    wal:
+      # archive_timeout 5min genera segmentos casi vacíos: comprimen mucho.
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+      jobs: 2
+  instanceSidecarConfiguration:
+    env:
+      # boto3 reciente agrega checksums que algunos S3 compatibles rechazan (plugin-barman-cloud#393).
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+      - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: when_required

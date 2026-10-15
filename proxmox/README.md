@@ -13,7 +13,8 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
-| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB; `update-initramfs -u`) |
+| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB, `spl_kmem_cache_obj_per_slab=1`; `update-initramfs -u -k all`, efecto al reiniciar) |
+| `etc/garage.toml`, `systemd/garage.service`, `bin/garagectl` | `/etc/garage.toml`, `/etc/systemd/system/garage.service`; binario `/usr/local/bin/garage` (v2.4.1, musl de garagehq.deuxfleurs.fr), usuario `garage`, secretos `/etc/garage/{rpc_secret,admin_token,cnpg-key.txt}` (0600); sus rutas van por variables de entorno en el unit. CLI: `garagectl status` (en `/usr/local/sbin/`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
 | `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |
@@ -101,7 +102,7 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 
 ## Pools ZFS al arrancar
 
-`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`. El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). `scratch` se importa con `zfs-import@scratch.service` (habilitado 2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
+`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab\x2dstorage.service`: el `-` del nombre de instancia **debe ir escapado** (`systemd-escape homelab-storage`), porque `%I` convierte `-` en `/` y `zfs-import@homelab-storage` busca el pool `homelab/storage`. Así falló el reinicio del 2026-10-15 (pool sin importar, LXC `nas` sin arrancar y los PVC de `homelab-storage` sin NFS). El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). `scratch` se importa con `zfs-import@scratch.service` (habilitado 2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
 
 ## Discos y pools
 
