@@ -66,7 +66,7 @@ un comentario del `kustomization.yml`.
 ### Bases de datos
 
 - **Postgres compartido**: cluster CloudNativePG 1.27 `homelab-postgres` (ns `postgresql`, 3 instancias en
-  `local-path`, Postgres 17.5). Servicio de escritura: `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
+  `local-path`, Postgres 17.11; PITR a Garage con el plugin Barman Cloud). Servicio de escritura: `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
   Soporta CRD `Database` y roles administrados (`spec.managed.roles`).
 - **SQLite** en un PVC `local-path`: la opción preferida para apps pequeñas de un solo usuario/réplica.
 - Redis u otros: como contenedor dentro del namespace de la app, sin persistencia salvo que sea imprescindible.
