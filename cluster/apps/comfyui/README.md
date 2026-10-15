@@ -7,7 +7,8 @@ Ollama también la usan). Todo el estado vive en el volumen NFS `homelab-storage
 
 | Archivo | Qué hace |
 |---|---|
-| `00-deployment.yaml` | Solo arranca `main.py` con `--use-sage-attention --fast fp16_accumulation` (imagen pública `nvidia/cuda:12.8.1-devel`, que trae gcc/nvcc para Triton). No instala nada. |
+| `00-deployment.yaml` | Solo arranca `main.py` con `--use-sage-attention --fast fp16_accumulation --enable-assets` (imagen pública `nvidia/cuda`, que trae gcc/nvcc para Triton). No instala nada. |
+| `custom-nodes/homelab_asset_subfolder/` | Parche propio montado por ConfigMap (`kustomization.yaml`): agrega el subfolder a `/api/assets` para que «Insert as node» desde Media Assets apunte a la imagen correcta. Aplicar con `kubectl apply -k cluster/apps/comfyui`. |
 | `06-job-build-env.yaml` | Construye/actualiza el entorno: ComfyUI a la última release `v*`, Python 3.12 (uv, en `/app/.python`), PyTorch 2.11 + CUDA 12.8, SageAttention 2.2 compilado para sm_86, extensiones usadas por los workflows (las demás a `custom_nodes/.disabled`). Lock en `venv/requirements.lock`. |
 | `07-job-download-models.yaml` | Descarga los modelos con verificación SHA256 (Civitai con el token de `secret-civitai.sops.yaml`). Idempotente. |
 | `05-job-prepare-workspace.yaml` | Estructura de carpetas (solo si hay `Permission denied`). |

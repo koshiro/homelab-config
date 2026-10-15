@@ -13,6 +13,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 | Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
 | ZFS, NFS, sanoid/syncoid/restic, LXC `nas` en Proxmox | `proxmox/README.md` | Fuente de verdad del host: qué archivo del repo va a qué ruta |
 | Suite arr, qBittorrent, Plex, Seerr (cola, atascos, calidad, actualizar) | **`.claude/skills/media-stack/SKILL.md`** | CLI `media.py` con salida compacta; leerla antes de explorar el repo o los pods |
+| ComfyUI (Media Assets, LoadImage, frontend, custom nodes, actualizar) | **`.claude/skills/comfyui/SKILL.md`** | CLI `comfy.py` (fuentes del frontend, API interna, assets) y cómo funcionan assets e historial |
 | Respaldos y su verificación | `proxmox/README.md` § Tareas programadas, `cluster/00-infrastructure/backups/` | sanoid/syncoid/restic en el host + CronJobs `config-backup-*`, dump de Postgres y copia de etcd |
 | Pi master (voltaje, boot, overclock, apagarla) | `pibot/README.md` | |
 | Claude remoto (Remote Control desde claude.ai/móvil), memoria y skills sincronizadas con el Mac | `cluster/apps/claude-remote/README.md` | Pod con los repos en `/Users/daniel/git` y Syncthing de `~/.claude` (lista blanca) |

@@ -81,6 +81,10 @@ spec:
           volumeMounts:
             - name: workspace
               mountPath: /app
+            # Corrige el subfolder al insertar assets de output como nodo (custom-nodes/homelab_asset_subfolder)
+            - name: homelab-asset-subfolder
+              mountPath: /app/custom_nodes/homelab_asset_subfolder
+              readOnly: true
           startupProbe:
             httpGet:
               path: /
@@ -103,3 +107,6 @@ spec:
         - name: workspace
           persistentVolumeClaim:
             claimName: comfyui-workspace-pvc
+        - name: homelab-asset-subfolder
+          configMap:
+            name: comfyui-homelab-asset-subfolder

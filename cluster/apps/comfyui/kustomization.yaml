@@ -9,3 +9,10 @@ resources:
   - 04-service-nodeport.yaml
   - 08-smartgallery.yaml
   - 09-swarmui.yaml
+# Parches propios como custom nodes de solo lectura (ver custom-nodes/*/__init__.py). El hash del nombre
+# reinicia el deployment al cambiar el código: aplicar con `kubectl apply -k cluster/apps/comfyui`.
+configMapGenerator:
+  - name: comfyui-homelab-asset-subfolder
+    namespace: comfyui
+    files:
+      - custom-nodes/homelab_asset_subfolder/__init__.py
