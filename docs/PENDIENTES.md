@@ -217,8 +217,14 @@ Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
 `npx --package renovate@44 -- renovate --platform=local --dry-run=full` (solo lee archivos con commit).
 
 - [x] Las 17 imágenes `latest`/sin tag fijadas a la versión que corría (resuelta por digest); WebODM por digest.
-- [ ] Instalar la GitHub App de Renovate en `koshiro/homelab-config` (https://github.com/apps/renovate).
-- [ ] Aplicar los tags fijos tras el merge (reinicia los pods tocados, Minecraft incluido por el sidecar DDNS).
+- [x] GitHub App de Renovate instalada en `koshiro/homelab-config` (2026-10-15).
+- [x] Tags fijos aplicados (2026-10-15): 17 Deployments reiniciados con la misma versión; 0 pods con problema y sitios públicos en 200.
+- [x] Primera tanda (2026-10-15, corrida manual): monitoreo (VictoriaMetrics/vmalert v1.154.0, Grafana 13.2.4) y
+  cloudflared-webs 2026.10.1 mergeados y aplicados. Pendiente de revisar: #69 (digest nuevo de WebODM) y el resto
+  del Dependency Dashboard (#72).
+- [x] La app de Mend funciona (2026-10-15 19:34: PR #73–#84). Fuera del horario del sábado los PR se piden
+  marcando su casilla en el Dependency Dashboard (#72); en horario los abre sola. El merge sigue siendo manual (sin
+  automerge hasta Flux) y después hay que aplicar con `kubectl apply -k`.
 - [ ] Al llegar Flux (§6): automerge de `monitoreo`, `utilidades` y `cloudflare` en parches y menores.
 - [ ] El operador CNPG (1.27.0, instalado fuera del repo) no lo ve Renovate: versionarlo en `cluster/` y subirlo.
 
