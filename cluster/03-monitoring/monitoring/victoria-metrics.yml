@@ -104,7 +104,7 @@ spec:
                     values: [k3s-node-2]
       containers:
         - name: victoria-metrics
-          image: victoriametrics/victoria-metrics:v1.152.0
+          image: victoriametrics/victoria-metrics:v1.154.0
           args:
             - -storageDataPath=/storage
             - -retentionPeriod=90d
