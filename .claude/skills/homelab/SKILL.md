@@ -34,6 +34,7 @@ $H cf zones|tunnels|routes <túnel>|route <túnel> <host> <servicio> [--apply]|a
 | Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |
 | Apagar/encender cluster | `$H doc README Operación` (siempre playbook ordenado) |
 | Sonarr/Radarr/qBittorrent/Plex/Seerr | skill **media-stack** |
+| ComfyUI | skill **comfyui** |
 
 ## Reglas que evitan los errores repetidos
 
