@@ -25,7 +25,7 @@ spec:
         kubernetes.io/hostname: k3s-node-2
       containers:
         - name: worker
-          image: webodm/webodm_webapp:latest@sha256:78d7d45bacdbe7109ad30e3c5b553722bde2510b0a926f9d9756e3078d72f448
+          image: webodm/webodm_webapp:latest@sha256:f2c2004b2d4e260a25632830eeafc1f2fb8664d0fe086e1fbb2c856eff338fd3
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
