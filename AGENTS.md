@@ -7,6 +7,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 
 | Tarea | Leer | Contenido |
 |-------|------|-----------|
+| **Cualquier tarea del homelab (empezar aquí)** | **`.claude/skills/homelab/SKILL.md`** | CLI `hl.py` (estado, app, NodePorts, ssh, SOPS, Cloudflare, secciones de docs), trampas conocidas y recetas; se amplía al cerrar cada tarea |
 | Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue |
 | Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml` |
 | Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
