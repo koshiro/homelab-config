@@ -31,6 +31,7 @@ $H cf zones|tunnels|routes <túnel>|route <túnel> <host> <servicio> [--apply]|a
 | Cloudflare (hostname, DNS, túnel, reglas) | `$H cf …` (autorizado; lo hace el agente, nunca el usuario) |
 | Respaldos | receta *respaldo*; `$H doc proxmox/README Tareas` |
 | VM, RAM, ZFS, NFS del host | `$H doc proxmox/README <tema>` |
+| Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |
 | Apagar/encender cluster | `$H doc README Operación` (siempre playbook ordenado) |
 | Sonarr/Radarr/qBittorrent/Plex/Seerr | skill **media-stack** |
 
