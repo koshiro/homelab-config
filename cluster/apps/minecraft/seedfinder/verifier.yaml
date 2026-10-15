@@ -34,7 +34,7 @@ spec:
                     values: ["k3s-node-1", "pibot"]
       containers:
         - name: paper
-          image: itzg/minecraft-server:2026.9.2-java25
+          image: itzg/minecraft-server:2026.10.0-java25
           env:
             - name: EULA
               value: "TRUE"
