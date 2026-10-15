@@ -26,7 +26,7 @@ spec:
         kubernetes.io/hostname: k3s-node-1
       containers:
         - name: postgres
-          image: webodm/webodm_db:latest
+          image: webodm/webodm_db:latest@sha256:03f18ec0089325ec2b8975ba1781277bcdc212b6d86c9de33f6409d313e90430
           imagePullPolicy: IfNotPresent
           ports:
             - name: postgres

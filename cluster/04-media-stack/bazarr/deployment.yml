@@ -33,7 +33,7 @@ spec:
           mountPath: /data
       containers:
       - name: bazarr
-        image: linuxserver/bazarr
+        image: lscr.io/linuxserver/bazarr:1.6.2
         env:
         - name: PUID
           value: "1000"

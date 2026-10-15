@@ -29,7 +29,7 @@ spec:
       containers:
         - name: nodeodm
           # webodm/nodeodx:latest fallaba en runtime (sin /usr/bin/node en la imagen actual).
-          image: opendronemap/nodeodm:latest
+          image: opendronemap/nodeodm:master@sha256:cb07d06e21fd6189cfad287c6fedfa0b72568100355635cd9035cb86eed42ee2
           imagePullPolicy: IfNotPresent
           ports:
             - name: api
