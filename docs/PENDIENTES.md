@@ -1,6 +1,6 @@
 # Pendientes del homelab
 
-Última revisión: 2026-10-14. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-10-15. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
 
 Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este archivo detalla las tareas.
 
@@ -220,8 +220,23 @@ Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
 - [x] GitHub App de Renovate instalada en `koshiro/homelab-config` (2026-10-15).
 - [x] Tags fijos aplicados (2026-10-15): 17 Deployments reiniciados con la misma versión; 0 pods con problema y sitios públicos en 200.
 - [x] Primera tanda (2026-10-15, corrida manual): monitoreo (VictoriaMetrics/vmalert v1.154.0, Grafana 13.2.4) y
-  cloudflared-webs 2026.10.1 mergeados y aplicados. Pendiente de revisar: #69 (digest nuevo de WebODM) y el resto
-  del Dependency Dashboard (#72).
+  cloudflared-webs 2026.10.1 mergeados y aplicados.
+- [x] Resto del dashboard (2026-10-15), todo aplicado y verificado:
+  - Postgres 17.5 → 17.11 (CNPG, rolling update; el archivado a Garage siguió OK).
+  - **immich 3.2.4 → 3.3.3**: cayó en CrashLoopBackOff porque la imagen 17.11 trae pgvector 0.8.6 e immich no es
+    dueño de la extensión. Arreglo: `ALTER EXTENSION vector UPDATE` como `postgres` en el primario y reiniciar
+    immich-server. Renovate agrega este paso como nota a los PR de `cloudnative-pg/postgresql`.
+  - open-webui 0.4.3 → 0.12.2 (migraciones OK). Copia previa de la BD para revertir:
+    `pve:/nvme/k8s/backups/apps/open-webui/webui.db.pre-v0.12.2` (borrarla cuando la 0.12 lleve semanas estable).
+  - Device plugin de NVIDIA 0.16.2 → 0.20.1: revisado contra driver 580.178 y toolkit 1.17.8 del host (estrategia
+    envvar + NVML, time-slicing x10, flags vigentes); Plex, ComfyUI, ollama y un pod de prueba ven la GPU.
+  - Utilidades: alpine 3.24, busybox 1.38, curl 8.22, python 3.14 (probado un respaldo, el filtro de qBittorrent
+    y el whitelist-bot). minecraft-server 2026.10.0, nginx 1.31, airprint 2.1.3, redis 7.4.11.
+  - WebODM: digest nuevo, migraciones 0052/0053 OK (dump previo en `nvme/k8s/backups`).
+- Límites en `renovate.json` (y por qué): kubectl `< 1.35` (k3s 1.33, desfase ±1); nvidia/cuda `< 13.1` (driver 580
+  soporta hasta CUDA 13.0 y la imagen exige `NVIDIA_REQUIRE_CUDA`; subir junto con el driver de node-1); sin saltos
+  mayores de Postgres, del SDK de .NET (SwarmUI usa el runtime 10) ni de redis; qBittorrent `< 10` (tags viejos
+  14.x/20.04.1); `minimumReleaseAge` 7 días.
 - [x] La app de Mend funciona (2026-10-15 19:34: PR #73–#84). Fuera del horario del sábado los PR se piden
   marcando su casilla en el Dependency Dashboard (#72); en horario los abre sola. El merge sigue siendo manual (sin
   automerge hasta Flux) y después hay que aplicar con `kubectl apply -k`.
