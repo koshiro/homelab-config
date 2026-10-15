@@ -102,7 +102,7 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 
 ## Pools ZFS al arrancar
 
-`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab-storage.service`. El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). `scratch` se importa con `zfs-import@scratch.service` (habilitado 2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
+`nvme` es el pool raíz (lo importa el initramfs, `cachefile=none`). **`/etc/zfs/zpool.cache` queda vacío en cada arranque**, así que `zfs-import-cache` se salta: `respaldo` se importa con `zfs-import@respaldo.service` (habilitado 2026-10-01), que no depende del cache. `homelab-storage` (recreado 2026-10-03 en el disco de 12 TB) se importa con `zfs-import@homelab\x2dstorage.service`: el `-` del nombre de instancia **debe ir escapado** (`systemd-escape homelab-storage`), porque `%I` convierte `-` en `/` y `zfs-import@homelab-storage` busca el pool `homelab/storage`. Así falló el reinicio del 2026-10-15 (pool sin importar, LXC `nas` sin arrancar y los PVC de `homelab-storage` sin NFS). El `boot-pool` de TrueNAS desapareció con la VM 101 (2026-10-10). `scratch` se importa con `zfs-import@scratch.service` (habilitado 2026-10-10). Si se recrea el cache: `update-initramfs -u -k all`.
 
 ## Discos y pools
 
