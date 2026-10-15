@@ -26,7 +26,7 @@ spec:
         # Addon OneBlock de BentoBox: no es un plugin de Modrinth, va en plugins/BentoBox/addons/.
         # Versión fijada; para actualizar cambiar AONEBLOCK_VERSION (releases en GitHub BentoBoxWorld/AOneBlock).
         - name: aoneblock-addon
-          image: curlimages/curl:8.16.0
+          image: curlimages/curl:8.22.0
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

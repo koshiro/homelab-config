@@ -24,7 +24,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: bot
-          image: python:3.13-alpine
+          image: python:3.14-alpine
           command: ["python3", "-u", "/app/bot.py"]
           env:
             - name: RCON_HOST

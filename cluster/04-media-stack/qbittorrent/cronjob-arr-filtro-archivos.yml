@@ -87,7 +87,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: filtro
-              image: python:3.13-alpine
+              image: python:3.14-alpine
               command: ["python3", "/script/filtro.py"]
               env:
                 - name: DRY_RUN

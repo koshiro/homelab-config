@@ -26,7 +26,7 @@ spec:
                 - "true"
       initContainers:
       - name: wait-for-storage
-        image: busybox:1.35
+        image: busybox:1.38
         command:
         - sh
         - -c

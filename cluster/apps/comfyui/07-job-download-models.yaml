@@ -15,7 +15,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: download
-          image: curlimages/curl:8.16.0
+          image: curlimages/curl:8.22.0
           securityContext:
             runAsUser: 0
           env:

@@ -15,7 +15,7 @@ spec:
         runAsUser: 1000
       containers:
       - name: prepare
-        image: busybox:1.35
+        image: busybox:1.38
         command:
         - sh
         - -c
