@@ -222,11 +222,9 @@ Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
 - [x] Primera tanda (2026-10-15, corrida manual): monitoreo (VictoriaMetrics/vmalert v1.154.0, Grafana 13.2.4) y
   cloudflared-webs 2026.10.1 mergeados y aplicados. Pendiente de revisar: #69 (digest nuevo de WebODM) y el resto
   del Dependency Dashboard (#72).
-- [ ] La app de Mend no abrió nada en la primera hora tras instalarla: en https://developer.mend.io → koshiro →
-  homelab-config, confirmar que el repo está incluido y el modo Renovate activo. Mientras tanto, corrida manual con
-  el token de `gh` (abre los PR a nombre del usuario): `RENOVATE_TOKEN=$(gh auth token) RENOVATE_PLATFORM=github
-  RENOVATE_REPOSITORIES=koshiro/homelab-config RENOVATE_REQUIRE_CONFIG=required RENOVATE_FORCE='{"schedule":[]}'
-  npm_config_engine_strict=false npx --package renovate@44 -- renovate`.
+- [x] La app de Mend funciona (2026-10-15 19:34: PR #73–#84). Fuera del horario del sábado los PR se piden
+  marcando su casilla en el Dependency Dashboard (#72); en horario los abre sola. El merge sigue siendo manual (sin
+  automerge hasta Flux) y después hay que aplicar con `kubectl apply -k`.
 - [ ] Al llegar Flux (§6): automerge de `monitoreo`, `utilidades` y `cloudflare` en parches y menores.
 - [ ] El operador CNPG (1.27.0, instalado fuera del repo) no lo ve Renovate: versionarlo en `cluster/` y subirlo.
 
