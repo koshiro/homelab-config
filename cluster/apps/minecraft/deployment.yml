@@ -51,7 +51,7 @@ spec:
               mountPath: /data
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:2026.9.2-java25  # Paper 26.x requiere Java 25
+          image: itzg/minecraft-server:2026.10.0-java25  # Paper 26.x requiere Java 25
           imagePullPolicy: Always
           ports:
             - containerPort: 25565
