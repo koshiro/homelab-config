@@ -59,3 +59,5 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   2026-10-15 tardó ~20 min en contestar por SSH (arrancó en ~4).
 - CronJob `arr-filtro-archivos` con Jobs `Error` «Connection refused» → Sonarr/Radarr/qBittorrent caídos o
   reiniciando; desde 2026-10-15 el script omite la corrida en vez de fallar.
+- ComfyUI web (comfyui.danielriquelme.cl) pide Cloudflare Access → para probar la UI usar el NodePort `http://192.168.1.15:30188`.
+- ComfyUI ≥0.38: el panel Media Assets y el escaneo de output/ requieren `--enable-assets` (BD en `/app/user/comfyui.db`). Las fechas del primer escaneo son la hora del escaneo, no la del archivo. Las rutas `x.png [output]` de LoadImage se validan solo contra el historial en memoria: tras reiniciar quedan como faltantes y bloquean Run; se reseleccionan desde Media Assets (el usuario no quiere un nodo propio).
