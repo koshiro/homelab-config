@@ -76,10 +76,20 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [x] **qBittorrent:** WebUI de vuelta en `qbittorrent.danielriquelme.cl` tras Cloudflare Access (2026-10-10, PR #31); NodePort 30808 queda para LAN/tailnet. `networkpolicy.yml` no está aplicado (solo `allow-arr-suite-communication`). Sin login desde la red de pods (`WebUI\AuthSubnetWhitelist=10.42.0.0/16`, lo fija el init container del Deployment; 2026-10-10, PR #40): Access es la única barrera pública. La contraseña sigue para clientes fuera de esa red.
 - [x] Cloudflare Access para apps de administración: la app «Homelab admin» cubre grafana, comfyui, swarmui, galeria, chat, sonarr, radarr, prowlarr, bazarr y qbittorrent (verificado por API 2026-10-10). Recordatorio: el comodín `*.danielriquelme.cl → traefik` hace público todo Ingress; agregar a Access cada app de administración nueva.
 
-## 4b. Postgres — respaldo robusto (pendiente)
+## 4b. Postgres — respaldo PITR ✅ (2026-10-15)
 
-Hoy: `pg_dump` diario de `immich` (164 MB → dump 33 MB) a `nvme/k8s/backups/postgres`, con snapshots, réplica a `respaldo` y offsite R2 junto a Immich.
-Objetivo: respaldo nativo de CloudNativePG (Barman Cloud plugin) a almacenamiento S3 (R2 o MinIO local) con WAL archiving → recuperación a un punto en el tiempo (PITR) y `ScheduledBackup`. La única base es `immich` (más la de sistema `postgres`).
+- **Garage v2.4.1** (S3 local; MinIO Community está archivado desde 2026) en pve: `proxmox/etc/garage.toml`,
+  `proxmox/systemd/garage.service`, datos en `nvme/k8s/garage` (quota 50G; entra en sanoid, syncoid a `respaldo` y
+  restic a R2). API S3 en `192.168.1.100:3900`, bucket `cnpg-backups`, llave `cnpg` (secretos en `/etc/garage/`).
+- **cert-manager v1.21.2** y **plugin Barman Cloud v0.15.1** (`cluster/00-infrastructure/`).
+- `cluster/apps/postgresql/`: ObjectStore `garage` (retención 30 días, gzip), `plugins:` en el Cluster (WAL continuo;
+  aplicarlo reinicia las 3 instancias por turno) y ScheduledBackup diario 06:20 UTC (03:20 Chile). Secreto
+  `02-garage-secret.sops.yaml`. El manifiesto del Cluster se limpió del `status` volcado bajo `spec`.
+- Verificado: WAL archivado en ~0,5 s; respaldo base de 76 MiB en 23 s; **restauración de prueba** (cluster
+  `pitr-prueba` desde Garage) idéntica a producción (170 MB, 3 290 assets). `check-backups.sh` vigila el WAL (≤ 1 h) y
+  los snapshots/réplica de `garage`.
+- Se mantiene el `pg_dump` diario de immich como segunda vía (formato lógico, restaurable en otra versión).
+- [ ] CNPG 1.27.0 está atrasado (1.29.3/1.30.1 al 2026-10-14): actualizar el operador, idealmente vía Renovate.
 
 ## 4b2. Mantención urgente de Proxmox (bug de ZFS)
 

@@ -17,6 +17,8 @@ notify() { if [ -n "${DRY_RUN:-}" ]; then printf "%s\n" "$1"; else notify-telegr
 
 chk "dump Postgres (immich)" "$(newest_file /nvme/k8s/backups/postgres "immich-*.dump")" 26
 chk "snapshot etcd"          "$(newest_file /nvme/k8s/backups/etcd "etcd-snapshot-*")" 14
+# CNPG → Garage: con archive_timeout 5min llega un WAL al menos cada 5 min (cluster/apps/postgresql/).
+chk "WAL Postgres en Garage" "$(find /nvme/k8s/garage/data -type f -printf "%T@\n" 2>/dev/null | sort -n | tail -1 | cut -d. -f1)" 1
 # CronJobs config-backup-* (cluster/00-infrastructure/backups/app-config-backup.yaml y
 # webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
@@ -25,7 +27,7 @@ for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 chk "réplica respaldo/comfyui" "$(newest_snap respaldo/comfyui)" 26
-for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs claude-remote; do
+for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs claude-remote garage; do
   chk "sanoid nvme/k8s/$d"   "$(newest_snap "nvme/k8s/$d")" 2
   chk "réplica respaldo/$d"  "$(newest_snap "respaldo/k8s/$d")" 26
 done

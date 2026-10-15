@@ -1,0 +1,26 @@
+[Unit]
+Description=Garage (S3 local para respaldos de CloudNativePG)
+After=network-online.target zfs-mount.service
+Wants=network-online.target
+RequiresMountsFor=/nvme/k8s/garage
+OnFailure=notify-failure@%n.service
+
+[Service]
+User=garage
+Group=garage
+Environment=RUST_LOG=garage=info
+Environment=GARAGE_RPC_SECRET_FILE=/etc/garage/rpc_secret
+Environment=GARAGE_ADMIN_TOKEN_FILE=/etc/garage/admin_token
+ExecStart=/usr/local/bin/garage -c /etc/garage.toml server
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/nvme/k8s/garage
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

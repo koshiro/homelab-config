@@ -1,0 +1,26 @@
+# Garage (S3 local) para los respaldos de CloudNativePG (plugin Barman Cloud): base + WAL → PITR.
+# Un solo nodo, sin réplicas: la redundancia la dan el espejo NVMe, sanoid, syncoid a `respaldo` y restic a R2,
+# porque los datos viven en nvme/k8s/garage. Secretos fuera del repo en /etc/garage/ (0600, dueño garage).
+metadata_dir = "/nvme/k8s/garage/meta"
+data_dir = "/nvme/k8s/garage/data"
+db_engine = "lmdb"
+# Copia consistente de la metadata dentro de meta/snapshots: los snapshots de ZFS toman LMDB en caliente.
+metadata_auto_snapshot_interval = "6h"
+
+replication_factor = 1
+# ZFS ya comprime con lz4.
+compression_level = "none"
+
+rpc_bind_addr = "127.0.0.1:3901"
+rpc_public_addr = "127.0.0.1:3901"
+# Secreto RPC y token de admin: rutas en GARAGE_RPC_SECRET_FILE / GARAGE_ADMIN_TOKEN_FILE (garage.service y
+# /usr/local/sbin/garagectl), no aquí: el pre-commit confunde la clave *_secret_file con una credencial.
+
+[s3_api]
+s3_region = "garage"
+# LAN: lo usan los pods de los workers (mismo camino que NFS).
+api_bind_addr = "192.168.1.100:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "127.0.0.1:3903"

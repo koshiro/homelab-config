@@ -13,7 +13,8 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
-| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB; `update-initramfs -u`) |
+| `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB, `spl_kmem_cache_obj_per_slab=1`; `update-initramfs -u -k all`, efecto al reiniciar) |
+| `etc/garage.toml`, `systemd/garage.service`, `bin/garagectl` | `/etc/garage.toml`, `/etc/systemd/system/garage.service`; binario `/usr/local/bin/garage` (v2.4.1, musl de garagehq.deuxfleurs.fr), usuario `garage`, secretos `/etc/garage/{rpc_secret,admin_token,cnpg-key.txt}` (0600); sus rutas van por variables de entorno en el unit. CLI: `garagectl status` (en `/usr/local/sbin/`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
 | `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |

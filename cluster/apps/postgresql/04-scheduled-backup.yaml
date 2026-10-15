@@ -1,0 +1,17 @@
+# Respaldo base diario a Garage; junto con el WAL continuo permite PITR dentro de los 30 días de retención.
+# Cron de CNPG con segundos y en UTC: 06:20 UTC = 03:20 en Chile, tras el pg_dump de immich (03:15) y antes de
+# syncoid-respaldo (03:30) y restic-offsite (04:30) en pve.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: homelab-postgres-diario
+  namespace: postgresql
+spec:
+  schedule: "0 20 6 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: homelab-postgres
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
