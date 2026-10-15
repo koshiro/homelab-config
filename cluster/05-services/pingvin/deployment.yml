@@ -19,7 +19,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: pingvin-share
-          image: stonith404/pingvin-share:latest
+          image: stonith404/pingvin-share:v1.13.0
           env:
             - name: TZ
               value: Etc/UTC

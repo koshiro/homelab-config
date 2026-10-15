@@ -34,7 +34,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:latest
+          image: cloudflare/cloudflared:2026.10.0
           imagePullPolicy: IfNotPresent
           args:
             - tunnel

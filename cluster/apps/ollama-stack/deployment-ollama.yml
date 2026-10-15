@@ -25,7 +25,7 @@ spec:
                       - "true"
       containers:
         - name: ollama
-          image: ollama/ollama:latest
+          image: ollama/ollama:0.40.4
           env:
             - name: OLLAMA_HOST
               value: "0.0.0.0:11434"

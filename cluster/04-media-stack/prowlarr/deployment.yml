@@ -43,7 +43,7 @@ spec:
           mountPath: /data
       containers:
       - name: prowlarr
-        image: linuxserver/prowlarr
+        image: lscr.io/linuxserver/prowlarr:2.6.5
         env:
         - name: PUID
           value: "1000"
