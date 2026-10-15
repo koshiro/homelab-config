@@ -25,7 +25,7 @@ spec:
   containers:
     - name: work
       # Misma imagen que ComfyUI (ya en caché en el nodo): nvcc 13.0 para el build --features cuda
-      image: nvidia/cuda:13.0.3-devel-ubuntu24.04
+      image: nvidia/cuda:13.4.2-devel-ubuntu24.04
       # Paquetes del sistema (no persisten en /work): Python para los scripts, clang/git para compilar
       command: ["/bin/sh", "-c"]
       args:

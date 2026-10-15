@@ -44,7 +44,7 @@ spec:
       containers:
         - name: comfyui
           # Misma imagen que el Job de build: trae gcc/nvcc para Triton y extensiones que compilan al vuelo
-          image: nvidia/cuda:13.0.3-devel-ubuntu24.04
+          image: nvidia/cuda:13.4.2-devel-ubuntu24.04
           env:
             - name: PYTORCH_CUDA_ALLOC_CONF
               value: expandable_segments:True

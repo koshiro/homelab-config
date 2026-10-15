@@ -32,7 +32,7 @@ spec:
                     values: ["true"]
       containers:
         - name: build
-          image: nvidia/cuda:13.0.3-devel-ubuntu24.04
+          image: nvidia/cuda:13.4.2-devel-ubuntu24.04
           env:
             - name: TORCH_VERSION
               value: "2.14.1"
