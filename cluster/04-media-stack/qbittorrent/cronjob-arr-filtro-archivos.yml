@@ -44,7 +44,12 @@ data:
 
     for arr, (base, clave, sin_conocer) in ARRS.items():
         cab = {"X-Api-Key": clave, "Content-Type": "application/json"}
-        cola = pedir(f"{base}/api/v3/queue?pageSize=1000&{sin_conocer}=false", cabeceras=cab)["records"]
+        try:
+            cola = pedir(f"{base}/api/v3/queue?pageSize=1000&{sin_conocer}=false", cabeceras=cab)["records"]
+        except (urllib.error.URLError, TimeoutError) as e:
+            # Caído o reiniciándose: lo revisa la próxima corrida, sin dejar un Job fallido.
+            print(f"[{arr}] no responde ({e}); se omite esta corrida", flush=True)
+            continue
         por_torrent = {}
         for item in cola:
             if item.get("protocol") == "torrent" and item.get("downloadId"):
@@ -52,8 +57,8 @@ data:
         for hash_, items in por_torrent.items():
             try:
                 archivos = pedir(f"{QBIT}/api/v2/torrents/files?hash={hash_}")
-            except urllib.error.HTTPError:
-                continue  # no está en qBittorrent
+            except (urllib.error.URLError, TimeoutError):
+                continue  # no está en qBittorrent, o qBittorrent no responde
             razon = motivo(archivos)
             if not razon:
                 continue

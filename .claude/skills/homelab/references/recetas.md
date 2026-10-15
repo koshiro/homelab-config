@@ -40,6 +40,15 @@ Copiar un bloque de `cluster/00-infrastructure/backups/app-config-backup.yaml`, 
 el primario de Postgres, moverlo antes con patch de `status.targetPrimary`) → `$H ssh pve qm shutdown <vmid>` /
 `qm start` (no reboot en el invitado) → `kubectl uncordon`. Pedir confirmación: es disruptivo.
 
+## Reiniciar el host pve (kernel, módulos)
+Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →
+snapshot de etcd en pibot (`sudo k3s etcd-snapshot save --name pre-reboot-pve-<fecha>`) → `nohup systemctl reboot &`
+(pve-guests apaga los invitados por ACPI; sin drain si el usuario lo acepta). Esperar SSH con Monitor/`until`; tarda
+~20 min en responder. Después: `zpool list` debe mostrar los **4 pools** (`nvme` raíz, `respaldo`, `homelab-storage`
+y `scratch`), `pct status 110` running y `exportfs | grep homelab-storage`. Si faltó un pool: `zpool import -d
+/dev/disk/by-id <pool>`, `exportfs -ra`, `pct start 110` y borrar los pods `Unknown`/`UnexpectedAdmissionError`
+(`kubectl delete pod --force --grace-period=0`); los que esperan NFS se recuperan solos al reintentar el montaje.
+
 ## Salud tras corte de luz
 `$H status --deep`; si faltan workers: `ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_startup_cluster.yml`.
 Apagar: siempre `playbook_graceful_shutdown_cluster.yml`, nunca `poweroff --force`.
