@@ -26,7 +26,7 @@ spec:
                 - "true"
       initContainers:
       - name: setup-qbittorrent-unified
-        image: alpine:3.20
+        image: alpine:3.24
         command:
         - sh
         - -c

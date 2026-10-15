@@ -28,7 +28,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: plex
@@ -107,7 +107,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: sonarr
@@ -181,7 +181,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: radarr
@@ -255,7 +255,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: prowlarr
@@ -330,7 +330,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: bazarr
@@ -401,7 +401,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: overseerr
@@ -471,7 +471,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: pingvin
@@ -538,7 +538,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: grafana
@@ -607,7 +607,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: open-webui
@@ -675,7 +675,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: minecraft-spiral2
@@ -751,7 +751,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: minecraft-spiral3
@@ -882,7 +882,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: qbittorrent
@@ -948,7 +948,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: comfyui
@@ -1020,7 +1020,7 @@ spec:
           nodeName: pibot
           containers:
             - name: backup
-              image: alpine:3.22
+              image: alpine:3.24
               env:
                 - name: APP
                   value: canon-mp250-cups

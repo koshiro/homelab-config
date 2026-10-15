@@ -23,7 +23,7 @@ spec:
       initContainers:
         # Descarga el jar de Velocity (incluye la API) para compilar el plugin /lobby.
         - name: fetch-velocity-api
-          image: curlimages/curl:8.16.0
+          image: curlimages/curl:8.22.0
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -61,7 +61,7 @@ spec:
         # /config de la imagen sigue los enlaces internos de los volúmenes de ConfigMap y deja los
         # archivos anidados en una carpeta con marca de tiempo; Floodgate generaba otra key.pem.)
         - name: seed-plugin-configs
-          image: busybox:1.36
+          image: busybox:1.38
           command: ["/bin/sh", "-c"]
           args:
             - |

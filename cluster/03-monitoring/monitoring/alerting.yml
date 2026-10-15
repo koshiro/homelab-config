@@ -103,7 +103,7 @@ spec:
       initContainers:
         # Alertmanager no expande variables: inserta el chat_id del secret en la config
         - name: config
-          image: busybox:1.37
+          image: busybox:1.38
           command: [sh, -ec, 'sed "s/CHAT_ID/$(cat /telegram/chat_id)/" /template/alertmanager.yml > /config/alertmanager.yml']
           volumeMounts:
             - name: template
