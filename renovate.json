@@ -116,6 +116,11 @@
       "enabled": false
     },
     {
+      "description": "La imagen de CNPG trae pgvector nuevo e Immich no puede actualizarlo (no es dueño): crashea al arrancar",
+      "matchPackageNames": ["ghcr.io/cloudnative-pg/postgresql"],
+      "prBodyNotes": ["**Tras aplicar** (cuando las 3 instancias estén sanas), en el primario: `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y `kubectl -n immich rollout restart deploy/immich-server`. Sin esto immich-server queda en CrashLoopBackOff con «must be owner of extension vector» (2026-10-15)."]
+    },
+    {
       "description": "Imágenes fijadas por digest sin versiones publicadas: solo digest, mensual",
       "matchPackageNames": ["webodm/**", "opendronemap/nodeodm"],
       "schedule": ["* 6-12 1-7 * 6"]

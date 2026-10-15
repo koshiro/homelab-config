@@ -33,6 +33,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- immich-server CrashLoopBackOff «must be owner of extension vector» tras subir la imagen de CNPG → en el primario
+  `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y reiniciar immich-server; reindexa al arrancar. (2026-10-15)
+- Esperar un rollout de CNPG mirando solo `status.phase` → da «healthy» antes de empezar: exigir además la imagen
+  nueva en las 3 instancias. (2026-10-15)
+- `gh pr merge` lo bloquea el clasificador («Merge Without Review») → pedir al usuario que mergee con el comando exacto. (2026-10-15)
 - Guarda del worktree «too complex to verify» / «names git» → un comando simple por llamada; bucles en script de
   `$CLAUDE_JOB_DIR/tmp`; sin `cd … &&` (sus rutas bajo `~/git` se leen como git). (2026-10-14, 128 errores en 29 sesiones)
 - `git -C <checkout>` desde un worktree → bloqueado: ExitWorktree `keep` y operar desde el checkout.
