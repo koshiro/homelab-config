@@ -6,6 +6,7 @@
   "labels": ["renovate"],
   "prConcurrentLimit": 6,
   "prHourlyLimit": 3,
+  "minimumReleaseAge": "7 days",
   "commitMessageAction": "actualizar",
   "commitMessageExtra": "a {{{newValue}}}",
   "semanticCommitType": "chore",
@@ -75,6 +76,28 @@
       "matchPackageNames": ["lscr.io/linuxserver/**", "ghcr.io/flaresolverr/flaresolverr", "ghcr.io/seerr-team/seerr"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "media"
+    },
+    {
+      "description": "kubectl a ±1 menor del cluster (k3s v1.33): subir este límite al actualizar k3s",
+      "matchPackageNames": ["registry.k8s.io/kubectl"],
+      "allowedVersions": "<1.35"
+    },
+    {
+      "description": "CUDA: el driver de node-1 (580.x) soporta hasta CUDA 13.0 y la imagen exige NVIDIA_REQUIRE_CUDA; subir con el driver",
+      "matchPackageNames": ["nvidia/cuda"],
+      "allowedVersions": "<13.1"
+    },
+    {
+      "description": "SwarmUI corre sobre el runtime .NET 10 que trae la imagen del SDK; un SDK mayor no lo incluye",
+      "matchPackageNames": ["mcr.microsoft.com/dotnet/sdk"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Redis de WebODM (broker Celery): sin saltos mayores",
+      "matchPackageNames": ["redis"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     },
     {
       "description": "qBittorrent de linuxserver tiene tags viejos (14.x, 20.04.1) que parecen más nuevos que la 5.x",
