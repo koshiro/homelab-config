@@ -48,7 +48,7 @@ spec:
         # Clona SwarmUI la primera vez (init + fetch: Models/ y Output/ ya existen como puntos de montaje) y copia
         # sus nodos a ComfyUI en cada arranque, por si se actualizó
         - name: setup
-          image: mcr.microsoft.com/dotnet/sdk:10.0
+          image: mcr.microsoft.com/dotnet/sdk:11.0
           command: ["/bin/bash", "-c"]
           args:
             - |
@@ -76,7 +76,7 @@ spec:
           # SDK y no runtime: launch-linux.sh compila cuando cambia el commit (primer arranque, Server → Update) y
           # relanza solo al salir con código 42 (reinicio pedido desde la UI). El proyecto es net8.0 con
           # RollForward Major y el lanzador ya pide .NET 10. La imagen trae git, que usa Server → Update.
-          image: mcr.microsoft.com/dotnet/sdk:10.0
+          image: mcr.microsoft.com/dotnet/sdk:11.0
           workingDir: /swarm
           command: ["/bin/bash", "-c"]
           args:
