@@ -53,3 +53,5 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Tras reiniciar pibot, flannel tarda 1–2 min: 502 transitorio hacia pods de la Pi.
 - Pods GPU con «NVML Unknown Error» tras `daemon-reload` en node-1 → `kubectl -n nvidia-device-plugin rollout restart
   ds` y reiniciar los pods con GPU (avisar antes por Plex).
+- ComfyUI web (comfyui.danielriquelme.cl) pide Cloudflare Access → para probar la UI usar el NodePort `http://192.168.1.15:30188`.
+- ComfyUI ≥0.38: el panel Media Assets y el escaneo de output/ requieren `--enable-assets` (BD en `/app/user/comfyui.db`). Las fechas del primer escaneo son la hora del escaneo, no la del archivo. Las rutas `x.png [output]` de LoadImage se validan solo contra el historial en memoria: tras reiniciar quedan como faltantes y bloquean Run; se reseleccionan desde Media Assets (el usuario no quiere un nodo propio).
