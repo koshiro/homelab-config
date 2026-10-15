@@ -116,7 +116,11 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
   - Kernel donde `vmalloc` no despierte kswapd: los reportes dicen que empezó al pasar de 6.17 a 7.0. Un kernel
     6.17 de Proxmox con ZFS ≥ 2.4 serviría. **No sirve el 6.14.11 instalado**: trae ZFS 2.3.4 y `homelab-storage`
     tiene activa `block_cloning_endian` (feature de 2.4), así que importaría en solo lectura.
-  - Si el fix tarda: en el próximo reinicio planificado probar `spl_kmem_cache_obj_per_slab=1` en
+  - **Preparado 2026-10-14 (falta reiniciar el host):** `spl_kmem_cache_obj_per_slab=1` en `proxmox/etc/zfs.conf`
+    (copiado a `/etc/modprobe.d/`, dentro del initramfs) y kernel 7.0.14-23 instalado como predeterminado de GRUB.
+    Tras reiniciar: `cat /sys/module/spl/parameters/spl_kmem_cache_obj_per_slab` = 1, repetir el histograma de
+    `mm_vmscan_wakeup_kswapd` y mirar `SwapOutHostProxmox` y el ARC unos días. Plan original: probar
+    `spl_kmem_cache_obj_per_slab=1` en
     `proxmox/etc/zfs.conf` (baja esas peticiones de orden 10 a orden ≤8) y, si el ARC sigue desplomándose,
     `zfs_arc_shrinker_limit` (hoy 0; el issue sugiere ~1300 para 64 GB).
 - No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
