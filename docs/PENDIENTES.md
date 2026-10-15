@@ -86,7 +86,7 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
   aplicarlo reinicia las 3 instancias por turno) y ScheduledBackup diario 06:20 UTC (03:20 Chile). Secreto
   `02-garage-secret.sops.yaml`. El manifiesto del Cluster se limpió del `status` volcado bajo `spec`.
 - Verificado: WAL archivado en ~0,5 s; respaldo base de 76 MiB en 23 s; **restauración de prueba** (cluster
-  `pitr-prueba` desde Garage) idéntica a producción (170 MB, 3 290 assets). `check-backups.sh` vigila el WAL (≤ 1 h) y
+  `pitr-prueba` desde Garage) idéntica a producción (170 MB, 3 290 assets). `check-backups.sh` vigila el WAL (≤ 6 h) y
   los snapshots/réplica de `garage`.
 - Se mantiene el `pg_dump` diario de immich como segunda vía (formato lógico, restaurable en otra versión).
 - [ ] CNPG 1.27.0 está atrasado (1.29.3/1.30.1 al 2026-10-14): actualizar el operador, idealmente vía Renovate.
