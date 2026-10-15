@@ -71,6 +71,11 @@
       "groupName": "media"
     },
     {
+      "description": "qBittorrent de linuxserver tiene tags viejos con esquema de fecha (20.04.1) que parecen más nuevos",
+      "matchPackageNames": ["lscr.io/linuxserver/qbittorrent"],
+      "allowedVersions": "<20"
+    },
+    {
       "description": "cert-manager y el plugin de CNPG van juntos",
       "matchPackageNames": ["cert-manager/cert-manager", "cloudnative-pg/plugin-barman-cloud"],
       "groupName": "cnpg-respaldos"
