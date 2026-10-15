@@ -60,11 +60,13 @@ spec:
             # --cache-ram 6: liberar modelos de la RAM cuando queden < 6 GB libres en el nodo (el valor por defecto,
             #   10 % = 2,4 GB, dejaba al nodo casi sin margen para Minecraft/Plex al cargar varios modelos)
             # Sin --lowvram: ComfyUI decide la descarga a RAM según la VRAM libre (la GPU se comparte con Ollama)
+            # --enable-assets: indexa input/output/models en /app/user/comfyui.db. Sin esto el panel de Media Assets
+            #   sale del historial de ejecuciones, que vive en memoria y se pierde en cada reinicio
             - |
               command -v git >/dev/null || { apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null; }
               git config --global --add safe.directory '*'
               exec /app/venv/bin/python -u /app/main.py --listen 0.0.0.0 --port 8188 --base-directory /app \
-                --use-sage-attention --fast fp16_accumulation --cache-ram 6
+                --use-sage-attention --fast fp16_accumulation --cache-ram 6 --enable-assets
           # --cache-ram 6 + modelos cargados: ~9 GB en reposo. El request le avisa al scheduler cuánto ocupa en node-1.
           resources:
             limits:
