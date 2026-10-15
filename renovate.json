@@ -31,6 +31,12 @@
   ],
   "packageRules": [
     {
+      "description": "Títulos en español: el preset de docker pone «docker tag to …» en inglés",
+      "matchDatasources": ["docker"],
+      "commitMessageTopic": "{{depName}}",
+      "commitMessageExtra": "a {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isDigest}}digest {{{newDigestShort}}}{{else}}{{{newValue}}}{{/if}}{{/if}}"
+    },
+    {
       "description": "Mayores: PR propio y etiqueta, leer notas de versión antes de mergear",
       "matchUpdateTypes": ["major"],
       "addLabels": ["mayor"]
