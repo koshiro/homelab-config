@@ -1,0 +1,6 @@
+# cert-manager: lo exige el plugin Barman Cloud de CloudNativePG (certificados mTLS entre operador, plugin y
+# sidecars). Manifiesto oficial fijado por versión.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml
