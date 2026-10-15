@@ -71,9 +71,9 @@
       "groupName": "media"
     },
     {
-      "description": "qBittorrent de linuxserver tiene tags viejos con esquema de fecha (20.04.1) que parecen más nuevos",
+      "description": "qBittorrent de linuxserver tiene tags viejos (14.x, 20.04.1) que parecen más nuevos que la 5.x",
       "matchPackageNames": ["lscr.io/linuxserver/qbittorrent"],
-      "allowedVersions": "<20"
+      "allowedVersions": "<10"
     },
     {
       "description": "cert-manager y el plugin de CNPG van juntos",
