@@ -33,8 +33,9 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
   ni `sops -d | kubectl apply`; un `kubectl edit/patch/scale` sobre algo gestionado se revierte en ≤10 min y
   `rollout restart` va con `--field-manager=reinicio-manual`. Probar en caliente: `flux suspend ks <app>` → cambio →
   PR → merge → `flux resume ks <app>`.
-- **Disco de los workers** (2026-10-16: node-1 100 GB al 81 %, node-2/3 50 GB al ~70 %; el GC de imágenes del kubelet
-  empieza al 85 %). `local-path`, imágenes y logs comparten ese disco. Revisar con `hl.py status`.
+- **Disco de los workers** (2026-10-16, tras borrar imágenes sin uso: node-1 100 GB al 61 %, node-2/3 50 GB al ~50 %;
+  el GC de imágenes del kubelet empieza al 85 %). `local-path`, imágenes y logs comparten ese disco. Revisar con
+  `hl.py status`; liberar con `sudo k3s crictl --timeout=120s rmi --prune` en el nodo.
 - **SOPS**: `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`; editar un secreto cifrado en el lugar con
   `sops <archivo>.sops.yml`. Nunca versionar secretos en claro.
 - **Cloudflare** (túneles, DNS, hostnames): lo hace el agente por API con `vault_cloudfare_full_api_token` del vault

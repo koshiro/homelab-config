@@ -141,6 +141,14 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `PATH="/Users/daniel/.cache/flux-plan/bin:$PATH" bash scripts/flux/validar.sh`. (2026-10-16)
 - `hl.py flux` salía 1 con `Ready=Unknown … Progressing: Reconciliation in progress` → era una pasada en curso
   (cada 10 min); desde 2026-10-16 se muestra «(reconciliando)» y no cuenta si la revisión ya es la de `main`.
+- Tras un merge, `hl.py flux` muestra `postgresql`/`immich` en `DependencyNotReady` (la cadena `dependsOn` espera a que
+  cada dependencia llegue a la revisión nueva) → transitorio: `kubectl -n flux-system wait ks/<ks>
+  --for=jsonpath='{.status.lastAppliedRevision}'=main@sha1:<sha>`. (2026-10-16)
+- `crictl rmi --prune` → «DeadlineExceeded» en cada imagen (timeout de 2 s del cliente), pero containerd las borra
+  igual y el disco se libera de a poco → `sudo k3s crictl --timeout=120s rmi --prune` y volver a medir en unos
+  minutos. El 2026-10-16 liberó ~20 GB en node-1 (81 → 61 % con el journal a 1 GB) y ~10 GB en node-2/3.
+- Pod `Failed`/`Evicted` «Usage of EmptyDir volume … exceeds the limit» → el `sizeLimit` del `emptyDir` es
+  menor que lo que escribe la app (immich-machine-learning baja ~3,4 GB de modelos; tenía 2Gi). (2026-10-16)
 - `flux suspend ks …` → el clasificador lo bloquea («Shared Cluster Mutation») → dar el comando al usuario. Después
   del bloqueo, hasta un `cat …; sed -n …` de solo lectura salió bloqueado («Modify Shared Resources»): avisar y, con
   el OK del usuario, leer con la herramienta Read. (2026-10-16)
