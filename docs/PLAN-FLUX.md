@@ -16,7 +16,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [x] Fase 0 — k3s 1.35 y kit de recuperación (2026-10-16)
 - [x] Fase 1 — Repo = cluster en ambas direcciones (2026-10-16)
 - [x] Fase 2 — Ensayo en k3d (2026-10-16)
-- [ ] Fase 3 — Flux instalado sin gestionar nada
+- [x] Fase 3 — Flux instalado sin gestionar nada (2026-10-16)
 - [ ] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres)
 - [ ] Fase 5 — Avisos
 - [ ] Fase 6 — Prueba de fallas
@@ -249,6 +249,27 @@ solo lo que toca prod:
    --for=condition=Ready`; que la revisión de `flux get sources git` sea `git rev-parse origin/main`; `flux get ks`
    (las 28 suspendidas); pods de `flux-system` fuera de `pibot`; `hl.py status`; `diff_todo.py`; `inventario.py`.
 9. Marcar la fase 3 aquí con la evidencia, en una rama `docs/` con su PR (`main` ya tiene la instalación).
+
+**Cerrada (2026-10-16):** PR #92 con el CI en verde (kubeconform, secretos SOPS, GitGuardian y flate `✓ 31 passed`),
+mergeado en `1e0b6fb`. Antes, `flux check --pre` pasó y no había CRD ni namespace de Flux. El runbook se siguió tal
+cual: en la 1.ª pasada solo fallaron el GitRepository y la Kustomization (sin CRD), los 11 CRD quedaron `established`,
+deploy key `166666091` «flux-system (prod, solo lectura)» (`read-only`, la única del repo; la clave local se borró),
+los secrets `flux-system` y `sops-age`, y la 2.ª pasada sin errores (10:35:32 GMT-3). Resultado:
+
+- `flux check`: «all checks passed» (Flux 2.9.6: source 1.9.6, kustomize 1.9.6, helm 1.6.5, notification 1.9.4).
+- GitRepository Ready a los 4 s en `main@sha1:1e0b6fbccda692317d625ccb9c3b62611c86a5c6` = `git rev-parse origin/main`;
+  la raíz, Ready a los 7 s con «Applied revision» en el mismo SHA.
+- Las **28 hijas** tienen `suspend: true` y ninguna tiene `lastAppliedRevision`. No hay ningún HelmRelease,
+  HelmRepository ni HelmChart de Flux (solo los de Traefik que trae k3s).
+- Los 4 pods de `flux-system` corren en `k3s-node-2`, sin reinicios. No hay logs de error ni eventos Warning.
+- `hl.py status`: 0 pods con problema. `diff_todo.py`: 39/39 carpetas OK, con `flux` y `flux/flux-system`.
+  `inventario.py`: 0 errores, y solo aparecen los releases de Traefik y `cnpg`, como al cerrar la fase 1. Los secrets
+  del bootstrap no salen como huérfanos.
+- **Flux ya se gestiona a sí mismo:** la raíz aplica `cluster/flux/flux-system` (62 objetos con el manager
+  `kustomize-controller`). Desde ahora, un cambio en Flux va por PR y no con `kubectl apply`.
+- Herramienta para la fase 4: `hl.py flux` muestra la fuente comparada con el SHA de `main`, cada Kustomization
+  activa con su Ready y su revisión, las suspendidas, los HelmRelease y el nodo de cada pod. Sale con 1 si alguna
+  activa no está Ready en `main`. Adelanta el `hl.py flux` de la fase 8.
 
 ### Fase 4 — Adopción con prune apagado (~1,5 h) · 3 PR seguidos
 
