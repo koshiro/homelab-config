@@ -1,0 +1,11 @@
+# Prueba 4 de la fase 6 (docs/PLAN-FLUX.md): la única Kustomization con prune: true antes de la fase 7.
+# Al sacar de git el ConfigMap, Flux lo borra; el PVC lleva la anotación de proteger-datos y se queda.
+# Temporal: se borra al cerrar la prueba.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+components:
+  - ../../components/proteger-datos

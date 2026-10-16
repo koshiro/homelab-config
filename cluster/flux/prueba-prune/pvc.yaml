@@ -1,0 +1,13 @@
+# Sin pod que lo use: local-path es WaitForFirstConsumer, así que queda Pending y no ocupa disco.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prueba-prune
+  namespace: flux-prueba
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Mi
