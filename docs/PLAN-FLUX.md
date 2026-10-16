@@ -57,7 +57,7 @@ versión de Flux.
 | Salud | `wait: true` en todas y `timeout` de 5 min (10 en comfyui) | Que el verde signifique «el rollout terminó», no solo «se aplicó» |
 | Borrado | `prune: false` en la adopción; **`deletionPolicy: Orphan`** en las Kustomizations con estado; `kustomize.toolkit.fluxcd.io/prune: disabled` en PV, PVC, Namespaces con datos y el `Cluster` CNPG | Con el valor por defecto (`MirrorPrune`), renombrar o borrar una Kustomization con prune activo borra todo lo que contiene |
 | SOPS | `.sops.yaml` en la raíz (`encrypted_regex: ^(data\|stringData)$`, el destinatario age actual); los 17 archivos dentro de sus Kustomizations de Flux, con el Component `solo-flux/` (fase 2) | Un solo formato para todos, y es el que Flux descifra |
-| CI | `flux-local` (`test` + `diff` comentado en el PR), `kubeconform -strict` con los schemas de los CRD y una revisión de que todo `*.sops.*` esté estructurado y cifrado | `flux-local` renderiza igual que Flux; sin checks, Renovate no hace automerge |
+| CI | `flate` (`test` + `diff` comentado en el PR, con `scripts/flux/flate.sh`), `kubeconform -strict` con los schemas de los CRD y una revisión de que todo `*.sops.*` esté estructurado y cifrado | `flate` renderiza igual que Flux; sin checks, Renovate no hace automerge. Reemplaza a `flux-local`, que quedó deprecado (decisión del usuario, 2026-10-16) |
 | Actualizar Flux | El manager `flux` de Renovate para `gotk-components.yaml`; si la app de Mend no trae el CLI `flux` (la documentación no lo confirma), un workflow mensual que corre `flux install --export` y abre el PR | Que Flux no quede viejo en silencio |
 
 ## 2. Fases
@@ -165,7 +165,7 @@ SOPS`) pasa en el PR #91.
   Component `solo-flux/kustomization.yaml` que los lista (`../secret.sops.yaml`), y su Kustomization de Flux lo suma
   con `spec.components: [solo-flux]`, con `decryption` y `sops-age` solo en esas 9. `kubectl apply -k` no lo ve, porque
   no está en `resources`. Las rutas `../` funcionan porque Flux construye sin restricción de carga dentro del
-  artefacto, y flux-local (CI de la fase 3) renderiza con `flux build ks`, así que da lo mismo. El HelmRelease de `cnpg`
+  artefacto, y flate (el CI) hace lo mismo: la prueba negativa con un `../` roto falla. El HelmRelease de `cnpg`
   va igual (`cnpg/solo-flux/`), para que un `kubectl apply -k` no adopte el release fuera del lote 3. `validar.sh`,
   `diff_todo.py` e `inventario.py` saltan los Component y `cluster/flux`. Consecuencia para la fase 4: ya no hay que
   meter los SOPS en ningún kustomization, porque quitar el `suspend` también activa sus secretos. Cuando se retire
@@ -197,8 +197,8 @@ la fuente: raíz +12 s, cert-manager +31 s, cnpg +40 s, plugin +66 s, postgresql
 
 - `gotk-sync.yaml` ya apunta a `main` y las 28 están suspendidas, así que aplicar `cluster/flux/flux-system` en prod
   instala Flux sin gestionar nada. La deploy key definitiva reemplaza a la temporal del ensayo.
-- ~~Sumar `cluster/flux` a `inventario.py` y `diff_todo.py` y agregar el job de flux-local al CI~~: hecho, ver la
-  revisión de la fase 3.
+- ~~Sumar `cluster/flux` a `inventario.py` y `diff_todo.py` y agregar al CI el render de Flux~~: hecho (con flate),
+  ver la revisión de la fase 3.
 - `kubectl wait ks --all` sale apenas la raíz está Ready, cuando las hijas todavía no existen: esperar de nuevo, o
   esperar por nombre.
 
@@ -219,17 +219,22 @@ solo lo que toca prod:
 - **Ensayo de esta fase en k3d** (`ensayo_k3d.py instalar --como-prod`, con la configuración de git): la raíz y la
   fuente quedan Ready en el SHA de la rama, las 28 hijas siguen suspendidas sin `lastAppliedRevision` y no se crea
   ningún namespace de app ni HelmRelease. Instalar Flux no toca nada más.
-- **CI:** job `flux-local` en `validar.yml`. El test (30/30 en local, con la imagen 8.4.0) es el gate; el diff contra
-  `main` es informativo y en este PR falla sin bloquear, porque `main` no tiene `cluster/flux`. flux-local está
-  deprecado y su reemplazo, flate, salta las Kustomizations suspendidas (1 pasada, 28 saltadas): migrar cuando la
-  fase 4 quite los `suspend`, antes del automerge de la fase 7.
+- **CI con flate 0.6.5** (job `flate` en `validar.yml`; flux-local está deprecado y no se usa). flate salta las
+  Kustomizations suspendidas (con el repo tal cual: 1 pasada, 28 saltadas), así que `scripts/flux/flate.sh` trabaja
+  sobre una copia temporal sin los `suspend: true` y valida lo que Flux aplicaría al quitarlos, sin tocar el checkout.
+  Resultado: `flate.sh test` da 31/31 (las 29 Kustomizations, el HelmRelease de cnpg y su HelmRepository, con
+  `kube-version` 1.35.9). Un `../` roto en un `solo-flux/` hace fallar la prueba. `flate.sh diff origin/main` comenta
+  en el PR el cambio de render en formato GitHub (probado: `replicas` 1 → 2 sale como un solo cambio); en este PR
+  dice «main no tiene cluster/flux» y no falla. konflate (el revisor de PR de los mismos autores) es un servicio con
+  GitHub App dentro del cluster: queda fuera.
+- **Local:** `bash scripts/flux/flate.sh test|diff [ref]`, con el binario en `~/.cache/flux-plan/bin/flate`.
 - `diff_todo.py` e `inventario.py` suman `cluster/flux` solos cuando existe el CRD de Kustomization. Los secrets
   `flux-system` y `sops-age` no cuentan como huérfanos.
 
 **Runbook** (cada paso es un comando; si el clasificador bloquea uno, parar y pedirlo):
 
 1. `gh pr create --base main --head feat/flux-instalar` con el cuerpo en un archivo. Con el CI en verde
-   (kubeconform, secretos SOPS y flux-local), el usuario mergea: `gh pr merge <n> --merge`.
+   (kubeconform, secretos SOPS y flate), el usuario mergea: `gh pr merge <n> --merge`.
 2. `git fetch` y comprobar que `git diff origin/main -- cluster/flux` sale vacío.
 3. `kubectl apply --server-side -k cluster/flux/flux-system`: en esta pasada fallan el GitRepository y la
    Kustomization porque todavía no existen sus CRD (esperable).

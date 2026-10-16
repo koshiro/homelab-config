@@ -62,7 +62,8 @@ primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza po
 "flux-ensayo-k3d (temporal)"` → `$S instalar --rama <rama> --clave-git ~/.cache/flux-plan/ensayo/deploy-key` →
 `kubectl --kubeconfig ~/.cache/flux-plan/ensayo/kubeconfig wait ks --all -n flux-system --for=condition=Ready` (dos
 veces: la 1.ª sale con la raíz) → `$S estado` (ks, HelmRelease, 17 SOPS, pods fuera de la guarda) → `$S borrar` →
-`gh repo deploy-key delete <id>` y borrar la clave. Probar sin cluster: `$S render --rama <r>` y
+`gh repo deploy-key delete <id>` y borrar la clave. Probar sin cluster: `bash scripts/flux/flate.sh test` (render de
+todo como Flux, sin los suspend; `diff [ref]` para comparar), `$S render --rama <r>` y
 `flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 29/29 Ready en 134 s.)
 `instalar --como-prod` deja las hijas suspendidas como en git: ensaya «Flux sin gestionar nada» (fase 3).
 

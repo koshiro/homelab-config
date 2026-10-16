@@ -39,7 +39,7 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
 - Flux: `cluster/flux/` (`flux-system/`, `capas.yaml`, `apps.yaml`, una Kustomization por carpeta hoja). Lo que solo
   aplica Flux (los `*.sops.*`, el HelmRelease de cnpg) va en el Component `<carpeta>/solo-flux/` y entra por
-  `spec.components`; `kubectl apply -k` no lo ve. Binarios `flux`, `k3d` y `kubeconform` en `~/.cache/flux-plan/bin`;
+  `spec.components`; `kubectl apply -k` no lo ve. Binarios `flux`, `k3d`, `flate` y `kubeconform` en `~/.cache/flux-plan/bin`;
   Docker del Mac = OrbStack (`orb start`). (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
@@ -101,8 +101,8 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   objeto, confirmar que su archivo entra en una kustomization (Flux ignora los sueltos). (2026-10-16)
 - ComfyUI (assets, LoadImage `[output]`, frontend) → skill **comfyui**; ahí están las trampas.
 - `kubectl kustomize <carpeta>/solo-flux` falla (Component con `../`) → no es un error: Flux construye sin
-  restricción de carga; renderizar con `flux build ks <ks> --path <carpeta> --kustomization-file <ks.yaml> --dry-run`
-  (lo mismo que usa flux-local). (2026-10-16)
+  restricción de carga; renderizar todo con `bash scripts/flux/flate.sh test` (o una sola con `flux build ks <ks>
+  --path <carpeta> --kustomization-file <ks.yaml> --dry-run`). (2026-10-16)
 - kustomize «new root … cannot be absolute» → en `resources:` solo rutas relativas (`os.path.relpath`). (2026-10-16)
 - `kubectl wait ks --all` sale enseguida en un Flux recién instalado → solo veía la raíz; las hijas aparecen
   después: volver a esperar o esperar por nombre. (2026-10-16)
@@ -112,8 +112,9 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `docker run ghcr.io/…` «error getting credentials … Keychain Error (-60008)» → en un `DOCKER_CONFIG` temporal,
   `config.json` con `{"credHelpers": {"ghcr.io": ""}}` y `DOCKER_HOST=unix:///Users/daniel/.orbstack/run/docker.sock`
   (un config vacío no basta: macOS usa osxkeychain por defecto). (2026-10-16)
-- Imagen de flux-local: `helm template` falla con «mkdir /.cache: permission denied» → `-e HOME=/tmp`. flux-local está
-  deprecado (reemplazo: flate), pero `flate test` salta las Kustomizations suspendidas. (2026-10-16)
+- flux-local está deprecado → el CI usa flate. `flate test` salta las Kustomizations suspendidas («28 skipped») y
+  no resuelve `./cluster/...` fuera de un repo git («path is not a directory») → usar `scripts/flux/flate.sh`, que
+  valida una copia con `git init` y sin los `suspend`. (2026-10-16)
 - Pre-commit en un worktree imprime «mkdir: .git: Not a directory» → inofensivo (`.git` es archivo); el commit
   se hace igual. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).
