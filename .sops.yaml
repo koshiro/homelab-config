@@ -1,0 +1,7 @@
+# Reglas de SOPS para todo el repo: solo se cifran data y stringData, así Flux (kustomize-controller) los descifra
+# como manifiestos y kubectl/kustomize siguen viendo apiVersion, kind y metadata en claro.
+# Cifrar un secreto nuevo: sops -e -i cluster/<ruta>/secret.sops.yaml   (con SOPS_AGE_KEY_FILE puesto)
+creation_rules:
+  - path_regex: cluster/.*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs

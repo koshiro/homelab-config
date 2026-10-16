@@ -8,3 +8,5 @@ resources:
   - deployment-ollama.yml
   - deployment-webui.yml
   - ingress.yml
+components:
+  - ../../components/proteger-datos

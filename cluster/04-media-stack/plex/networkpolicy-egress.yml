@@ -29,9 +29,8 @@ spec:
       port: 80
     - protocol: TCP
       port: 443
-  # Permitir comunicación con otros servicios en cluster
-  - to: []
-    ports:
+  # Permitir comunicación con otros servicios en cluster (sin "to": cualquier destino; "to: []" da drift en k3s 1.35)
+  - ports:
     - protocol: TCP
       port: 32400
     - protocol: TCP

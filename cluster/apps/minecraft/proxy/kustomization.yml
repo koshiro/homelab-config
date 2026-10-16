@@ -16,3 +16,5 @@ configMapGenerator:
       - plugin/HostnameFilter.java
       - plugin/velocity-plugin.json
 # Secreto (aplicar aparte): sops -d secret-velocity.sops.yaml | kubectl apply -f -
+components:
+  - ../../../components/proteger-datos

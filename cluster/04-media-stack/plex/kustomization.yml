@@ -7,9 +7,12 @@ resources:
   - service-nodeport.yml
   - ingress.yml
   - pvc.yml
+  - pv-media-library.yml
   - pvc-media-library.yml
   # Network Policies
   - networkpolicy-deny.yml
   - networkpolicy-dlna.yml
   - networkpolicy-egress.yml
   - networkpolicy-ingress.yml
+components:
+  - ../../components/proteger-datos

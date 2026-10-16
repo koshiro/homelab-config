@@ -1,7 +1,8 @@
-"""Inventario inverso: objetos vivos del cluster que no están en ningún archivo de cluster/.
+"""Inventario inverso: objetos vivos del cluster que no están en ninguna kustomization ni secreto SOPS de cluster/.
 
-Excluye lo que crean controladores (ownerReferences), lo que trae k3s y los objetos que Kubernetes crea solo.
-Además cuenta los field managers de los objetos que sí están en el repo (quién más escribe en ellos).
+Los YAML sueltos (fuera de toda kustomization) no cuentan: Flux no los aplicaría.
+Excluye lo que crean controladores (ownerReferences o la lista CONTROLADORES), lo que trae k3s y los objetos que
+Kubernetes crea solo. Además cuenta los field managers de los objetos que sí están en el repo (quién más escribe en ellos).
 """
 import collections
 import json
@@ -20,6 +21,11 @@ SKIP_TYPES = {
     "servicecidrs.networking.k8s.io",
 }
 SYSTEM_NS = {"kube-system", "kube-public", "kube-node-lease"}
+# Objetos que crea un controlador sin ownerReferences: no se versionan ni se borran.
+CONTROLADORES = {
+    ("Secret", "cert-manager", "cert-manager-webhook-ca"),   # lo genera el webhook de cert-manager (su CA)
+    ("ConfigMap", "postgresql", "cnpg-default-monitoring"),  # lo copia el operador CNPG en cada ns con un Cluster
+}
 
 
 def run(args, stdin=None):
@@ -55,7 +61,7 @@ def objs_from_json(text):
 
 # --- 1. Lo que describe el repo ---
 known, errors = set(), []
-kdirs = sorted({p.parent for p in REPO.rglob("kustomization.y*ml")})
+kdirs = sorted({p.parent for p in REPO.rglob("kustomization.y*ml") if "components" not in p.parts})
 for d in kdirs:
     rc, out, err = run(["kubectl", "kustomize", str(d)])
     if rc:
@@ -83,10 +89,6 @@ for f in list(REPO.rglob("*.y*ml")):
             api = re.search(r"^apiVersion:\s*(\S+)", doc, re.M)
             if kind and name:
                 known.add((group_of(api.group(1)) if api else "", kind.group(1), ns.group(1) if ns else "", name.group(1)))
-        continue
-    rc, js, err = run(["kubectl", "create", "--dry-run=client", "--validate=false", "-o", "json", "-f", str(f)])
-    for o in objs_from_json(js) if js.strip() else []:
-        known.add(key(o))
 known_kn = {(g, k, n) for g, k, _, n in known}
 
 # --- 2. Lo que hay vivo ---
@@ -112,7 +114,7 @@ for t in types:
                 if len(mgr_examples[m]) < 3:
                     mgr_examples[m].add(f"{kind}/{ns}/{name}")
             continue
-        if md.get("ownerReferences"):
+        if md.get("ownerReferences") or (kind, ns, name) in CONTROLADORES:
             continue
         if kind in ("PodMetrics", "NodeMetrics"):
             continue
@@ -141,7 +143,7 @@ for t in types:
         mgrs = ",".join(sorted({mf.get("manager", "?") for mf in md.get("managedFields") or []}))[:60]
         unmanaged[ns or "(cluster)"].append(f"{kind}/{name} [{last}; {mgrs}]")
 
-print(f"repo: {len(known)} objetos en {len(kdirs)} kustomizations + archivos sueltos; errores: {len(errors)}")
+print(f"repo: {len(known)} objetos en {len(kdirs)} kustomizations + secretos SOPS; errores: {len(errors)}")
 for e in errors[:5]:
     print("  ", e)
 print(f"k3s/sistema omitidos: {k3s_bundled}")

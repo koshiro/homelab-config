@@ -12,3 +12,7 @@ resources:
   - pvc-media-library.yml
   - pv-scratch.yml
   - pvc-scratch.yml
+  - configmap-init.yml
+  - networkpolicy-arr-suite.yml
+components:
+  - ../../components/proteger-datos

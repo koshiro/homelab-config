@@ -16,3 +16,5 @@ configMapGenerator:
       - files/stignore
       - files/syncthing-config.xml
 # Secret (aplicar aparte): sops -d cluster/apps/claude-remote/secret.sops.yml | kubectl apply -f -
+components:
+  - ../../components/proteger-datos

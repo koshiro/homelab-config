@@ -12,3 +12,5 @@ resources:
   - deployment-webapp.yml
   - deployment-worker.yml
 # secret.sops.yml se aplica aparte: sops -d secret.sops.yml | kubectl apply -f -
+components:
+  - ../../components/proteger-datos

@@ -16,3 +16,5 @@ resources:
   - namespace.yml
   - deployment.yml
   - deployment-webs.yml
+components:
+  - ../../components/proteger-datos

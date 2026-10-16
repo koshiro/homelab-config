@@ -11,9 +11,8 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Permitir tráfico de juego
-    - from: []
-      ports:
+    # Permitir tráfico de juego (sin "from": cualquier origen; "from: []" da drift en k3s 1.35)
+    - ports:
         - protocol: TCP
           port: 25565
         - protocol: UDP

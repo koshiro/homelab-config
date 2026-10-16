@@ -28,6 +28,14 @@
       "managerFilePatterns": ["/^cluster/.+\\.ya?ml$/"],
       "matchStrings": ["imageName:\\s*(?<depName>[^:\\s]+):(?<currentValue>[^\\s@]+)"],
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "kubeconform del CI (workflow validar)",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["KUBECONFORM_VERSION:\\s*(?<currentValue>v[\\d.]+)"],
+      "depNameTemplate": "yannh/kubeconform",
+      "datasourceTemplate": "github-releases"
     }
   ],
   "packageRules": [

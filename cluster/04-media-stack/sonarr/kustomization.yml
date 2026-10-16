@@ -8,3 +8,12 @@ resources:
   - pvc.yml
   - pv-media-library.yml
   - pvc-media-library.yml
+  - hardlink-init-configmap.yml
+  # Network Policies
+  - networkpolicy-deny.yml
+  - networkpolicy-ingress.yml
+  - networkpolicy-arr-ingress.yml
+  - networkpolicy-egress.yml
+  - networkpolicy-arr-suite.yml
+components:
+  - ../../components/proteger-datos

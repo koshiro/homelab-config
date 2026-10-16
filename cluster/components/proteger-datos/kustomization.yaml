@@ -1,0 +1,43 @@
+# Protege lo que guarda datos: Flux nunca poda (borra) PV, PVC, Namespaces ni el Cluster de CloudNativePG, aunque
+# desaparezcan del repo o se renombre su Kustomization. Borrarlos pasa a ser siempre a mano. Lo incluye cada
+# kustomization hoja de cluster/ (docs/PLAN-FLUX.md, decisión «Borrado»).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: PersistentVolume
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: cualquiera
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: cualquiera
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+  - target:
+      kind: Namespace
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: cualquiera
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+  - target:
+      group: postgresql.cnpg.io
+      kind: Cluster
+    patch: |-
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata:
+        name: cualquiera
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled

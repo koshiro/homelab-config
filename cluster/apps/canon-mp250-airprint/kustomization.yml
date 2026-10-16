@@ -6,3 +6,5 @@ resources:
   - namespace.yml
   - service.yml
   - deployment.yml
+components:
+  - ../../components/proteger-datos
