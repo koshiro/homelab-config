@@ -145,3 +145,23 @@ groups:
         annotations:
           summary: "{{ $labels.device }} a {{ $value }} °C"
           description: "Lleva 15 min sobre el umbral (HDD/SSD 55 °C, NVMe 70 °C)."
+
+  # Flux: gotk_resource_info lo arma kube-state-metrics (kube-state-metrics-flux.yml). Las fallas puntuales ya
+  # llegan al instante por el Alert telegram de Flux (cluster/flux/avisos); esto atrapa lo que queda trabado.
+  # Los controladores caídos los cubre TargetCaido (job flux).
+  - name: flux
+    rules:
+      - alert: FluxSinReconciliar
+        expr: gotk_resource_info{ready!="True", suspended!="true"} == 1
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Flux: {{ $labels.customresource_kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} sin Ready"
+          description: "Ready={{ $labels.ready }} hace 15 min: main no se está aplicando ahí. flux get all -A --status-selector ready=false"
+      - alert: FluxSuspendida
+        expr: gotk_resource_info{suspended="true"} == 1
+        for: 6h
+        labels: {severity: warning}
+        annotations:
+          summary: "Flux: {{ $labels.customresource_kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} suspendida"
+          description: "Lleva 6 h suspendida: los cambios de main no se aplican. Terminar la prueba y flux resume (receta «cambio temporal en vivo»)."

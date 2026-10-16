@@ -1,0 +1,85 @@
+# Estado de los objetos de Flux como gotk_resource_info{customresource_kind, exported_namespace, name, ready,
+# suspended, revision}: Flux 2.x retiró gotk_reconcile_condition y los controladores ya no exponen Ready.
+# Adaptado de fluxcd/flux2-monitoring-example (kube-state-metrics-config.yaml) a los tipos que usa el homelab; un
+# tipo nuevo de Flux (OCIRepository, ImagePolicy…) se agrega aquí y en el RBAC de kube-state-metrics.yml.
+# Lo usa la regla FluxSinReconciliar (alert-rules.yml).
+kind: CustomResourceStateMetrics
+spec:
+  resources:
+    - groupVersionKind: {group: kustomize.toolkit.fluxcd.io, version: v1, kind: Kustomization}
+      metricNamePrefix: gotk
+      metrics:
+        - name: resource_info
+          help: The current state of a Flux Kustomization resource.
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            exported_namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+            revision: [status, lastAppliedRevision]
+            source_name: [spec, sourceRef, name]
+    - groupVersionKind: {group: helm.toolkit.fluxcd.io, version: v2, kind: HelmRelease}
+      metricNamePrefix: gotk
+      metrics:
+        - name: resource_info
+          help: The current state of a Flux HelmRelease resource.
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            exported_namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+            revision: [status, history, "0", chartVersion]
+            chart_name: [status, history, "0", chartName]
+    - groupVersionKind: {group: source.toolkit.fluxcd.io, version: v1, kind: GitRepository}
+      metricNamePrefix: gotk
+      metrics:
+        - name: resource_info
+          help: The current state of a Flux GitRepository resource.
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            exported_namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+            revision: [status, artifact, revision]
+    - groupVersionKind: {group: source.toolkit.fluxcd.io, version: v1, kind: HelmRepository}
+      metricNamePrefix: gotk
+      metrics:
+        - name: resource_info
+          help: The current state of a Flux HelmRepository resource.
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            exported_namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+            revision: [status, artifact, revision]
+    - groupVersionKind: {group: source.toolkit.fluxcd.io, version: v1, kind: HelmChart}
+      metricNamePrefix: gotk
+      metrics:
+        - name: resource_info
+          help: The current state of a Flux HelmChart resource.
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            exported_namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+            revision: [status, artifact, revision]

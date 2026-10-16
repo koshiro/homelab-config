@@ -1,0 +1,29 @@
+# Estado de Flux en los commits de GitHub: cada Kustomization deja un check «flux/<nombre>» (pending, success o
+# failure) en el commit de main que aplicó. Token fine-grained solo con Commit statuses: write sobre
+# koshiro/homelab-config, en secret-flux-github.sops.yaml (clave token); al vencer, regenerarlo y recifrarlo.
+# eventSeverity info: el success sale de los eventos info; con error solo se verían las fallas.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: github
+  namespace: flux-system
+spec:
+  type: github
+  address: https://github.com/koshiro/homelab-config
+  # Sin esto el contexto es kustomization/<nombre>/<hash del Provider>
+  commitStatusExpr: "'flux/' + event.involvedObject.name"
+  secretRef:
+    name: flux-github
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: github
+  namespace: flux-system
+spec:
+  providerRef:
+    name: github
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: "*"

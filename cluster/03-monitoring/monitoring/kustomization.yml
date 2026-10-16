@@ -20,6 +20,10 @@ configMapGenerator:
     namespace: monitoring
     files:
       - scrape.yml
+  - name: kube-state-metrics-flux
+    namespace: monitoring
+    files:
+      - kube-state-metrics-flux.yml
   - name: vmalert-rules
     namespace: monitoring
     files:

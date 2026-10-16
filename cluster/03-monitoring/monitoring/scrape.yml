@@ -33,6 +33,28 @@ scrape_configs:
       - target_label: cluster
         replacement: homelab
 
+  # Controladores de Flux: duración y errores de reconciliación, colas. El Ready de cada objeto no sale de aquí
+  # sino de kube-state-metrics (gotk_resource_info). La NetworkPolicy allow-scraping de flux-system abre el 8080.
+  - job_name: flux
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [flux-system]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        regex: http-prom
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: homelab
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: gotk_.*|controller_runtime_reconcile_.*|workqueue_(depth|adds_total|retries_total)|process_(cpu_seconds_total|resident_memory_bytes)
+        action: keep
+
   # cAdvisor del kubelet: CPU/RAM/red por contenedor. Se descartan las series más caras que no usa
   # ningún dashboard.
   - job_name: kubelet-cadvisor
