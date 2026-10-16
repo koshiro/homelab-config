@@ -61,7 +61,11 @@ def objs_from_json(text):
 
 # --- 1. Lo que describe el repo ---
 known, errors = set(), []
-kdirs = sorted({p.parent for p in REPO.rglob("kustomization.y*ml") if "components" not in p.parts})
+# Sin Components (components/, solo-flux/: los SOPS se cuentan abajo) ni cluster/flux (sus CRD no existen hasta la
+# fase 3 de docs/PLAN-FLUX.md; ahí hay que sumarla para que Flux no salga como huérfano).
+kdirs = sorted({p.parent for p in REPO.rglob("kustomization.y*ml")
+                if "components" not in p.relative_to(REPO).parts and p.relative_to(REPO).parts[0] != "flux"
+                and "kind: Component" not in p.read_text()})
 for d in kdirs:
     rc, out, err = run(["kubectl", "kustomize", str(d)])
     if rc:

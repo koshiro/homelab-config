@@ -1,0 +1,8 @@
+# Raíz de Flux (path de la Kustomization flux-system): Flux mismo y las Kustomizations de capas y apps.
+# No forma parte de cluster/kustomization.yml: esto lo aplica Flux, no `kubectl apply -k`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - flux-system
+  - capas.yaml
+  - apps.yaml

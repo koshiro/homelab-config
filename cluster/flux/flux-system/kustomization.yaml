@@ -1,0 +1,36 @@
+# Flux 2.9 (source, kustomize, helm y notification). gotk-components.yaml no se edita: se regenera con
+#   flux install --components=source-controller,kustomize-controller,helm-controller,notification-controller --export
+# Afinidad (docs/PLAN-FLUX.md, decisión «Dónde corre»): nunca en pibot y, si hay lugar, en node-2/3 (node-1 anda
+# justo de RAM). Es preferencia y no obligación para que Flux siga vivo si caen node-2 y node-3.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gotk-components.yaml
+  - gotk-sync.yaml
+patches:
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=flux
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cualquiera
+      spec:
+        template:
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: NotIn
+                          values: [pibot]
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    preference:
+                      matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values: [k3s-node-2, k3s-node-3]

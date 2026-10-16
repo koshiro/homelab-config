@@ -1,0 +1,196 @@
+# Capas: CRD, operadores, Postgres compartido y plataforma.
+# Una Kustomization de Flux por carpeta hoja de cluster/ (si una falla, no bloquea a las demás). Convenciones del
+# plan (docs/PLAN-FLUX.md § Decisiones):
+# - suspend: true hasta que su lote se adopte en la fase 4; esta lista es la que manda.
+# - wait: true y timeout 5m (10m en comfyui): verde = el rollout terminó.
+# - prune: false durante la adopción; deletionPolicy: Orphan donde hay datos (PV/PVC, CRD, Cluster de Postgres).
+# - components: [solo-flux] suma los *.sops.* (y el HelmRelease de cnpg) que kubectl apply -k no debe ver;
+#   decryption con sops-age solo donde hay secretos.
+---
+# CRD y operadores. Orden: cert-manager y cnpg → plugin Barman Cloud → Cluster de Postgres → Immich.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cert-manager
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/00-infrastructure/cert-manager
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cnpg
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/00-infrastructure/cnpg
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cnpg-plugin-barman-cloud
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/00-infrastructure/cnpg-plugin-barman-cloud
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  dependsOn:
+    - name: cert-manager
+    - name: cnpg
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: postgresql
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/postgresql
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  dependsOn:
+    - name: cnpg
+    - name: cnpg-plugin-barman-cloud
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+# Plataforma: GPU, red, monitoreo, túneles y respaldos.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: nvidia-device-plugin
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/00-infrastructure/infra
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: traefik
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/01-networking/traefik
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: monitoring
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/03-monitoring/monitoring
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloudflared
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/06-external/cloudflared
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+# Escribe CronJobs en el namespace de cada app: sin dependsOn para que una app caída no frene los respaldos;
+# si falta un namespace (cluster nuevo), falla y reintenta cada retryInterval hasta que exista.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: backups
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/00-infrastructure/backups
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false

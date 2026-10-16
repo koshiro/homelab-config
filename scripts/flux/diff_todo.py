@@ -4,7 +4,15 @@ import subprocess
 
 REPO = pathlib.Path(__file__).resolve().parents[2] / "cluster"
 
-for d in sorted({p.parent for p in REPO.rglob("kustomization.y*ml") if "components" not in p.parts}):
+
+def aplicable(k):
+    """Lo que se aplica con kubectl apply -k: sin Components (components/, solo-flux/) ni cluster/flux (la aplica
+    Flux; entra cuando el cluster tenga sus CRD, fase 3 de docs/PLAN-FLUX.md)."""
+    rel = k.relative_to(REPO).parts
+    return "components" not in rel and rel[0] != "flux" and "kind: Component" not in k.read_text()
+
+
+for d in sorted({p.parent for p in REPO.rglob("kustomization.y*ml") if aplicable(p)}):
     p = subprocess.run(["kubectl", "diff", "-k", str(d)], capture_output=True, text=True, timeout=300)
     rel = d.relative_to(REPO)
     if p.returncode == 0:
