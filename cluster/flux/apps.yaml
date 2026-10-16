@@ -235,7 +235,6 @@ metadata:
   name: immich
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/immich
   sourceRef:
     kind: GitRepository

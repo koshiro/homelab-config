@@ -315,6 +315,26 @@ nuevas. `hl.py status` sin pods con problema y 909 → 909 objetos.
   (traspaso de dueños, apply de git y valores por defecto en una copia renombrada) y lista lo que cambia de verdad.
   También compara con el vivo, sin imprimir valores, los Secrets SOPS descifrados. Con lo ya adoptado da 0.
 
+**Lote 2, media y apps (PR #95, mergeado 13:20 GMT-3 en `main@61f0770`).** El control se hizo con `flux diff` más
+`simular_adopcion.py`, y se mostraron al usuario 3 cosas que `diff_todo.py` (con `kubectl diff`) no veía. Las aprobó:
+
+- **Reinicio único de 19 Deployments.** 15 tenían un `restartedAt` de algún `kubectl rollout restart` anterior (plex,
+  qbittorrent, radarr, sonarr, overseerr, cups-airprint, comfyui, swarmui, minecraft, minecraft-proxy,
+  minecraft-spiral3, ollama, node-odx-1, webapp y worker). Otros 4 pasaron de `imagePullPolicy` `Always` a
+  `IfNotPresent`, todos con tags fijos (bazarr, flaresolverr, prowlarr y pingvin).
+- **qbittorrent:** se agregaron `hostPort: 6881` en `bt-udp` y el puerto 6881/UDP del Service `qbittorrent`. Git los
+  declaraba, pero faltaban en vivo por el bug de strategic-merge de `kubectl apply` con TCP y UDP en el mismo puerto.
+  Además se creó el Secret `qbittorrent-credentials`, que está en git y no usa nadie.
+- **`minecraft-restart`** ahora corre con `--field-manager=minecraft-restart`. Con `kubectl-rollout`, Flux absorbería
+  el `restartedAt` y reiniciaría minecraft dos veces por día.
+
+Resultado: las 15 y la raíz llegaron a `main@61f0770`, y `hl.py flux` dio 20 activas Ready y 0 problemas.
+`linea_base.py comparar --nombre pre-lote2` dio hash distinto y pods reemplazados exactamente en esos 19, 0 objetos
+menos y 910 objetos (+1, el Secret). plex quedó solo con `kustomize-controller/Apply` y `k3s/Update`; comfyui ve la
+RTX 3070 (sin NVML Unknown Error) y qbittorrent tiene los dos hostPort. `hl.py status` sin pods con problema. vmalert
+dio un `DeploymentIncompleto` *pending* en webodm durante su rollout `Recreate`, que se apagó solo; no hubo alertas
+*firing*. Los 9 Secrets SOPS descifrados eran iguales al vivo antes del merge.
+
 ### Fase 5 — Avisos (~45 min) · `feat/flux-avisos`
 
 1. `Provider telegram` + `Alert` (`eventSeverity: error`) y `Provider github` (token fine-grained solo con `statuses: write`, en SOPS).
