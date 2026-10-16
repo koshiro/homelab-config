@@ -15,6 +15,6 @@ configMapGenerator:
       - files/ssh_config
       - files/stignore
       - files/syncthing-config.xml
-# Secret (aplicar aparte): sops -d cluster/apps/claude-remote/secret.sops.yml | kubectl apply -f -
+# Secret: secret.sops.yml entra por solo-flux/ y lo descifra Flux.
 components:
   - ../../components/proteger-datos

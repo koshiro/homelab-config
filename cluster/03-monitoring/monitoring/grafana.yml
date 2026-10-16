@@ -1,7 +1,7 @@
 # Grafana con datasource y dashboards provisionados desde el repo (dashboards/, configMapGenerator).
 # Un dashboard creado o editado en la UI vive en la base SQLite del PVC (respaldada por
 # config-backup-grafana); para que sea permanente, exportar el JSON a dashboards/.
-# Admin: secret-grafana.sops.yaml (sops -d … | kubectl apply -f -). Detrás de Cloudflare Access.
+# Admin: secret-grafana.sops.yaml (lo aplica Flux por solo-flux/). Detrás de Cloudflare Access.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

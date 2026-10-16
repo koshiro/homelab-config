@@ -46,7 +46,8 @@ Un `initContainer` añade **`ServerName`** con la IP del nodo en `cupsd.conf` pe
 ## Aplicar
 
 ```bash
-kubectl apply -k cluster/apps/canon-mp250-airprint/
+# Flux aplica la carpeta al mergear a main; para no esperar:
+~/.cache/flux-plan/bin/flux reconcile ks canon-mp250-airprint --with-source
 kubectl -n canon-mp250-airprint delete pod -l app=cups-airprint
 ```
 
@@ -61,6 +62,6 @@ Sigue existiendo; con `hostNetwork` en `pibot` lo natural es `http://<ip-pibot>:
 | No veo “AirPrint”     | Faltaba Avahi (o conflicto 5353 con el host)      |
 | Sí IPP, no listado   | mDNS; usa URL IPP o resuelve conflicto Avahi       |
 | iPhone y Tailnet      | mDNS no cruza; usa IPP con 100.x                   |
-| Aparece en Bonjour pero “no se puede conectar” a `._ipps._tcp` | **CUPS** con `DefaultEncryption IfRequested` anuncia **IPPS** (TLS). El Mac elige `_ipps._tcp` y falla si en 631 no hay TLS. El init del despliegue fuerza **`DefaultEncryption Never`** y **`Encryption Never`** en `<Location />` en el `cupsd.conf` persistido. Tras `kubectl apply`, borra el pod para re-ejecutar el init. |
+| Aparece en Bonjour pero “no se puede conectar” a `._ipps._tcp` | **CUPS** con `DefaultEncryption IfRequested` anuncia **IPPS** (TLS). El Mac elige `_ipps._tcp` y falla si en 631 no hay TLS. El init del despliegue fuerza **`DefaultEncryption Never`** y **`Encryption Never`** en `<Location />` en el `cupsd.conf` persistido. Tras aplicar (merge y Flux), borra el pod para re-ejecutar el init. |
 | `Validate-Job client-error-not-found` (en `access_log`) con el **Mac** | Hay **tres** causas ya reproducidas con `ipptool` contra CUPS 2.4: **(1)** Ruta **`/ipp/print/…`**: CUPS **solo** admite `printer-uri` con **`/printers/<nombre_cola>`** o `/classes/…` en el *path*; `/ipp/print/...` responde `client-error-not-found` (código: `cupsdValidateDest` en el scheduler). **(2) Espacios en el nombre de cola en la URI:** el anuncio Bonjour dice *«Canon MP250 series @ …»* y la **cola CUPS** se llama **`Canon_MP250_series`** (sin espacios; CUPS no permite espacios en el nombre de cola). Si el cliente fabrica `…/printers/Canon%20MP250%20series` o similar, el servidor **no** encuentra la cola → el mismo `not-found` que viste con el Mac en **100.x**. **(3) Cola aceptando trabajos** (`Accepting No`) da otro tipo de error; el `not-found` no es eso. **Qué usar en el Mac:** borra entradas viejas; añade **IPP** manual con URL exacta `ipp://<IP pibot en la red por la que imprimes>:631/printers/Canon_MP250_series` (IP LAN **o** 100.x de Tailscale, según dónde enrutéis el tráfico). Comprueba el nombre con `lpstat -p` en el pod. **Comprobación desde una máquina con `ipptool`:** `…/printers/Canon_MP250_series` → `successful-ok`; `…/ipp/print/…` o `…/printers/Canon%20MP250%20series` → `client-error-not-found`. |
 | Bonjour inestable / nombres `…-35`, `…-36` en Avahi, logs `Host name conflict` y `pibot.local` | El **demonio mDNS en el nodo (pibot)** y el del **contenedor** pisan el mismo **UDP 5353** / el mismo universo de nombres. Sigue [la documentación de la imagen](https://github.com/chuckcharlie/cups-avahi-airprint): desactivar en el **host** `avahi-daemon` (o el equivalente) **o** usar otra arquitectura (p. ej. **macvlan**, ver README upstream). Mientras haya conflictos, el anuncio **AirPrint** puede quedar alineado mal con el URI que CUPS acepta. |

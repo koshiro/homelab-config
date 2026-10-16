@@ -1,5 +1,5 @@
 # Métricas del host Proxmox (192.168.1.100) vía API, con el token monitoring@pve (rol PVEAuditor).
-# Credenciales: secret-proxmox.sops.yaml (sops -d … | kubectl apply -f -). El exporter lee
+# Credenciales: secret-proxmox.sops.yaml (lo aplica Flux por solo-flux/). El exporter lee
 # PVE_USER/PVE_TOKEN_NAME/PVE_TOKEN_VALUE del entorno; no expande variables dentro de pve.yml.
 # VictoriaMetrics lo consulta en /pve?target=192.168.1.100 (scrape.yml, job pve).
 apiVersion: apps/v1

@@ -1,10 +1,10 @@
 # Diseñar y portar aplicaciones para el cluster
 
 Guía para agentes que **crean una aplicación nueva o portan una existente** (docker-compose, Helm, otro cluster) al k3s
-del homelab. Si la app cumple el contrato de la sección 2 y se empaqueta como en la sección 5, se despliega con un
-`kubectl apply -k` sin ajustes posteriores.
+del homelab. Si la app cumple el contrato de la sección 2 y se empaqueta como en la sección 5, la despliega Flux al
+mergear a `main`, sin ajustes posteriores (§7).
 
-Estado verificado contra el cluster el 2026-10-08.
+Estado verificado contra el cluster el 2026-10-08; despliegue con Flux desde 2026-10-16.
 
 ---
 
@@ -60,22 +60,24 @@ NodePorts ocupados (revisar `kubectl get svc -A | grep NodePort` antes de elegir
 
 SOPS + age, receptor `age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs`, solo se cifran `data`/`stringData`.
 En este Mac: `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`. Los `*.sops.y*ml` **no van en
-`kustomization.yml`** (kubectl no los descifra): se aplican aparte con `sops -d … | kubectl apply -f -` y se anotan en
-un comentario del `kustomization.yml`.
+`kustomization.yml`** (`kubectl kustomize` no los descifra): van en el Component `solo-flux/kustomization.yaml` de la
+carpeta, que Flux suma con `spec.components: [solo-flux]` y descifra con el secret `sops-age` (§7).
 
 ### Bases de datos
 
 - **Postgres compartido**: cluster CloudNativePG 1.27 `homelab-postgres` (ns `postgresql`, 3 instancias en
-  `local-path`, Postgres 17.5). Servicio de escritura: `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
+  `local-path`, Postgres 17.11). Servicio de escritura: `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
   Soporta CRD `Database` y roles administrados (`spec.managed.roles`).
 - **SQLite** en un PVC `local-path`: la opción preferida para apps pequeñas de un solo usuario/réplica.
 - Redis u otros: como contenedor dentro del namespace de la app, sin persistencia salvo que sea imprescindible.
 
 ### Cómo se aplica
 
-No hay Flux todavía (`PENDIENTES.md` §6). `main` = estado del cluster; se aplica con `kubectl apply -k` desde la rama y
-el PR se mergea apenas se confirma que funciona (GitHub Flow, ver `AGENTS.md`). `kubectl` local funciona contra
-`k3s-node-0:6443`.
+Flux (desde 2026-10-16, `docs/PLAN-FLUX.md`): `main` = estado del cluster y un merge es el despliegue. Cada carpeta
+hoja de `cluster/` tiene su Kustomization de Flux en `cluster/flux/apps.yaml` (o `capas.yaml`), que se reconcilia cada
+10 min (la fuente mira `main` cada 5). Nada se aplica a mano: un `kubectl apply/edit/scale` sobre algo gestionado se
+revierte en la pasada siguiente. Para probar en caliente: `flux suspend ks <app>` → cambio → PR → merge →
+`flux resume ks <app>`. `kubectl` local funciona contra `k3s-node-0:6443`.
 
 ---
 
@@ -188,7 +190,8 @@ cluster/apps/<app>/
 ├── ingress.yml            # solo si es pública
 ├── pvc.yml                # PV/PVC
 ├── networkpolicy.yml
-├── secret.sops.yml        # fuera de kustomization; se aplica con sops -d
+├── secret.sops.yml        # fuera de kustomization.yml: entra por solo-flux/
+├── solo-flux/             # Component con los *.sops.* (solo si hay secretos; §7)
 └── README.md              # opcional: operación específica (restaurar, actualizar)
 ```
 
@@ -210,7 +213,9 @@ resources:
   - service.yml
   - ingress.yml
   - networkpolicy.yml
-# Secret (aplicar aparte): sops -d cluster/apps/miapp/secret.sops.yml | kubectl apply -f -
+components:
+  - ../../components/proteger-datos   # Flux nunca poda PV, PVC ni Namespace; va en toda carpeta hoja
+# secret.sops.yml no va aquí: entra por solo-flux/ (§7)
 ```
 
 `namespace.yml`:
@@ -435,7 +440,7 @@ sops --encrypt --age age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4ml
 rm "$TMPDIR/secret.yml"
 ```
 
-`metadata.namespace` dentro del Secret es obligatorio (se aplica fuera de kustomize).
+`metadata.namespace` dentro del Secret es obligatorio (entra por `solo-flux/`, y no toda kustomization fija `namespace:`).
 
 ### 4.2 Sitio estático en pibot (sobrevive a Proxmox)
 
@@ -564,8 +569,9 @@ Preferir SQLite si la app lo soporta y es de un solo usuario. Si necesita Postgr
 5. Respaldo: CronJob de `pg_dump` como `cluster/apps/immich/05-backup-postgres.yaml` (a `nvme/k8s/backups/postgres`) y
    su línea `chk` en `check-backups.sh`.
 
-Modificar el `Cluster` de CNPG afecta a Immich: aplicar con `kubectl apply -f` solo ese archivo, revisar el diff antes
-(`kubectl diff -f`) y confirmar con el usuario.
+Modificar el `Cluster` de CNPG afecta a Immich: revisar el diff antes (`flux diff ks postgresql --path
+cluster/apps/postgresql --kustomization-file cluster/flux/capas.yaml`), confirmar con el usuario y mergear; lo aplica
+Flux (Kustomization `postgresql`).
 
 ### 4.6 Respaldo de un PVC `local-path`
 
@@ -579,10 +585,11 @@ Todo PVC `local-path` con algo que no se regenere necesita su CronJob. Lo mismo 
 - `claimName` del PVC
 
 El script ya copia las SQLite con `.backup` (consistentes con la app corriendo). Añadir `miapp` al bucle
-`for a in …` de `proxmox/bin/check-backups.sh` y copiar el script al host. **Aplicar el CronJob en el mismo
-momento** (`kubectl apply -f …/app-config-backup.yaml` y un `kubectl create job --from=cronjob/…` de prueba):
-si el chequeo llega al host antes que el CronJob al cluster, avisa «nunca» cada mañana. Restaurar: escalar a 0, copiar
-`nvme/k8s/backups/apps/miapp/data/` sobre el PVC, `chown -R 1000:1000`, escalar a 1.
+`for a in …` de `proxmox/bin/check-backups.sh`. El CronJob lo crea Flux al mergear (Kustomization `backups`):
+probarlo con un `kubectl create job --from=cronjob/…` y **recién entonces** copiar el script al host; si el chequeo
+llega antes que el CronJob al cluster, avisa «nunca» cada mañana. Restaurar: `flux suspend ks miapp`, escalar a 0,
+copiar `nvme/k8s/backups/apps/miapp/data/` sobre el PVC, `chown -R 1000:1000`, `flux resume ks miapp` (vuelve a 1
+réplica; sin el suspend, Flux la levanta a mitad de la copia).
 
 ### 4.7 Servicio solo por tailnet (administración)
 
@@ -628,7 +635,7 @@ Acceso: `http://k3s-node-0:30xxx`. Documentarlo en la tabla de servicios del `RE
 
 ### Desde un chart de Helm
 
-No hay Helm ni Flux operativo para apps. Renderizar a manifiestos planos y versionarlos:
+Las apps no usan HelmRelease (el único es el operador CNPG). Renderizar a manifiestos planos y versionarlos:
 
 ```bash
 helm template miapp repo/chart --version X.Y.Z -n miapp -f values.yml > "$TMPDIR/render.yml"
@@ -663,34 +670,71 @@ Prometheus, PodSecurityPolicy) y adaptar a este documento. Anotar chart y versi�
 
 ## 7. Desplegar
 
-Desde una rama `feat/<app>` (GitHub Flow, `AGENTS.md`):
+Desde una rama `feat/<app>` (GitHub Flow, `AGENTS.md`). La despliega Flux al mergear; desde la rama solo se valida.
+
+1. Si hay secretos, `cluster/apps/miapp/solo-flux/kustomization.yaml` (como el de `cluster/apps/webodm/`):
+
+   ```yaml
+   apiVersion: kustomize.config.k8s.io/v1alpha1
+   kind: Component
+   resources:
+     - ../secret.sops.yml
+   ```
+
+2. Su Kustomization de Flux al final de `cluster/flux/apps.yaml` (copiar una parecida):
+
+   ```yaml
+   ---
+   apiVersion: kustomize.toolkit.fluxcd.io/v1
+   kind: Kustomization
+   metadata:
+     name: miapp
+     namespace: flux-system
+   spec:
+     path: ./cluster/apps/miapp
+     sourceRef:
+       kind: GitRepository
+       name: flux-system
+     interval: 10m
+     retryInterval: 2m
+     timeout: 5m
+     wait: true
+     prune: false
+     deletionPolicy: Orphan        # si guarda datos (PV/PVC)
+     dependsOn:                    # solo si usa homelab-postgres
+       - name: postgresql
+     components:                   # solo con secretos (paso 1)
+       - solo-flux
+     decryption:
+       provider: sops
+       secretRef:
+         name: sops-age
+   ```
+
+3. Validar, mergear y verificar:
 
 ```bash
-# 1. Compila
+# Compila (sin solo-flux: kubectl no acepta sus rutas ../) y luego todo como lo construye Flux, con los Component
 kubectl kustomize cluster/apps/miapp >/dev/null
-# 2. Validación contra el API server (CRDs, campos). Con namespace nuevo, el dry-run de los objetos
-#    namespaced falla con «namespaces not found»: crear antes el namespace (paso 4) o usar --dry-run=client
+bash scripts/flux/flate.sh test
+# Contra el API server solo si el namespace ya existe (no crearlo a mano: lo crea Flux)
 kubectl apply -k cluster/apps/miapp --dry-run=server
-# 3. Requisitos externos listos (dataset/export NFS, carpeta en pibot, rol Postgres)
-# 4. Secretos primero (el namespace debe existir: aplicar namespace.yml antes si es nuevo)
-kubectl apply -f cluster/apps/miapp/namespace.yml
-sops -d cluster/apps/miapp/secret.sops.yml | kubectl apply -f -
-# 5. App
-kubectl apply -k cluster/apps/miapp
+# Requisitos externos listos antes del merge (dataset/export NFS, carpeta en pibot, rol Postgres).
+# Fila en la tabla Servicios del README.md, commit (feat(miapp): …), PR y merge. Para no esperar a la fuente:
+F=~/.cache/flux-plan/bin/flux
+$F reconcile ks miapp --with-source
 kubectl -n miapp rollout status deploy/miapp --timeout=5m
-# 6. Verificar
+# Verificar
 kubectl -n miapp get pods,svc,ingress,pvc
 kubectl -n miapp logs deploy/miapp --tail=50
 curl -sI https://miapp.danielriquelme.cl | head -1     # pública
 curl -sI http://k3s-node-0:30xxx | head -1             # tailnet
-# 7. Respaldo: lanzar una vez el CronJob y comprobar el destino
+# Respaldo: lanzar una vez el CronJob y comprobar el destino
 kubectl -n miapp create job --from=cronjob/config-backup-miapp backup-prueba
 ```
 
-Después:
-1. Añadir `apps/miapp/` a `cluster/kustomization.yml` y comprobar que `kubectl kustomize cluster` compila.
-2. Añadir la fila a la tabla **Servicios** del `README.md` (namespace, acceso, almacenamiento, estado).
-3. Commit (`feat(miapp): …`), PR con `gh pr create`, merge con `gh pr merge --merge` apenas funciona.
+Si algo falla después del merge, el arreglo es otro PR (o `git revert`): Flux sigue a `main` y revierte los parches
+hechos a mano. `cluster/kustomization.yml` es la raíz de la época de `kubectl apply -k`; Flux no la usa.
 
 ---
 
@@ -706,8 +750,8 @@ Después:
 - [ ] Todo dato no regenerable tiene respaldo (CronJob + `check-backups.sh`, o dataset `nvme/k8s`)
 - [ ] Exposición correcta: Ingress solo si es pública **y** tiene login; si no, NodePort/tailnet o ClusterIP
 - [ ] NetworkPolicy deny + permisos mínimos
-- [ ] `kubectl kustomize` y `--dry-run=server` limpios
-- [ ] Desplegada y verificada; `cluster/kustomization.yml` y `README.md` actualizados; PR mergeado
+- [ ] `kubectl kustomize` y `bash scripts/flux/flate.sh test` limpios; Kustomization en `cluster/flux/apps.yaml`
+- [ ] PR mergeado, Kustomization `Ready` (`hl.py flux`), app verificada y fila en `README.md`
 
 ## 9. Antipatrones vistos en este cluster
 

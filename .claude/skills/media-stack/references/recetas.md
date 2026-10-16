@@ -79,8 +79,11 @@ legítimos con basura publicitaria (`.url`, `.txt`) no se blocklistean.
 → releer y comparar con lo pedido. Tope absoluto por release: `config/indexer.maximumSize`.
 
 ## Actualizar
-`$M status` (muestra si hay versión nueva de los *arr) → `$M update <apps> --apply` (espera el rollout y muestra
-versión antes → después). qBittorrent y Plex cortan descargas/streams: avisar antes.
+`$M status` (muestra si hay versión nueva de los *arr). Las imágenes tienen tag fijo en git: **versión nueva = PR**
+que sube el tag en `cluster/04-media-stack/<app>/deployment.yml` (o mergear el de Renovate); al mergear, Flux hace el
+rollout (`~/.cache/flux-plan/bin/flux reconcile ks <app> --with-source` para no esperar) → `$M status` para ver la
+versión. `$M update <apps> --apply` solo **reinicia** con la misma imagen (no sube nada). qBittorrent y Plex cortan
+descargas/streams: avisar antes.
 
 ## Rendimiento lento / NFS
 `$M status` + `$M prefs` primero; históricamente la causa fue la cola de qBittorrent, no el NFS. NFS/ZFS del host:

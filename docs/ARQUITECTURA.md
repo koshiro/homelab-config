@@ -108,8 +108,9 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 - **Exposición:**
   - Pública por túnel con comodín: Immich, Pingvin, Overseerr, Open WebUI, Plex.
   - Solo tailnet (NodePort, sin Ingress): qBittorrent, *arr, ComfyUI, Grafana; o Cloudflare Access si se quieren desde fuera.
-- **GitOps:** Flux con SOPS cuando todo lo anterior esté estable (`docs/PENDIENTES.md` §6).
-- **Monitoreo:** VictoriaMetrics + Grafana con `kubectl apply -k` (sin Flux); falta `node_exporter`, `zfs_exporter` y `smartctl_exporter` en el host (`docs/PENDIENTES.md` §5).
+- **GitOps:** Flux 2.9 con SOPS desde 2026-10-16: una Kustomization por carpeta de `cluster/` (`cluster/flux/`), un
+  merge a `main` es el despliegue. Quedan avisos, prueba de fallas y prune (`docs/PLAN-FLUX.md`, fases 5–7).
+- **Monitoreo:** VictoriaMetrics + Grafana en manifiestos planos (sin Helm), aplicados por Flux; falta `node_exporter`, `zfs_exporter` y `smartctl_exporter` en el host (`docs/PENDIENTES.md` §5).
 
 ## Plan por fases
 
@@ -152,7 +153,7 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
 
 ### Fase 4 — Operación
 
-1. Flux + SOPS.
+1. [x] Flux + SOPS (2026-10-16; avisos, prueba de fallas y prune pendientes en `docs/PLAN-FLUX.md`).
 2. Monitoreo: VictoriaMetrics + Grafana desplegados (2026-10-08); faltan exporters del host y alertas.
 3. Rotación de secretos (`.vault_password.txt`, `.truenas-api-key` deja de existir, contraseñas Postgres).
 4. Reescribir `docs/` según esta arquitectura.

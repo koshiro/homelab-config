@@ -45,6 +45,9 @@ UI para probar con el navegador: `http://192.168.1.15:30188` (NodePort; el domin
 - Al actualizar ComfyUI o el frontend, revisar con `$C logs homelab_asset` que el shim cargó y con
   `$C src useMediaAssetActions createAssetWidgetPath` si upstream ya usa `loader_path` (TODO BE-933/934): en
   ese caso retirar el shim.
+- Actualizar el entorno (`06-job-build-env.yaml`, ver README § Actualizar) con solo `kubectl scale --replicas=0` →
+  Flux devuelve ComfyUI a 1 réplica en ≤10 min, a mitad del Job (`replicas: 1` en git): `flux suspend ks comfyui`
+  antes y `flux resume ks comfyui` al terminar. Versiones reales: PyTorch 2.14.1+cu130, driver 580. (2026-10-16)
 - No probar cambios encolando el workflow del usuario: un grafo mínimo `LoadImage → PreviewImage` por
   `POST /api/prompt` valida rutas sin gastar GPU (sale a `temp/`, se borra al reiniciar).
 - El usuario no quiere un custom node para persistir el historial (2026-10-15); las imágenes `[output]` de un

@@ -12,17 +12,20 @@ ExitWorktree `keep` → en `~/git/homelab-config`: `git pull --ff-only` → `git
 1. `$H doc DISENO-APPS 3` (árbol de decisiones) y solo la plantilla §4.x que aplique.
 2. Carpeta `cluster/apps/<app>/` copiando una app parecida (`$H app <similar>` muestra su carpeta).
 3. Puerto: `$H ports --serie 30xxx`. Secreto: escribir en claro en `$CLAUDE_JOB_DIR/tmp`, `$H sops encrypt`, mover.
-4. `kubectl kustomize cluster/apps/<app> >/dev/null` → `kubectl apply -k … --dry-run=server` (crear namespace antes).
+4. `kubectl kustomize cluster/apps/<app> >/dev/null`; `kubectl apply -k … --dry-run=server` solo si el namespace ya
+   existe (no crearlo a mano: lo crea Flux).
 5. Una Kustomization en `cluster/flux/apps.yaml` copiando una parecida (los `*.sops.*` en `solo-flux/` con
    `components` y `decryption`); `bash scripts/flux/flate.sh test`. Desde 2026-10-16 la app la crea Flux al mergear:
-   nada de `$H sops apply` ni `kubectl apply -k`. Después: `$H flux` → `$H wait <ns> <deploy>` → `$H app <ns>`.
-6. `cluster/kustomization.yml`, fila en `README.md` § Servicios, respaldo (receta *respaldo*), PR.
+   nada de `kubectl apply -k` ni `sops -d | kubectl`. Después: `$F reconcile ks <app> --with-source` → `$H flux` →
+   `$H wait <ns> <deploy>` → `$H app <ns>`.
+6. Fila en `README.md` § Servicios, respaldo (receta *respaldo*), PR. `cluster/kustomization.yml` es la raíz de la
+   época de `kubectl apply -k`: Flux no la usa, no hace falta tocarla.
 
 ## Sitio estático en pibot
 1. Copiar `cluster/apps/noledigasanadie/` (o `josekast/` si necesita ConfigMap de nginx; SPA → ver `cluster/apps/cyano/`).
 2. NodePort: `$H ports --serie 30890`. Carpeta: `$H ssh pibot sudo install -d -o daniel -g daniel /var/lib/homelab-<sitio>`.
 3. CronJob en `cluster/00-infrastructure/backups/webs-estaticas-backup.yaml` + nombre en `proxmox/bin/check-backups.sh`
-   (y copiarlo a `/usr/local/sbin/` de pve).
+   (copiarlo a `/usr/local/sbin/` de pve después del merge, cuando Flux ya creó el CronJob).
 4. Hostname: `$H cf route pibot-webs <host> http://192.168.1.15:<nodePort>` (dry-run) → `--apply`.
 5. Publicar: `rsync -a --delete <dir>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/` (cyano: `~/git/cyano/scripts/publicar.sh`).
 6. Verificar: `curl -sI https://<host> | head -1`.
@@ -34,8 +37,16 @@ ExitWorktree `keep` → en `~/git/homelab-config`: `git pull --ff-only` → `git
 
 ## Respaldo de un PVC local-path
 Copiar un bloque de `cluster/00-infrastructure/backups/app-config-backup.yaml`, siguiente minuto libre 02:40–02:48,
-`APP`, `EXCLUDES`, `claimName`; agregar a `check-backups.sh`; aplicar el CronJob en el mismo momento y probar con
-`kubectl -n <ns> create job --from=cronjob/config-backup-<app> backup-prueba`.
+`APP`, `EXCLUDES`, `claimName`; agregar a `check-backups.sh`. Al mergear, Flux crea el CronJob (ks `backups`;
+`$F reconcile ks backups --with-source` para no esperar) → probar con `kubectl -n <ns> create job
+--from=cronjob/config-backup-<app> backup-prueba` → recién entonces copiar `check-backups.sh` a pve (si llega antes,
+avisa «nunca» cada mañana).
+
+## Cambio temporal en vivo (escalar a 0, probar un parche antes del PR)
+`F=~/.cache/flux-plan/bin/flux`. Sin esto, Flux revierte el cambio en ≤10 min (en comfyui, un `scale --replicas=0`
+vuelve a 1 a mitad del Job). `$F suspend ks <ks>` → cambio con kubectl → PR → merge → `$F resume ks <ks>` (reaplica
+git: réplicas, imagen, etc.) → `$H flux` (nada en «suspendidas»). Nunca dejar una ks suspendida al cerrar la tarea.
+El clasificador puede bloquear `suspend`/`resume` («Shared Cluster Mutation») → dar el comando al usuario.
 
 ## Reiniciar o redimensionar una VM del cluster
 `$H status --deep` (RAM libre de pve) → `kubectl drain <nodo> --ignore-daemonsets --delete-emptydir-data` → (si tiene
@@ -71,7 +82,9 @@ todo como Flux, sin los suspend; `diff [ref]` para comparar), `$S render --rama 
 
 ## Flux en prod (estado, deploy key, reinstalar)
 `F=~/.cache/flux-plan/bin/flux`. **Estado:** `$H flux` (sale 1 si una Kustomization activa no está Ready en el SHA de
-`main`) y `$F check`; errores, con `$F logs --all-namespaces --level=error --since=15m`. **Antes de un PR que adopte
+`main`; una pasada en curso sale como «reconciliando» y no cuenta) y `$F check`; errores, con `$F logs
+--all-namespaces --level=error --since=15m`. **Tras un merge:** `$F reconcile ks <ks> --with-source` trae el commit y
+aplica sin esperar el intervalo de 5 min (probado 2026-10-16). **Antes de un PR que adopte
 objetos vivos** (app que ya corre, `suspend` quitado): `$F diff ks <ks> --path <dir> --kustomization-file
 cluster/flux/<apps|capas>.yaml` + `python3 -I scripts/flux/simular_adopcion.py <ks>` (lo que `flux diff` no ve:
 campos de `kubectl*` que Flux borra y Secrets SOPS); después del merge, `kubectl wait ks/<ks>

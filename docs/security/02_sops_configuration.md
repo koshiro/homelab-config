@@ -34,11 +34,11 @@ Cómo crear, comprobar y restaurar el kit: `README.md` § Operación, «Kit de r
 export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
 sops <archivo>.sops.yml                                  # editar en el lugar
 .claude/skills/homelab/hl.py sops encrypt <secret.yaml>  # cifrar data/stringData en el lugar
-.claude/skills/homelab/hl.py sops apply <archivo>        # descifrar y aplicar
 ```
 
-Formato: YAML estructurado con `--encrypted-regex '^(data|stringData)$'`. Hoy no hay `.sops.yaml` en la raíz y dos
-archivos siguen en formato binario; ambos se corrigen en la fase 1 del plan de Flux.
+Formato: YAML estructurado con `--encrypted-regex '^(data|stringData)$'` (reglas en `.sops.yaml` de la raíz; revisar
+con `python3 -I scripts/flux/sops_formato.py`). Aplicar = mergear: Flux descifra los `*.sops.*` que entran por el
+Component `solo-flux/` de cada carpeta, con el secret `sops-age` del namespace `flux-system`.
 
 ## Si se pierde la clave y no hay kit
 

@@ -3,7 +3,7 @@
 # Reconstrucción desde cero: prepara el host Proxmox e instala k3s en los nodos.
 # Las VMs (102–104) se crean/restauran en Proxmox (vzdump); el almacenamiento
 # (ZFS, NFS, sanoid) vive en el host y está documentado en proxmox/README.md.
-# Las aplicaciones se despliegan desde cluster/ con `kubectl apply -k`.
+# Las aplicaciones de cluster/ las despliega Flux al mergear a main (cluster/flux).
 
 - name: 0. Bootstrap del Servidor Proxmox
   import_playbook: playbooks/provisioning/playbook_bootstrap_server.yml

@@ -6,8 +6,9 @@
   la biblioteca `/data/media/{movies,series}` están en el mismo FS → los *arr importan con hardlink.
 - `/incomplete` = pool `scratch` de pve (stripe sdc+sdd, `sync=disabled`, desechable, sin sanoid). Al completar,
   qBittorrent **copia** (otro FS) a `/data/downloads`; mientras tanto el torrent está en `moving` y el *arr no importa.
-- NetworkPolicy real: `allow-arr-suite-communication` (ns con label `arr-suite=true` + kube-system).
-  `qbittorrent/networkpolicy.yml` del repo **no está aplicado**. El ns `qbittorrent` no restringe egress.
+- NetworkPolicy de qbittorrent: solo `allow-arr-suite-communication` (`networkpolicy-arr-suite.yml`: ns con label
+  `arr-suite=true` + kube-system), que limita el ingress de todos los pods a esos orígenes; el egress queda libre. El viejo
+  `networkpolicy.yml`, que nunca se aplicó, se borró del repo en la fase 1 de Flux. (2026-10-16)
 - Acceso a APIs: `kubectl exec` al pod (ApiKey de `config.xml`; qBittorrent sin login en localhost). El Secret SOPS
   `qbittorrent/arr-api-keys` (SONARR/RADARR_API_KEY) es solo para el CronJob. No hace falta sops ni port-forward.
 - Pod de qBittorrent trae curl, jq, python3. Los de Sonarr/Radarr traen curl (sin jq).

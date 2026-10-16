@@ -163,9 +163,9 @@ en `config.txt`).
   `pibot/boot/config.txt`, reiniciar y correr `pibot/vtest.sh` (~11 min). Aceptar solo con 0 muestras con bajo voltaje
   en la fase de carga; si no, volver a 1500.
 
-## 5. Monitoreo — VictoriaMetrics + Grafana (sin Flux)
+## 5. Monitoreo — VictoriaMetrics + Grafana
 
-Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-stack. Usa PromQL y los mismos exporters y dashboards, pero ocupa ~5–10× menos RAM y disco (~0,5 GB en total contra 1,5–2,5 GB), no necesita operador, CRDs ni Helm, y se aplica con `kubectl apply -k cluster/03-monitoring`. **No depende de Flux**; cuando llegue Flux (§6) basta con una Kustomization más, sin HelmRelease.
+Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-stack. Usa PromQL y los mismos exporters y dashboards, pero ocupa ~5–10× menos RAM y disco (~0,5 GB en total contra 1,5–2,5 GB), no necesita operador, CRDs ni Helm. Desde 2026-10-16 lo aplica Flux (Kustomization `monitoring`, sin HelmRelease).
 
 **Componentes** (`cluster/03-monitoring/monitoring/`, ns `monitoring`):
 - `victoria-metrics`: base de métricas y scraper a la vez (`scrape.yml`), retención 90 días, datos en el dataset ZFS `nvme/k8s/victoria-metrics` (quota 30G, NFS; sin syncoid ni restic, 2 snapshots diarios). Prefiere node-2; nunca pibot.
@@ -174,7 +174,7 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 - `vmalert` (reglas en `alert-rules.yml`, cada 30 s) → `alertmanager` → Telegram (mismo bot que `notify-telegram`). Críticas se repiten cada 2 h, el resto cada 12 h.
 - Host Proxmox: `prometheus-node-exporter` (Debian, :9100, job `pve-host`) + `textfile-metrics.sh` cada 5 min (pools ZFS, datasets, SMART con `-n standby`).
 - Login: JWT de Cloudflare Access (`Cf-Access-Jwt-Assertion`, app «Homelab admin»): entras con tu correo, sin contraseña. `admin` del secret queda de emergencia vía port-forward.
-- Secretos: `secret-grafana.sops.yaml`, `secret-proxmox.sops.yaml`, `secret-alertmanager-telegram.sops.yaml` (`sops -d … | kubectl apply -f -`).
+- Secretos: `secret-grafana.sops.yaml`, `secret-proxmox.sops.yaml`, `secret-alertmanager-telegram.sops.yaml` (entran por `solo-flux/`; los descifra Flux).
 
 **Hecho (2026-10-08):**
 - [x] Manifiestos y dashboards en el repo; capa `03-monitoring` activa en `cluster/kustomization.yml`. Eliminados HelmRelease/HelmRepository de kube-prometheus-stack y los `ServiceMonitor`.
@@ -204,17 +204,23 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 
 Plan completo en fases: `docs/PLAN-FLUX.md` (2026-10-15).
 
-- [ ] `flux bootstrap github --owner=koshiro --repository=homelab-config --path=cluster --private`.
-- [ ] Clave age en el cluster (`sops-age` secret en `flux-system`) y `decryption` en las Kustomizations.
-- [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`.
-- [ ] Hasta entonces el flujo real es `kubectl apply -k` / `kubectl apply -f`. `kubectl kustomize cluster` compila (verificado 2026-09-30).
+- [x] Flux 2.9.6 instalado (2026-10-16, fase 3): instalación propia en `cluster/flux/flux-system` con deploy key de
+  solo lectura, no `flux bootstrap`.
+- [x] `sops-age` en `flux-system` y `decryption` en las 9 Kustomizations con secretos (Component `solo-flux/`).
+- [x] Adopción (2026-10-16, fase 4): 28/28 Kustomizations activas, una por carpeta hoja de `cluster/`. Un merge a
+  `main` es el despliegue; `kubectl apply -k` ya no se usa.
+- [ ] Fases 5–8 de `docs/PLAN-FLUX.md`: avisos (hoy un fallo de Flux no avisa), prueba de fallas, prune y automerge,
+  `hl.py inventario`.
+- [ ] Decidir si se borran `cluster/kustomization.yml` y los `kustomization.yaml` de capa (`00-infrastructure/`…): son
+  de la época de `kubectl apply -k`, Flux no los usa y la raíz no incluye immich, minecraft, claude-remote ni
+  postgresql (el CI los valida igual).
 
 ## 6b. Actualizaciones con Renovate (2026-10-15)
 
 `renovate.json` en la raíz: PR los sábados (06–12, hora de Chile), agrupados en `monitoreo`, `utilidades`,
 `cloudflare`, `immich`, `media` y `cnpg-respaldos`; los saltos mayores llevan la etiqueta `mayor` y nunca se proponen
-saltos mayores de Postgres. CUDA, el device plugin y WebODM (por digest) son mensuales. **Sin automerge** mientras no
-haya Flux: tras mergear un PR de Renovate hay que aplicar la carpeta tocada con `kubectl apply -k`.
+saltos mayores de Postgres. CUDA, el device plugin y WebODM (por digest) son mensuales. **Sin automerge** hasta la fase 7
+de Flux; mergear un PR de Renovate ya es desplegarlo (Flux lo aplica).
 Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
 `npx --package renovate@44 -- renovate --platform=local --dry-run=full` (solo lee archivos con commit).
 
@@ -225,10 +231,12 @@ Dry-run local (Node 24+ o `npm_config_engine_strict=false`):
   cloudflared-webs 2026.10.1 mergeados y aplicados. Pendiente de revisar: #69 (digest nuevo de WebODM) y el resto
   del Dependency Dashboard (#72).
 - [x] La app de Mend funciona (2026-10-15 19:34: PR #73–#84). Fuera del horario del sábado los PR se piden
-  marcando su casilla en el Dependency Dashboard (#72); en horario los abre sola. El merge sigue siendo manual (sin
-  automerge hasta Flux) y después hay que aplicar con `kubectl apply -k`.
-- [ ] Al llegar Flux (§6): automerge de `monitoreo`, `utilidades` y `cloudflare` en parches y menores.
-- [ ] El operador CNPG (1.27.0, instalado fuera del repo) no lo ve Renovate: versionarlo en `cluster/` y subirlo.
+  marcando su casilla en el Dependency Dashboard (#72); en horario los abre sola. El merge sigue siendo manual
+  (automerge en la fase 7 de Flux); desde 2026-10-16 lo aplica Flux al mergear.
+- [ ] Fase 7 de Flux: automerge de `monitoreo`, `utilidades` y `cloudflare` en parches y menores.
+- [x] El operador CNPG está versionado como HelmRelease `cnpg` (chart 0.26.0 = CNPG 1.27.0, 2026-10-16).
+- [ ] Renovate todavía no lo ve: el manager `flux` solo mira `gotk-components.yaml` por defecto. Sumar
+  `cluster/00-infrastructure/cnpg/helmrelease.yaml` a su `managerFilePatterns` (y probar con el dry-run local).
 
 ## 7. IoT
 

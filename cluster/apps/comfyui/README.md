@@ -8,24 +8,30 @@ Ollama también la usan). Todo el estado vive en el volumen NFS `homelab-storage
 | Archivo | Qué hace |
 |---|---|
 | `00-deployment.yaml` | Solo arranca `main.py` con `--use-sage-attention --fast fp16_accumulation --enable-assets` (imagen pública `nvidia/cuda`, que trae gcc/nvcc para Triton). No instala nada. |
-| `custom-nodes/homelab_asset_subfolder/` | Parche propio montado por ConfigMap (`kustomization.yaml`): agrega el subfolder a `/api/assets` para que «Insert as node» desde Media Assets apunte a la imagen correcta. Aplicar con `kubectl apply -k cluster/apps/comfyui`. |
-| `06-job-build-env.yaml` | Construye/actualiza el entorno: ComfyUI a la última release `v*`, Python 3.12 (uv, en `/app/.python`), PyTorch 2.11 + CUDA 12.8, SageAttention 2.2 compilado para sm_86, extensiones usadas por los workflows (las demás a `custom_nodes/.disabled`). Lock en `venv/requirements.lock`. |
+| `custom-nodes/homelab_asset_subfolder/` | Parche propio montado por ConfigMap (`kustomization.yaml`): agrega el subfolder a `/api/assets` para que «Insert as node» desde Media Assets apunte a la imagen correcta. Lo aplica Flux al mergear (el hash del ConfigMap reinicia el deployment). |
+| `06-job-build-env.yaml` | Construye/actualiza el entorno: ComfyUI a la última release `v*`, Python 3.12 (uv, en `/app/.python`), PyTorch 2.14 + CUDA 13.0, SageAttention 2.2 compilado para sm_86, extensiones usadas por los workflows (las demás a `custom_nodes/.disabled`). Lock en `venv/requirements.lock`. |
 | `07-job-download-models.yaml` | Descarga los modelos con verificación SHA256 (Civitai con el token de `secret-civitai.sops.yaml`). Idempotente. |
 | `05-job-prepare-workspace.yaml` | Estructura de carpetas (solo si hay `Permission denied`). |
 | `08-smartgallery.yaml` | Galería de las salidas (SmartGallery) en `galeria.danielriquelme.cl`. Ver [Galería](#galería). |
-| `secret-smartgallery.sops.yaml` | `ADMIN_PASSWORD` (login de la galería) y `SECRET_KEY` (sesiones). Se aplica a mano con `sops -d … \| kubectl apply -f -`. |
+| `secret-smartgallery.sops.yaml` | `ADMIN_PASSWORD` (login de la galería) y `SECRET_KEY` (sesiones). Lo descifra y aplica Flux (`solo-flux/`), igual que `secret-civitai.sops.yaml`. |
 
 ## Actualizar
 
+El deployment tiene `replicas: 1` en git: sin suspender la Kustomization, Flux lo vuelve a levantar en ≤10 min,
+a mitad de la reconstrucción del entorno.
+
 ```bash
+F=~/.cache/flux-plan/bin/flux
+$F suspend ks comfyui
 kubectl -n comfyui scale deploy/comfyui --replicas=0
 kubectl delete job -n comfyui comfyui-build-env --ignore-not-found
 kubectl apply -f cluster/apps/comfyui/06-job-build-env.yaml && kubectl -n comfyui logs -f job/comfyui-build-env
-kubectl -n comfyui scale deploy/comfyui --replicas=1
+$F resume ks comfyui          # reaplica git: vuelve a 1 réplica
 ```
 
-Versiones fijadas en el Job: `TORCH_VERSION` (CUDA 12.8 porque el driver 570 del nodo no soporta CUDA 13),
-`SAGEATTENTION_REF`. Las extensiones se instalan desde git en su última versión (`CUSTOM_NODES`); para
+El Job no está en `kustomization.yaml` (Flux no lo gestiona), por eso se aplica a mano. Versiones fijadas en el Job:
+`TORCH_VERSION` (2.14.1, rueda `cu130`: el driver 580 del nodo soporta CUDA 13 y con `cu128` ComfyUI apaga los
+kernels de comfy-kitchen), `SAGEATTENTION_REF`. Las extensiones se instalan desde git en su última versión (`CUSTOM_NODES`); para
 agregar una que use un workflow nuevo, sumarla a esa lista (o instalarla con el Manager y luego a la lista).
 
 ## Modelos

@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Actualizaciones de imágenes del cluster por PR. Sin Flux no hay automerge: tras mergear, aplicar con kubectl apply -k (main = estado del cluster). Al instalar Flux, activar automerge en los grupos de bajo riesgo.",
+  "description": "Actualizaciones de imágenes del cluster por PR. Flux aplica main: mergear un PR es desplegarlo. Automerge de los grupos de bajo riesgo en la fase 7 de docs/PLAN-FLUX.md.",
   "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits", ":timezone(America/Santiago)"],
   "schedule": ["* 6-12 * * 6"],
   "labels": ["renovate"],
@@ -126,7 +126,7 @@
     {
       "description": "La imagen de CNPG trae pgvector nuevo e Immich no puede actualizarlo (no es dueño): crashea al arrancar",
       "matchPackageNames": ["ghcr.io/cloudnative-pg/postgresql"],
-      "prBodyNotes": ["**Tras aplicar** (cuando las 3 instancias estén sanas), en el primario: `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y `kubectl -n immich rollout restart deploy/immich-server`. Sin esto immich-server queda en CrashLoopBackOff con «must be owner of extension vector» (2026-10-15)."]
+      "prBodyNotes": ["**Tras aplicar** (cuando las 3 instancias estén sanas), en el primario: `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y `kubectl -n immich rollout restart deploy/immich-server --field-manager=reinicio-manual` (con el manager por defecto, Flux reinicia otra vez). Sin esto immich-server queda en CrashLoopBackOff con «must be owner of extension vector» (2026-10-15)."]
     },
     {
       "description": "Imágenes fijadas por digest sin versiones publicadas: solo digest, mensual",

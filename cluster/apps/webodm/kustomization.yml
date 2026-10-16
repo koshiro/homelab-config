@@ -11,6 +11,6 @@ resources:
   - deployment-nodeodx.yml
   - deployment-webapp.yml
   - deployment-worker.yml
-# secret.sops.yml se aplica aparte: sops -d secret.sops.yml | kubectl apply -f -
+# secret.sops.yml entra por solo-flux/ y lo descifra Flux.
 components:
   - ../../components/proteger-datos

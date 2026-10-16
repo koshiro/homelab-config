@@ -17,7 +17,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | **Acceso privado** | Tailscale en cada nodo. Servicios internos por NodePort fijo: `http://k3s-node-0:<nodePort>` |
 | **Base de datos** | CloudNative-PG en ns `postgresql` (`homelab-postgres-rw.postgresql.svc`) |
 | **Monitoreo** | VictoriaMetrics + Grafana + vmalert → Alertmanager → Telegram (ns `monitoring`); reglas en `cluster/03-monitoring/monitoring/alert-rules.yml` |
-| **GitOps** | Objetivo: FluxCD (**aún no instalado**). Hoy se aplica con `kubectl apply -k` |
+| **GitOps** | Flux 2.9 desde 2026-10-16: `cluster/flux/` define una Kustomization por carpeta de `cluster/` y un merge a `main` es el despliegue (prune apagado y sin avisos todavía: [docs/PLAN-FLUX.md](docs/PLAN-FLUX.md)). Un cambio con `kubectl` sobre algo gestionado se revierte. Estado: `python3 -I .claude/skills/homelab/hl.py flux` |
 
 ## Acceso
 
@@ -83,7 +83,9 @@ cluster/
   05-services/        Seerr (ns overseerr), Pingvin
   06-external/        cloudflared (túneles pve y pibot-webs)
   apps/               Immich, Minecraft, PostgreSQL, Ollama, ComfyUI, WebODM, AirPrint, sitios estáticos, …
-  kustomization.yml   Raíz (compila con `kubectl kustomize cluster`; incompleta, ver PENDIENTES)
+  flux/               Flux: flux-system/ (controladores y fuente), capas.yaml y apps.yaml (una Kustomization por carpeta)
+  components/         proteger-datos: Flux nunca poda PV, PVC, Namespace ni el Cluster de CNPG
+  kustomization.yml   Raíz de la época de `kubectl apply -k` (Flux no la usa; incompleta)
 docs/               ARQUITECTURA.md, PENDIENTES.md, guides/
 proxmox/            Configuración versionada del host (ZFS, NFS, sanoid, restic, LXC nas)
 pibot/              Configuración versionada de la Pi master (boot, k3s, apagado ordenado)
@@ -120,16 +122,23 @@ ansible-playbook ansible/playbook_provision_all.yml   # vault: ~/.config/homelab
 # Tags: bootstrap, wait, k3s, verify
 ```
 
+Con k3s arriba, Flux reconstruye el resto de `cluster/`: `kubectl apply --server-side -k cluster/flux/flux-system`
+(la 1.ª pasada falla en el GitRepository porque faltan los CRD) → `kubectl wait --for=condition=established crd -l
+app.kubernetes.io/part-of=flux` → los dos secrets que no viven en el repo: `flux-system` (deploy key de solo lectura,
+`flux create secret git`) y `sops-age` (`kubectl create secret generic sops-age -n flux-system
+--from-file=age.agekey=<clave age>`, del kit de recuperación) → 2.ª pasada. Pasos exactos: skill homelab,
+`references/recetas.md` § Flux en prod.
+
 Playbooks disponibles: [ansible/playbooks/README.md](ansible/playbooks/README.md).
 
-**Desplegar una app:** ver [docs/DISENO-APPS.md](docs/DISENO-APPS.md) (contrato de la app, almacenamiento, exposición, plantillas y checklist). En corto: namespace → Deployment → Service → PVC → Ingress (`host: <app>.danielriquelme.cl`); el túnel ya enruta el comodín y todo Ingress queda público. Para servicios privados usar NodePort fijo y acceder por tailnet. Añadir la carpeta a `cluster/kustomization.yml`.
+**Desplegar una app:** ver [docs/DISENO-APPS.md](docs/DISENO-APPS.md) (contrato de la app, almacenamiento, exposición, plantillas y checklist). En corto: namespace → Deployment → Service → PVC → Ingress (`host: <app>.danielriquelme.cl`); el túnel ya enruta el comodín y todo Ingress queda público. Para servicios privados usar NodePort fijo y acceder por tailnet. La carpeta necesita su Kustomization en `cluster/flux/apps.yaml`; al mergear la despliega Flux.
 
 **Secretos (SOPS/age):**
 
 ```bash
 sops --encrypt --age age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs \
   --encrypted-regex '^(data|stringData)$' secret.yaml > secret.sops.yaml
-sops --decrypt secret.sops.yaml | kubectl apply -f -
+# No se aplica a mano: va en el Component solo-flux/ de su carpeta y Flux lo descifra al mergear (secret sops-age)
 ```
 
 Nunca versionar secretos sin cifrar. Dónde vive la clave y cómo se usa: [docs/security/02_sops_configuration.md](docs/security/02_sops_configuration.md).

@@ -1,9 +1,10 @@
 # Capas: CRD, operadores, Postgres compartido y plataforma.
 # Una Kustomization de Flux por carpeta hoja de cluster/ (si una falla, no bloquea a las demás). Convenciones del
 # plan (docs/PLAN-FLUX.md § Decisiones):
-# - suspend: true hasta que su lote se adopte en la fase 4; esta lista es la que manda.
+# - Sin `suspend` en git (adopción cerrada el 2026-10-16). Para probar en caliente: `flux suspend ks <ks>` y
+#   `flux resume ks <ks>` al terminar; no se versiona.
 # - wait: true y timeout 5m (10m en comfyui): verde = el rollout terminó.
-# - prune: false durante la adopción; deletionPolicy: Orphan donde hay datos (PV/PVC, CRD, Cluster de Postgres).
+# - prune: false hasta la fase 7; deletionPolicy: Orphan donde hay datos (PV/PVC, CRD, Cluster de Postgres).
 # - components: [solo-flux] suma los *.sops.* (y el HelmRelease de cnpg) que kubectl apply -k no debe ver;
 #   decryption con sops-age solo donde hay secretos.
 ---

@@ -43,7 +43,8 @@ Si en el futuro vuelves a tener NFS (TrueNAS u otro) o montas el [Proxmox CSI pl
 ## Despliegue
 
 ```bash
-kubectl apply -k cluster/apps/webodm/
+# Flux aplica la carpeta al mergear a main; para no esperar:
+~/.cache/flux-plan/bin/flux reconcile ks webodm --with-source
 kubectl -n webodm rollout status deploy/db --timeout=300s
 kubectl -n webodm rollout status deploy/node-odx-1 --timeout=300s
 kubectl -n webodm rollout status deploy/webapp --timeout=300s
