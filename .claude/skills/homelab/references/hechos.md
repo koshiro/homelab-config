@@ -66,3 +66,4 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   reiniciando; desde 2026-10-15 el script omite la corrida en vez de fallar.
 - ComfyUI web (comfyui.danielriquelme.cl) pide Cloudflare Access → para probar la UI usar el NodePort `http://192.168.1.15:30188`.
 - ComfyUI (assets, LoadImage `[output]`, frontend) → skill **comfyui**; ahí están las trampas.
+- SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).

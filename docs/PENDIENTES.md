@@ -202,6 +202,8 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
 
 ## 6. GitOps con Flux
 
+Plan completo en fases: `docs/PLAN-FLUX.md` (2026-10-15).
+
 - [ ] `flux bootstrap github --owner=koshiro --repository=homelab-config --path=cluster --private`.
 - [ ] Clave age en el cluster (`sops-age` secret en `flux-system`) y `decryption` en las Kustomizations.
 - [ ] Completar `cluster/kustomization.yml` para que refleje TODO lo desplegado. Hoy faltan: `04-media-stack/{plex,sonarr,radarr,prowlarr,bazarr,qbittorrent}`, `apps/{immich,minecraft,postgresql}`.
