@@ -14,7 +14,6 @@ metadata:
   name: bazarr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/bazarr
   sourceRef:
     kind: GitRepository
@@ -32,7 +31,6 @@ metadata:
   name: flaresolverr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/flaresolverr
   sourceRef:
     kind: GitRepository
@@ -49,7 +47,6 @@ metadata:
   name: plex
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/plex
   sourceRef:
     kind: GitRepository
@@ -67,7 +64,6 @@ metadata:
   name: prowlarr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/prowlarr
   sourceRef:
     kind: GitRepository
@@ -85,7 +81,6 @@ metadata:
   name: qbittorrent
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/qbittorrent
   sourceRef:
     kind: GitRepository
@@ -109,7 +104,6 @@ metadata:
   name: radarr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/radarr
   sourceRef:
     kind: GitRepository
@@ -127,7 +121,6 @@ metadata:
   name: sonarr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/04-media-stack/sonarr
   sourceRef:
     kind: GitRepository
@@ -145,7 +138,6 @@ metadata:
   name: overseerr
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/05-services/overseerr
   sourceRef:
     kind: GitRepository
@@ -164,7 +156,6 @@ metadata:
   name: pingvin
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/05-services/pingvin
   sourceRef:
     kind: GitRepository
@@ -182,7 +173,6 @@ metadata:
   name: canon-mp250-airprint
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/canon-mp250-airprint
   sourceRef:
     kind: GitRepository
@@ -199,7 +189,6 @@ metadata:
   name: claude-remote
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/claude-remote
   sourceRef:
     kind: GitRepository
@@ -223,7 +212,6 @@ metadata:
   name: comfyui
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/comfyui
   sourceRef:
     kind: GitRepository
@@ -273,7 +261,6 @@ metadata:
   name: minecraft
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/minecraft
   sourceRef:
     kind: GitRepository
@@ -297,7 +284,6 @@ metadata:
   name: ollama-stack
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/ollama-stack
   sourceRef:
     kind: GitRepository
@@ -315,7 +301,6 @@ metadata:
   name: webodm
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/webodm
   sourceRef:
     kind: GitRepository

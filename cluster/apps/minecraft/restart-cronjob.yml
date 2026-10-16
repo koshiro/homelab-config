@@ -56,8 +56,11 @@ spec:
           containers:
             - name: restart
               image: registry.k8s.io/kubectl:v1.35.9
-              # El proxy primero (Geyser vive ahí y debe seguir a las actualizaciones de Bedrock)
-              args: ["rollout", "restart", "deployment/minecraft-proxy", "deployment/minecraft", "-n", "minecraft"]
+              # El proxy primero (Geyser vive ahí y debe seguir a las actualizaciones de Bedrock).
+              # --field-manager: con el de por defecto (kubectl-rollout), Flux absorbe el restartedAt (absorbe todo
+              # manager que empiece con "kubectl"), lo borra en la pasada siguiente y reinicia otra vez.
+              args: ["rollout", "restart", "deployment/minecraft-proxy", "deployment/minecraft", "-n", "minecraft",
+                     "--field-manager=minecraft-restart"]
               resources:
                 limits:
                   memory: 64Mi

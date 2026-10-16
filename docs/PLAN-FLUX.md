@@ -289,6 +289,32 @@ Se puede parar entre lotes: lo que está en un lote ya activo lo despliega Flux,
 prueba conserva `kubectl-client-side-apply` en sus `managedFields`; vmalert no disparó alertas en la ventana; los
 sitios públicos responden 200 y CNPG tiene 3 instancias sanas.
 
+**Punto de partida (2026-10-16, 11:55 GMT-3):** `hl.py flux` con la fuente en `main@38c6c68`, 0 problemas y 28
+suspendidas. `hl.py status` sin pods con problema, `diff_todo.py` con 39/39 OK, `inventario.py` con 0 errores y solo
+los releases de Traefik y `cnpg`. Línea base `~/.cache/flux-plan/linea-base-pre-flux.json` (`scripts/flux/linea_base.py`):
+82 workloads, 76 pods y 909 objetos sin contar los tipos volátiles. etcd: `pre-flux-pibot-1792162588`. vmalert: 1
+alerta previa, `SwapOutHostProxmox` (host pve, *pending* desde las 11:47 y *firing* después; no tiene que ver con Flux).
+
+**Lote 1, webs y monitoreo (PR #94, mergeado 12:09 GMT-3 en `main@397ac23`).** Control antes del PR: `flux diff ks`
+dio 53 objetos, todos con solo las etiquetas `kustomize.toolkit.fluxcd.io/*`. Los 3 Secrets SOPS de monitoring
+(`flux diff` no los muestra porque los enmascara como `**SOPS**`) se compararon descifrados con el vivo: iguales.
+Después del merge, la raíz y las 4 llegaron a `lastAppliedRevision` = `git rev-parse origin/main` y `hl.py flux` dio 0
+problemas. `josekast` quedó solo con `kustomize-controller/Apply` y `k3s/Update`, sin `kubectl-client-side-apply` ni
+la anotación `last-applied-configuration`. Los 4 sitios dan 200 (grafana da 302 por Access) y vmalert no tiene alertas
+nuevas. `hl.py status` sin pods con problema y 909 → 909 objetos.
+
+- **Un reinicio no buscado:** `monitoring/pve-exporter` (12:11). Su contenedor tenía `imagePullPolicy: Always`, que
+  el apiserver le dio por defecto cuando la imagen era `:latest`. Git fija `3.10.1` sin decir nada, y `kubectl apply`
+  (client-side) conservaba el valor. Al adoptar, kustomize-controller pasa a su nombre los campos de **todo manager
+  que empiece con `kubectl`** (`kubectl-client-side-apply`, `kubectl-rollout`, `kubectl-label`, `kubectl-patch`…;
+  `matchFieldManager` de `fluxcd/pkg/ssa` compara por prefijo). Además borra los que git no trae, y el apiserver
+  completa el valor por defecto: `IfNotPresent`. `flux diff` no lo ve, porque su dry-run no hace ese traspaso.
+- **Generation +1 sin reinicio** en los 9 Deployments restantes: Flux quita `last-applied-configuration` y en un
+  Deployment un cambio de anotaciones sube la generation. `linea_base.py` la trata como aviso.
+- **Control nuevo para los lotes 2 y 3:** `scripts/flux/simular_adopcion.py <ks>…` hace con dry-runs lo que hará Flux
+  (traspaso de dueños, apply de git y valores por defecto en una copia renombrada) y lista lo que cambia de verdad.
+  También compara con el vivo, sin imprimir valores, los Secrets SOPS descifrados. Con lo ya adoptado da 0.
+
 ### Fase 5 — Avisos (~45 min) · `feat/flux-avisos`
 
 1. `Provider telegram` + `Alert` (`eventSeverity: error`) y `Provider github` (token fine-grained solo con `statuses: write`, en SOPS).
