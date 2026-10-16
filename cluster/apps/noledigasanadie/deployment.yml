@@ -9,7 +9,7 @@ metadata:
   labels:
     app: noledigasanadie
 spec:
-  replicas: 1
+  replicas: uno
   strategy:
     type: Recreate
   selector:
