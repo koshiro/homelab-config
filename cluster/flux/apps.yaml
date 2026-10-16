@@ -340,7 +340,6 @@ metadata:
   name: cyano
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/cyano
   sourceRef:
     kind: GitRepository
@@ -357,7 +356,6 @@ metadata:
   name: josekast
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/josekast
   sourceRef:
     kind: GitRepository
@@ -374,7 +372,6 @@ metadata:
   name: noledigasanadie
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/noledigasanadie
   sourceRef:
     kind: GitRepository
