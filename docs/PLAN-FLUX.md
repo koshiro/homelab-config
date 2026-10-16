@@ -76,6 +76,10 @@ Cada fase termina con un **«Listo cuando»** que comprueba una máquina. No se 
 una carpeta vacía y **con cada copia por separado**, `sops -d` descifra un secreto del repo y `ansible-vault view`
 abre el vault.
 
+**Avance (2026-10-15):** k3s v1.35.9+k3s1 en los 4 nodos (etcd 3.6.14, containerd 2.2.7, Traefik 3.7.13), 0 pods con
+problema, snapshots `pre-k3s-1.34` y `pre-k3s-1.35` en pibot. Kit: bucket R2 `homelab-recuperacion` y
+`scripts/kit-recuperacion.sh` listos; falta crear las dos copias y que pasen `verificar-notas` y `verificar-archivo`.
+
 ### Fase 1 — Repo = cluster en ambas direcciones (~2 h) · `chore/flux-preparar-repo`
 
 1. Agregar `.sops.yaml` y volver a cifrar los 2 secretos binarios (se siguen aplicando aparte, como hoy).

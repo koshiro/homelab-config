@@ -9,6 +9,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Proxmox `pve` 192.168.1.100; fuera de la LAN `root@pve` (Tailscale). Timeout a 192.168.1.x = no estamos en la red,
   no una caída. (2026-10-13)
 - kubectl local apunta a `k3s-node-0:6443`; no hace falta ssh para kubectl. GPU RTX 3070 solo en node-1.
+- k3s v1.35.9+k3s1 en los 4 nodos (etcd 3.6.14, containerd 2.2.7, Traefik 3.7.13; todos cgroup v2). La unidad `k3s`
+  de pibot lleva `--write-kubeconfig-mode 644 --node-ip 192.168.1.15` y hay una `k3s-agent` vieja, desactivada, que
+  apunta a node-1: no correr get.k3s.io sin esos flags; subir con `scripts/k3s-binario.sh` (receta *Subir k3s*).
+  Binarios anteriores en `/var/lib/rancher/k3s-binarios/` de cada nodo. (2026-10-15)
 - VM 105 `opencontracts-lab` (192.168.1.140) es un laboratorio temporal: no versionar nada de ella.
 - El pod `claude-remote` tiene la misma paridad de acceso (`HOME=/Users/daniel`, repos en `~/git`).
 
@@ -20,6 +24,8 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Token de cuenta `vault_cloudfare_full_api_token` (sic, "cloudfare") en `ansible/vars/vault.yml`;
   `vault_cloudflare_api_token` es solo R2. Es token de cuenta: `/user/tokens/verify` falla, usar endpoints de cuenta.
   `hl.py cf` lo lee en memoria y respalda la config del túnel antes de un PUT. (2026-10-06)
+- R2: bucket `homelab` (restic) y `homelab-recuperacion` (kit de recuperación `homelab-kit.age`). `hl.py r2` sube y
+  baja objetos por la API de cuenta con el token completo, sin claves S3. (2026-10-15)
 - Web Analytics del plan gratis admite 1 sola regla; para excluir un host se usa Configuration Rule `disable_rum`
   (así está cyano). (2026-10-10)
 - Paneles con Cloudflare Access (app «Homelab admin», OTP): grafana, comfyui, swarmui, galeria, chat, *arr, qbittorrent.
@@ -38,6 +44,12 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Esperar un rollout de CNPG mirando solo `status.phase` → da «healthy» antes de empezar: exigir además la imagen
   nueva en las 3 instancias. (2026-10-15)
 - `gh pr merge` lo bloquea el clasificador («Merge Without Review») → pedir al usuario que mergee con el comando exacto. (2026-10-15)
+- `kubectl drain`, `uncordon` y el switchover de CNPG son operaciones de ciclo de vida de nodos: requieren
+  autorización explícita del usuario → al proponer la tarea, listar los comandos exactos y esperar su aprobación. (2026-10-15)
+- Versión de etcd con `curl https://127.0.0.1:2379/version` da 415 → en pibot
+  `curl -s http://127.0.0.1:2381/metrics | grep etcd_server_version`. (2026-10-15)
+- Tras reiniciar el server de k3s, ~2 min de «Sending HTTP/2.0 503 response … starting» y errores de
+  `helm-install-traefik` en el log → transitorio; volver a mirar con `journalctl -u k3s --since -30s`. (2026-10-15)
 - Guarda del worktree «too complex to verify» / «names git» → un comando simple por llamada; bucles en script de
   `$CLAUDE_JOB_DIR/tmp`; sin `cd … &&` (sus rutas bajo `~/git` se leen como git). (2026-10-14, 128 errores en 29 sesiones)
 - `git -C <checkout>` desde un worktree → bloqueado: ExitWorktree `keep` y operar desde el checkout.

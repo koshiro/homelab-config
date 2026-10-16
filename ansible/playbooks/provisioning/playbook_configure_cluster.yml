@@ -6,7 +6,7 @@
   gather_facts: true
   serial: false # Permite la ejecución en paralelo para más velocidad
   vars:
-    k3s_version: "v1.33.4+k3s1" # Versión LTS más reciente y estable que la anterior
+    k3s_version: "v1.35.9+k3s1" # = versión del cluster; para subirla en caliente: scripts/k3s-binario.sh (README § Operación)
     k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]].ansible_host }}"
     install_timeout: 900
 

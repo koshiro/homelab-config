@@ -19,6 +19,7 @@ $H sops keys|apply|encrypt <archivo>                # con SOPS_AGE_KEY_FILE pues
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet
 $H doc <archivo> [sección]    # índice de encabezados o una sección: doc DISENO-APPS 4.2
 $H cf zones|tunnels|routes <túnel>|route <túnel> <host> <servicio> [--apply]|api <M> <ruta> [-d JSON|@f]
+$H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave> <destino>   # mb/put: --apply
 ```
 
 ## Mapa (una tarea → dónde mirar)

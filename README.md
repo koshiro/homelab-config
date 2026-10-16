@@ -9,7 +9,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 | Componente | Detalle |
 |---|---|
 | **Proxmox** | `192.168.1.100` · 64 GB de RAM · pool ZFS `nvme` (mirror 2×512 GB) para discos de VMs. Presupuesto de RAM y cómo reiniciar una VM del cluster: [proxmox/README.md](proxmox/README.md) |
-| **k3s** v1.33 | Master `pibot` (Raspberry Pi, `192.168.1.15`, sin taints) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`, 24/8/12 GB, `cpu: host`) |
+| **k3s** v1.35 | Master `pibot` (Raspberry Pi, `192.168.1.15`, sin taints) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`, 24/8/12 GB, `cpu: host`) |
 | **GPU** | NVIDIA RTX 3070 en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
 | **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (un disco, sin redundancia: `media` RAW, `k8s-media-library`, `comfyui`, `timemachine`). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |
 | **Ingress** | Traefik (k3s) · `ingressClassName: traefik`, entrypoint `web`, sin bloque `tls` |
@@ -132,7 +132,33 @@ sops --encrypt --age age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4ml
 sops --decrypt secret.sops.yaml | kubectl apply -f -
 ```
 
-Nunca versionar secretos sin cifrar. Respaldo de la clave: `scripts/backup-sops-keys.sh` / `restore-sops-keys.sh`.
+Nunca versionar secretos sin cifrar. Dónde vive la clave y cómo se usa: [docs/security/02_sops_configuration.md](docs/security/02_sops_configuration.md).
+
+**Kit de recuperación.** La clave age y la contraseña del vault de Ansible solo existen en el Mac; si se pierde, no
+se descifra ningún `*.sops.*` ni se abre `ansible/vars/vault.yml` (token de Cloudflare, contraseña de restic). Hay dos
+copias independientes:
+
+- **A:** Contraseñas de Apple, entradas «homelab · clave age (SOPS)» y «homelab · contraseña vault Ansible» (campo Notas).
+- **B:** `homelab-kit.age` en el bucket R2 `homelab-recuperacion` (dashboard de Cloudflare → R2 → descargar), cifrado
+  con `age -p` y una frase anotada en papel. Va aparte del bucket `homelab` de restic.
+
+```bash
+# Mac nuevo: clonar el repo, brew install age sops ansible, y una de las dos:
+scripts/kit-recuperacion.sh restaurar ~/Downloads/homelab-kit.age
+scripts/kit-recuperacion.sh restaurar notas          # pega desde Contraseñas
+# Comprobar cada copia por separado (carpeta vacía, solo esa copia): sops -d y ansible-vault view
+scripts/kit-recuperacion.sh verificar-notas
+scripts/kit-recuperacion.sh verificar-archivo        # lo baja de R2
+# Rehacer tras rotar la clave o la contraseña
+scripts/kit-recuperacion.sh notas && scripts/kit-recuperacion.sh cifrar
+```
+
+**Subir k3s** (de a un menor: 1.35 → 1.36 → …): snapshot de etcd en pibot
+(`sudo k3s etcd-snapshot save --name pre-k3s-<menor>`) → `scripts/k3s-binario.sh` reemplaza solo el binario
+(verificado por sha256, sin reescribir las unidades systemd, que tienen flags propios) → pibot primero y luego cada
+worker con drain y uncordon, moviendo antes el primario de Postgres si está en ese nodo. Después actualizar
+`k3s_version` del playbook y el límite de `registry.k8s.io/kubectl` en `renovate.json`. Pasos exactos: skill homelab,
+`references/recetas.md` § Subir k3s.
 
 **Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:40–02:48), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
 

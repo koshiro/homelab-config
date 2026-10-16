@@ -40,6 +40,20 @@ Copiar un bloque de `cluster/00-infrastructure/backups/app-config-backup.yaml`, 
 el primario de Postgres, moverlo antes con patch de `status.targetPrimary`) → `$H ssh pve qm shutdown <vmid>` /
 `qm start` (no reboot en el invitado) → `kubectl uncordon`. Pedir confirmación: es disruptivo.
 
+## Subir k3s (de a un menor)
+Destino: `curl -s https://update.k3s.io/v1-release/channels` (canal `v1.NN`); leer `docs.k3s.io/release-notes/v1.NN.X`
+(Traefik, etcd, flags) y pedir autorización de drain (trampa). Snapshot en pibot
+`sudo k3s etcd-snapshot save --name pre-k3s-1.NN` → `ansible k3s_nodes -i ansible/inventory -b -m script -a
+'scripts/k3s-binario.sh <ver> descargar'` (los 4 a la vez, sha256 verificado) → igual con `pibot … instalar` →
+`kubectl -n kube-system rollout status deploy/coredns deploy/traefik deploy/metrics-server` → workers de a uno,
+dejando al final el del primario de Postgres: `kubectl drain <n> --ignore-daemonsets --delete-emptydir-data` →
+`ansible <n> … instalar` → `kubectl wait --for=condition=Ready node/<n>` → `kubectl uncordon <n>` → esperar la réplica
+CNPG de ese nodo Ready. Antes del último: `kubectl -n postgresql patch cluster homelab-postgres --type merge
+--subresource status -p '{"status":{"targetPrimary":"<instancia en nodo ya subido>"}}'` y esperar
+`currentPrimary` y la ex-primaria Ready. En node-1: `nvidia-smi` dentro de comfyui. Al final: `hl.py status`, sondear
+los Ingress y actualizar `k3s_version` del playbook, el tope de `registry.k8s.io/kubectl` en renovate.json y
+`KUBECTL_VER` de claude-remote. (2026-10-15: 1.33.4 → 1.34.12 → 1.35.9 en ~1 h, sin cortes salvo los pods drenados.)
+
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →
 snapshot de etcd en pibot (`sudo k3s etcd-snapshot save --name pre-reboot-pve-<fecha>`) → `nohup systemctl reboot &`

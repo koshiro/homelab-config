@@ -78,9 +78,9 @@
       "groupName": "media"
     },
     {
-      "description": "kubectl a ±1 menor del cluster (k3s v1.33): subir este límite al actualizar k3s",
+      "description": "kubectl a ±1 menor del cluster (k3s v1.35): subir este límite al actualizar k3s",
       "matchPackageNames": ["registry.k8s.io/kubectl"],
-      "allowedVersions": "<1.35"
+      "allowedVersions": "<1.36"
     },
     {
       "description": "CUDA: el driver de node-1 (580.x) soporta hasta CUDA 13.0 y la imagen exige NVIDIA_REQUIRE_CUDA; subir con el driver",

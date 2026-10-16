@@ -1,7 +1,7 @@
 # Configuración de pibot (master k3s, 192.168.1.15)
 
 Raspberry Pi **Compute Module 4** (4 núcleos, 4 GB, NVMe Toshiba 256 GB como raíz), Debian 12 bookworm,
-k3s v1.33 con etcd embebido. Por tailnet es `k3s-node-0` (`ssh daniel@k3s-node-0`).
+k3s v1.35 con etcd embebido (3.6). Por tailnet es `k3s-node-0` (`ssh daniel@k3s-node-0`).
 
 Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; al cambiar algo en la Pi, actualizar aquí.
 
