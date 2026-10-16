@@ -148,10 +148,11 @@ spec:
             - name: cache
               mountPath: /cache
       volumes:
-        # Modelos descargados (~800 MB) en el disco del nodo, que está casi lleno.
+        # Modelos descargados en el disco del nodo. Los repos por defecto pesan ~3,4 GB (CLIP ViT-B-32 2,6 GB +
+        # buffalo_l 0,8 GB, con variantes de otros runtimes): con 2Gi el kubelet desalojó el pod el 2026-10-16.
         - name: cache
           emptyDir:
-            sizeLimit: 2Gi
+            sizeLimit: 5Gi
 ---
 apiVersion: v1
 kind: Service
