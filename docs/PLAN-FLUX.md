@@ -117,6 +117,27 @@ No cambia cómo se despliega: `kubectl apply -k` sigue funcionando y se puede pa
 - **No hay `.github/`.** `kubeconform` y la revisión de SOPS se pueden armar ahora; `flux-local` necesita las
   Kustomizations de Flux, así que su job entra en la fase 3.
 
+**Avance (2026-10-16, PR #91, rama `chore/flux-preparar-repo`).**
+
+- SOPS: `.sops.yaml` y los 2 binarios recifrados; `sops_formato.py` sin `BINARIO`. `qbittorrent-credentials` nunca se
+  aplicó (su texto plano era YAML inválido) y nadie lo usa: queda como resguardo de la contraseña.
+- Versionado y en sus kustomizations: las 9 NetworkPolicy, los 3 Namespaces, Immich (kustomization nueva, Redis con
+  `bitnamilegacy`, aplicado) y el `HelmRelease` de `cnpg` en `cluster/00-infrastructure/cnpg/`, comentado en su
+  kustomization hasta la fase 3.
+- **No estaba en el inventario:** `inventario.py` contaba como «del repo» los YAML sueltos. 25 archivos vivos no
+  entraban en ninguna kustomization (NetworkPolicy de bazarr/radarr/sonarr/overseerr, ConfigMaps de init, el PV de
+  Plex): ahora entran. 4 NetworkPolicy que nunca se aplicaron (qbittorrent y radarr) y 1 duplicado se borraron; el
+  script ahora solo cuenta kustomizations y SOPS. Quedan fuera a propósito los Jobs manuales de comfyui (05–07) y
+  `minecraft/seedfinder`.
+- Anotación de prune por el Component `cluster/components/proteger-datos` (PV, PVC, Namespace, `Cluster`), incluido en
+  las 30 kustomizations hoja y aplicado.
+- CI: `.github/workflows/validar.yml` con `scripts/flux/validar.sh` (kubeconform `-strict`, salta los CRD upstream) y
+  `scripts/flux/revisar_sops.py`. En verde en el PR.
+- `diff_todo.py`: 0 cambios en las 37 carpetas.
+- **Falta:** borrar los 23 huérfanos, que están exportados en `~/.cache/flux-plan/huerfanos.yaml`. El clasificador
+  bloqueó el borrado: lo autoriza o lo corre el usuario. Después, `inventario.py` debe mostrar solo los releases de
+  Traefik y `cnpg`.
+
 ### Fase 2 — Ensayo en un cluster desechable (~1 h) · misma rama de la fase 3
 
 1. Crear un cluster local con `k3d` en la misma versión de k3s, usando la imagen de prod.
