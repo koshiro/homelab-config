@@ -135,7 +135,6 @@ metadata:
   name: monitoring
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/03-monitoring/monitoring
   sourceRef:
     kind: GitRepository
