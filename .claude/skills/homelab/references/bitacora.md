@@ -15,3 +15,4 @@
 | 2026-10-16 | CI de Flux: flux-local → flate (pedido del usuario) | ~25 | flate salta suspendidas y necesita un repo git | `scripts/flux/flate.sh` (copia sin suspend, test + diff), job flate, 1 trampa |
 | 2026-10-16 | Fase 3 de Flux: instalar en prod sin gestionar nada (PR #92, 28 suspendidas) | ~55 | La guarda rechaza `flux … git …`; la verificación eran 6 llamadas | `hl.py flux`, receta *Flux en prod*, hecho de la instalación, 1 trampa |
 | 2026-10-16 | Fase 4 de Flux: adopción en 3 lotes (PR #94-96), 28/28 activas | ~230 | flux diff no ve el traspaso de managers kubectl* (reinicio de pve-exporter) ni los SOPS; kubectl diff no ve TCP+UDP en el mismo puerto | `scripts/flux/linea_base.py`, `simular_adopcion.py`, `hl.py alertas`, media.py update con field manager, receta Flux en prod, 7 trampas |
+| 2026-10-16 | Aviso CertificateExpirationWarning en node-1 | ~15 | — | hecho de certificados k3s (vencimiento de pibot), trampa del servidor abandonado |

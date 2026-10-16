@@ -14,6 +14,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   de pibot lleva `--write-kubeconfig-mode 644 --node-ip 192.168.1.15` y hay una `k3s-agent` vieja, desactivada, que
   apunta a node-1: no correr get.k3s.io sin esos flags; subir con `scripts/k3s-binario.sh` (receta *Subir k3s*).
   Binarios anteriores en `/var/lib/rancher/k3s-binarios/` de cada nodo. (2026-10-15)
+- Certificados k3s: CA del cluster `@1757082010` (2025-09-05, vence 2035). Las hojas de pibot vencen desde el
+  **2027-04-15**; k3s las renueva al arrancar si faltan < 120 días, así que basta reiniciar o subir k3s después de
+  mediados de diciembre de 2026. Revisar con `$H ssh <nodo> sudo k3s certificate check --output table`. En node-1
+  había un servidor k3s abandonado del 2025-09-05 (otra CA, `@1757081237`) que daba avisos falsos
+  `CertificateExpirationWarning`; quedó en `/var/lib/rancher/k3s-server-abandonado-20250905` (127 MB, se puede borrar). (2026-10-16)
 - VM 105 `opencontracts-lab` (192.168.1.140) es un laboratorio temporal: no versionar nada de ella.
 - El pod `claude-remote` tiene la misma paridad de acceso (`HOME=/Users/daniel`, repos en `~/git`).
 
@@ -148,3 +153,6 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `linea_base.py comparar` con «generation distinta» en todos los Deployments adoptados → normal: Flux quita la
   anotación `last-applied-configuration` y en un Deployment un cambio de anotaciones sube la generation. Lo que
   cuenta es el hash de plantilla. (2026-10-16)
+- `CertificateExpirationWarning` (k3s-cert-monitor) en un agent → mirar la CA de los vencidos con `k3s certificate
+  check`: si no es la `@1757082010` del cluster, es un `/var/lib/rancher/k3s/server` viejo («Server detected»);
+  moverlo a un lado y el check pasa a «Agent detected». (2026-10-16)
