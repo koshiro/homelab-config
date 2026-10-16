@@ -186,7 +186,7 @@ def cmd_flux(a):
                             for p in pods))
     print(f"activas con problema: {malas}" + ("  (pibot tiene pods de Flux)" if any(p["spec"].get("nodeName") == "pibot" for p in pods) else ""))
     if esperan:
-        print(f"esperan main: {esperan} (fuente sin el último commit; $F reconcile source git flux-system)")
+        print(f"esperan main: {esperan} (fuente sin el último commit; $F reconcile ks flux-system --with-source)")
     sys.exit(1 if malas else 0)
 
 
