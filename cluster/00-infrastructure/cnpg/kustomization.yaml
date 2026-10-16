@@ -4,3 +4,5 @@ kind: Kustomization
 resources:
   - namespace.yaml
   # - helmrelease.yaml   # fase 3 del plan de Flux: requiere los CRD HelmRepository y HelmRelease
+components:
+  - ../../components/proteger-datos

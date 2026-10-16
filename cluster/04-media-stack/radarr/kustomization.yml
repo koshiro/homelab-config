@@ -15,3 +15,5 @@ resources:
   - networkpolicy-arr-ingress.yml
   - networkpolicy-egress.yml
   - networkpolicy-arr-suite.yml
+components:
+  - ../../components/proteger-datos

@@ -6,3 +6,5 @@ resources:
   - nvidia-device-plugin-config.yaml
   - nvidia-device-plugin.yml
   - nvidia-runtimeclass.yml
+components:
+  - ../../components/proteger-datos

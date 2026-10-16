@@ -6,3 +6,5 @@ resources:
   - 00-postgres-cluster.yaml
   - 03-objectstore.yaml
   - 04-scheduled-backup.yaml
+components:
+  - ../../components/proteger-datos

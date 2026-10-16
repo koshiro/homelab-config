@@ -62,3 +62,5 @@ configMapGenerator:
   - name: grafana-dashboard-victoriametrics
     namespace: monitoring
     files: [dashboards/infra/victoriametrics.json]
+components:
+  - ../../components/proteger-datos

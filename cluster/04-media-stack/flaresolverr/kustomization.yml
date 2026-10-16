@@ -7,3 +7,5 @@ resources:
   - networkpolicy-deny.yml
   - networkpolicy-ingress.yml
   - networkpolicy-egress.yml
+components:
+  - ../../components/proteger-datos

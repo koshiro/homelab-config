@@ -9,3 +9,5 @@ resources:
   - 03-configmap.yaml
   - 04-redis.yaml
   - 05-backup-postgres.yaml
+components:
+  - ../../components/proteger-datos

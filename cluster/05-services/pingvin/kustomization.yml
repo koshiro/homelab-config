@@ -7,3 +7,5 @@ resources:
   - ingress.yml
   - pvc.yml
   - networkpolicy.yml
+components:
+  - ../../components/proteger-datos

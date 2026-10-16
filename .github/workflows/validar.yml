@@ -1,0 +1,41 @@
+# Checks de cada PR (docs/PLAN-FLUX.md, decisión «CI»). Sin ellos Renovate no puede hacer automerge.
+# flux-local (test + diff comentado en el PR) entra en la fase 3, cuando existan las Kustomizations de Flux.
+name: validar
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifiestos:
+    name: kubeconform
+    runs-on: ubuntu-24.04
+    env:
+      KUBECONFORM_VERSION: v0.7.0
+    steps:
+      - uses: actions/checkout@v5
+      - name: Instalar kubeconform
+        run: |
+          base="https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}"
+          curl -sSfLO "${base}/kubeconform-linux-amd64.tar.gz"
+          curl -sSfL "${base}/CHECKSUMS" | grep ' kubeconform-linux-amd64.tar.gz$' | sha256sum -c -
+          tar -xzf kubeconform-linux-amd64.tar.gz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+      - name: Renderizar y validar cada kustomization
+        run: scripts/flux/validar.sh
+
+  secretos:
+    name: secretos SOPS
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Todo *.sops.* estructurado y cifrado
+        run: python3 -I scripts/flux/revisar_sops.py

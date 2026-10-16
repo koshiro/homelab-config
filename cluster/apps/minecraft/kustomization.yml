@@ -24,3 +24,5 @@ configMapGenerator:
 # Secrets (aplicar aparte): sops -d secret-ddns.sops.yaml | kubectl apply -f -
 #                           sops -d whitelist-bot/secret.sops.yaml | kubectl apply -f -
 #                           sops -d proxy/secret-velocity.sops.yaml | kubectl apply -f -
+components:
+  - ../../components/proteger-datos

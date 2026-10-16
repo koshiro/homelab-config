@@ -16,3 +16,5 @@ configMapGenerator:
     namespace: comfyui
     files:
       - custom-nodes/homelab_asset_subfolder/__init__.py
+components:
+  - ../../components/proteger-datos
