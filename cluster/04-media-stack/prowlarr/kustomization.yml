@@ -12,3 +12,4 @@ resources:
   - networkpolicy-ingress.yml
   - networkpolicy-arr-ingress.yml
   - networkpolicy-egress.yml
+  - networkpolicy-arr-suite.yml

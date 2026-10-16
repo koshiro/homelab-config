@@ -6,3 +6,8 @@ resources:
   - service.yml
   - ingress.yml
   - pvc.yml
+  # Network Policies
+  - networkpolicy-deny.yml
+  - networkpolicy-ingress.yml
+  - networkpolicy-egress.yml
+  - networkpolicy-arr-suite.yml

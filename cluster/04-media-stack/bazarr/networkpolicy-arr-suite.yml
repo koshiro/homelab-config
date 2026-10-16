@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-arr-suite-communication
+  namespace: bazarr
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          arr-suite: 'true'
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+  podSelector: {}
+  policyTypes:
+  - Ingress

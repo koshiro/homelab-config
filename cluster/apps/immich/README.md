@@ -24,7 +24,8 @@ El servicio de machine learning se ejecuta en un pod separado para procesar las 
 
 ```bash
 # Aplicar la configuración
-kubectl apply -f cluster/apps/immich/
+kubectl apply -k cluster/apps/immich/
+# El secreto va aparte: python3 -I .claude/skills/homelab/hl.py sops apply cluster/apps/immich/01-secret.sops.yaml
 
 # Verificar el estado
 kubectl get pods -n immich

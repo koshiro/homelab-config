@@ -1,0 +1,40 @@
+# Operador CloudNativePG: hoy es el release de Helm «cnpg» (chart cloudnative-pg 0.26.0, app 1.27.0) instalado a mano
+# y sin valores de usuario (scripts/flux/helm_valores.py cnpg-system sh.helm.release.v1.cnpg.v1 → {}).
+# Este HelmRelease lo adopta con el mismo nombre y namespace; un manifiesto upstream crearía un segundo operador.
+# NO está en kustomization.yaml: los CRD de Flux no existen hasta la fase 3 del plan (docs/PLAN-FLUX.md).
+# Nunca podar ni borrar: desinstalar el chart borra los CRD y con ellos el Cluster de Postgres.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: cnpg
+  namespace: cnpg-system
+spec:
+  url: https://cloudnative-pg.github.io/charts
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cnpg
+  namespace: cnpg-system
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  releaseName: cnpg
+  targetNamespace: cnpg-system
+  storageNamespace: cnpg-system
+  interval: 1h
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: 0.26.0
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+  install:
+    remediation:
+      retries: 0
+  upgrade:
+    remediation:
+      retries: 0
+  values: {}
