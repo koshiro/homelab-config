@@ -23,9 +23,8 @@ El servicio de machine learning se ejecuta en un pod separado para procesar las 
 ## Despliegue
 
 ```bash
-# Aplicar la configuración
-kubectl apply -k cluster/apps/immich/
-# El secreto va aparte: python3 -I .claude/skills/homelab/hl.py sops apply cluster/apps/immich/01-secret.sops.yaml
+# Lo aplica Flux al mergear a main (Kustomization immich; el secreto entra por solo-flux/). Para no esperar:
+~/.cache/flux-plan/bin/flux reconcile ks immich --with-source
 
 # Verificar el estado
 kubectl get pods -n immich

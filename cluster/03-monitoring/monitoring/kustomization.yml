@@ -1,8 +1,7 @@
 # cluster/03-monitoring/monitoring/kustomization.yml
-# VictoriaMetrics + Grafana + exporters. kubectl apply -k cluster/03-monitoring
-# Secretos aparte: sops -d secret-grafana.sops.yaml | kubectl apply -f -
-#                  sops -d secret-proxmox.sops.yaml | kubectl apply -f -
-#                  sops -d secret-alertmanager-telegram.sops.yaml | kubectl apply -f -
+# VictoriaMetrics + Grafana + exporters. Lo aplica Flux (Kustomization monitoring) al mergear.
+# Secretos (secret-grafana, secret-proxmox, secret-alertmanager-telegram .sops.yaml): entran por solo-flux/ y
+# los descifra Flux.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -1,6 +1,6 @@
 # Playbooks de Ansible
 
-Ansible gestiona la infraestructura base (host Proxmox, nodos k3s, GPU). Las aplicaciones viven en `cluster/` y se aplican con `kubectl apply -k`; el almacenamiento (ZFS, NFS, sanoid/syncoid, LXC `nas`) está en el host y se documenta en [`proxmox/README.md`](../../proxmox/README.md).
+Ansible gestiona la infraestructura base (host Proxmox, nodos k3s, GPU). Las aplicaciones viven en `cluster/` y las aplica Flux al mergear a `main`; el almacenamiento (ZFS, NFS, sanoid/syncoid, LXC `nas`) está en el host y se documenta en [`proxmox/README.md`](../../proxmox/README.md).
 
 Inventario: `ansible/inventory` (grupos `proxmox_host`, `k3s_master`, `k3s_workers`, `k3s_nodes`). Secretos: `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` (configurada en `ansible.cfg`).
 

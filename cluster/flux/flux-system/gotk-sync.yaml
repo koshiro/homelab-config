@@ -27,7 +27,7 @@ spec:
   interval: 10m
   retryInterval: 2m
   path: ./cluster/flux
-  # La raíz no espera a sus hijas: las que siguen suspendidas nunca quedan Ready y la bloquearían.
+  # La raíz no espera a sus hijas: una suspendida (prueba en caliente) nunca queda Ready y la bloquearía.
   wait: false
   prune: false
   sourceRef:

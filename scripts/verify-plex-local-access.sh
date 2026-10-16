@@ -33,9 +33,8 @@ echo ""
 echo "📡 Verificando servicio NodePort de Plex..."
 NODEPORT_SVC=$(kubectl get svc plex-nodeport -n plex 2>/dev/null || echo "")
 if [ -z "$NODEPORT_SVC" ]; then
-    echo -e "${YELLOW}⚠ Servicio NodePort no encontrado. Aplicando configuración...${NC}"
-    kubectl apply -k cluster/04-media-stack/plex/
-    sleep 5
+    echo -e "${YELLOW}⚠ Servicio NodePort no encontrado. Reconciliando con Flux...${NC}"
+    ~/.cache/flux-plan/bin/flux reconcile ks plex --with-source
 fi
 
 NODEPORT=$(kubectl get svc plex-nodeport -n plex -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "")

@@ -3,7 +3,7 @@
 
 Uso: python3 cluster/03-monitoring/monitoring/dashboards/actualizar.py
 (El dashboard propio «Homelab — resumen» se genera aparte con resumen.py.)
-Luego revisar el diff y aplicar con kubectl apply -k cluster/03-monitoring.
+Luego revisar el diff y abrir un PR: al mergear, Flux aplica los ConfigMaps (Kustomization monitoring).
 
 - ${DS_PROMETHEUS} → uid fijo "victoriametrics" (grafana-provisioning/datasources.yml).
 - Minificados y sin campos de la UI: cada ConfigMap debe quedar bajo los 256 KiB de la anotación

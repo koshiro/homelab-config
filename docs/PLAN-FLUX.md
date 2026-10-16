@@ -21,7 +21,8 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [ ] Fase 5 — Avisos
 - [ ] Fase 6 — Prueba de fallas
 - [ ] Fase 7 — Prune y automerge
-- [ ] Fase 8 — Documentación y skill
+- [ ] Fase 8 — Documentación y skill (adelantada el 2026-10-16: `AGENTS.md`, `DISENO-APPS`, `README`, `ARQUITECTURA`,
+  `PENDIENTES`, READMEs de apps y las 3 skills ya describen Flux; falta `hl.py inventario` y repasar tras las fases 5–7)
 
 ## 0. Evidencia (2026-10-15)
 

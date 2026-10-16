@@ -9,7 +9,8 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 |-------|------|-----------|
 | **Cualquier tarea del homelab (empezar aquí)** | **`.claude/skills/homelab/SKILL.md`** | CLI `hl.py` (estado, app, NodePorts, ssh, SOPS, Cloudflare, secciones de docs), trampas conocidas y recetas; se amplía al cerrar cada tarea |
 | Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue |
-| Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml` |
+| Flux / GitOps (estado, desplegar, probar en caliente, deploy key) | skill homelab: `hl.py flux`, recetas *Flux en prod* y *cambio temporal en vivo*; `docs/PLAN-FLUX.md` | Una Kustomization por carpeta en `cluster/flux/`; fases pendientes del plan |
+| Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml`, Flux desde cero |
 | Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
 | ZFS, NFS, sanoid/syncoid/restic, LXC `nas` en Proxmox | `proxmox/README.md` | Fuente de verdad del host: qué archivo del repo va a qué ruta |
 | Suite arr, qBittorrent, Plex, Seerr (cola, atascos, calidad, actualizar) | **`.claude/skills/media-stack/SKILL.md`** | CLI `media.py` con salida compacta; leerla antes de explorar el repo o los pods |
@@ -28,8 +29,12 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 - **`kubectl` local** funciona contra `k3s-node-0:6443`; no hace falta `ssh … sudo k3s kubectl`.
 - **Logs de k3s**: en pibot el servicio es `k3s` (`ssh daniel@k3s-node-0 sudo journalctl -u k3s`); en los workers es
   `k3s-agent`.
-- **Disco de los workers** (2026-10-10: node-1 100 GB al 65 %, node-2/3 50 GB al 49 %). `local-path`,
-  imágenes y logs comparten ese disco. Revisar con `ansible k3s_nodes -i ansible/inventory -m shell -a 'df -h /'`.
+- **Flux aplica todo `cluster/`** (desde 2026-10-16): un merge a `main` es el despliegue. Nada de `kubectl apply -k`
+  ni `sops -d | kubectl apply`; un `kubectl edit/patch/scale` sobre algo gestionado se revierte en ≤10 min y
+  `rollout restart` va con `--field-manager=reinicio-manual`. Probar en caliente: `flux suspend ks <app>` → cambio →
+  PR → merge → `flux resume ks <app>`.
+- **Disco de los workers** (2026-10-16: node-1 100 GB al 81 %, node-2/3 50 GB al ~70 %; el GC de imágenes del kubelet
+  empieza al 85 %). `local-path`, imágenes y logs comparten ese disco. Revisar con `hl.py status`.
 - **SOPS**: `export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt`; editar un secreto cifrado en el lugar con
   `sops <archivo>.sops.yml`. Nunca versionar secretos en claro.
 - **Cloudflare** (túneles, DNS, hostnames): lo hace el agente por API con `vault_cloudfare_full_api_token` del vault
@@ -41,7 +46,8 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 - **Cluster**: k3s en pibot (master) + 3 workers
 - **Storage**: ZFS en el host Proxmox 192.168.1.100 (`nvme`, `respaldo`, `homelab-storage`), NFS desde el host; TrueNAS retirado
 - **Dominio**: danielriquelme.cl
-- **GitOps**: manifiestos en `cluster/` aplicados con kubectl; FluxCD planificado (ver docs/PENDIENTES.md)
+- **GitOps**: Flux 2.9 aplica `cluster/` desde `main` (`cluster/flux/`, 28 Kustomizations); prune apagado y avisos
+  pendientes (`docs/PLAN-FLUX.md`, fases 5–8)
 - **Acceso remoto**: Tailscale (`ssh daniel@k3s-node-0`, MagicDNS del master pibot; kubectl local funciona)
 
 ## Flujo de ramas (GitHub Flow)
@@ -52,7 +58,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 2. Commits con Conventional Commits en español: `tipo(ámbito): descripción` (`feat(comfyui): …`).
 3. PR a `main` con `gh pr create`; merge con `gh pr merge --merge`. GitHub borra la rama remota sola (`deleteBranchOnMerge`); la local se borra con `git switch main && git pull && git branch -d <rama>`.
 4. No hay `develop`, `release/` ni `hotfix/`: un arreglo urgente es una rama `fix/` más.
-5. Si un cambio se aplica al cluster antes del merge (para probarlo), el PR se mergea apenas se confirma que funciona, para que `main` no quede detrás del cluster.
+5. Flux aplica `main`, así que mergear es desplegar. Para probar un cambio antes del merge: `flux suspend ks <app>` → cambio a mano → PR → merge apenas se confirma que funciona → `flux resume ks <app>`. Nunca dejar una Kustomization suspendida (`hl.py flux` las lista).
 
 El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así que el flujo se cumple por convención. Nada de push directo a `main` ni `--force`.
 

@@ -21,8 +21,7 @@ configMapGenerator:
     namespace: minecraft
     files:
       - whitelist-bot/bot.py
-# Secrets (aplicar aparte): sops -d secret-ddns.sops.yaml | kubectl apply -f -
-#                           sops -d whitelist-bot/secret.sops.yaml | kubectl apply -f -
-#                           sops -d proxy/secret-velocity.sops.yaml | kubectl apply -f -
+# Secrets (secret-ddns, whitelist-bot/secret, proxy/secret-velocity .sops.yaml): entran por solo-flux/ y los
+# descifra Flux.
 components:
   - ../../components/proteger-datos

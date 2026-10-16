@@ -15,6 +15,6 @@ configMapGenerator:
       - plugin/BedrockSkins.java
       - plugin/HostnameFilter.java
       - plugin/velocity-plugin.json
-# Secreto (aplicar aparte): sops -d secret-velocity.sops.yaml | kubectl apply -f -
+# Secreto: secret-velocity.sops.yaml entra por ../solo-flux/ (lo descifra Flux).
 components:
   - ../../../components/proteger-datos

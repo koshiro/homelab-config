@@ -1,5 +1,5 @@
 # Destino de los respaldos de CNPG: Garage en pve (proxmox/etc/garage.toml), bucket cnpg-backups.
-# Credenciales en 02-garage-secret.sops.yaml (hl.py sops apply). Los datos quedan en nvme/k8s/garage, que entra en
+# Credenciales en 02-garage-secret.sops.yaml (Flux, por solo-flux/). Los datos quedan en nvme/k8s/garage, que entra en
 # sanoid, syncoid a respaldo y restic a R2.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore

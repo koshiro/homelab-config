@@ -27,9 +27,8 @@ Revocar: borrar el ClusterRoleBinding, quitar la llave de los `authorized_keys` 
 ## Operación
 
 ```bash
-# Desplegar
-sops -d cluster/apps/claude-remote/secret.sops.yml | kubectl apply -f -
-kubectl apply -k cluster/apps/claude-remote
+# Desplegar: lo aplica Flux al mergear a main (el secreto entra por solo-flux/). Para no esperar:
+~/.cache/flux-plan/bin/flux reconcile ks claude-remote --with-source
 
 # Primer login (una vez; el token queda en el NFS)
 kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- bash -lc 'claude auth login'
