@@ -3,3 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: cloudflared
+  labels:
+    # La usa allow-plex-ingress (04-media-stack/plex/networkpolicy-ingress.yml). Se puso a mano con kubectl label;
+    # va en git para que Flux no la borre al adoptar.
+    name: cloudflared

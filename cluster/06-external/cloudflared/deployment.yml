@@ -26,6 +26,10 @@ spec:
     metadata:
       labels:
         app: cloudflared
+      # Valor vivo de un `kubectl rollout restart` anterior: escrito tal cual para que adoptar con Flux no cambie la
+      # plantilla (reiniciar cloudflared corta los sitios públicos). Cambiarlo a propósito reinicia los pods.
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2025-10-04T11:42:06-03:00"
     spec:
       affinity:
         nodeAffinity:
@@ -44,6 +48,8 @@ spec:
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.10.1
+          # Always es el valor vivo (por defecto cuando la imagen era :latest); IfNotPresent reiniciaría los pods
+          imagePullPolicy: Always
           args:
             - tunnel
             - --no-autoupdate
