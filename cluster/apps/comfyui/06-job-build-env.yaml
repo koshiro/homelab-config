@@ -6,10 +6,12 @@
 #   - Extensiones: solo las que usan los workflows, en su última versión; el resto pasa a custom_nodes/.disabled.
 # Los modelos van en INT8 ConvRot (nativo desde ComfyUI 0.27): en la serie 30 rinde más que fp8 (sin fp8 por hardware).
 #
-# Uso (con el deployment en 0 réplicas):
+# Uso (con el deployment en 0 réplicas y la Kustomization de Flux suspendida; si no, Flux vuelve a 1 réplica):
+#   ~/.cache/flux-plan/bin/flux suspend ks comfyui
 #   kubectl -n comfyui scale deploy/comfyui --replicas=0
 #   kubectl delete job -n comfyui comfyui-build-env --ignore-not-found && kubectl apply -f 06-job-build-env.yaml
 #   kubectl -n comfyui logs -f job/comfyui-build-env
+#   ~/.cache/flux-plan/bin/flux resume ks comfyui    # vuelve a 1 réplica
 apiVersion: batch/v1
 kind: Job
 metadata:
