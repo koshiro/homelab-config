@@ -77,5 +77,12 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - CronJob `arr-filtro-archivos` con Jobs `Error` «Connection refused» → Sonarr/Radarr/qBittorrent caídos o
   reiniciando; desde 2026-10-15 el script omite la corrida en vez de fallar.
 - ComfyUI web (comfyui.danielriquelme.cl) pide Cloudflare Access → para probar la UI usar el NodePort `http://192.168.1.15:30188`.
+- `helm` no está instalado en el Mac → chart y valores de un release: `python3 -I scripts/flux/helm_valores.py <ns>
+  sh.helm.release.v1.<rel>.vN` (decodifica el secret). (2026-10-16)
+- `kubectl diff -k` muestra solo `generation: N → N+1` → hay un `to: []`/`from: []` vacío en una NetworkPolicy; desde
+  k3s 1.35 cuenta como un cambio: borrar la clave. (2026-10-16)
+- Imagen `docker.io/bitnami/<app>:<tag>` → borrada de Docker Hub (404); el mismo digest está en
+  `docker.io/bitnamilegacy/<app>:<tag>`. Comprobar con `curl -s https://hub.docker.com/v2/namespaces/<ns>/repositories/<app>/tags/<tag>`. (2026-10-16)
+- zsh: `grep --include=*.y*ml` → «no matches found»: el glob va entre comillas. (2026-10-16)
 - ComfyUI (assets, LoadImage `[output]`, frontend) → skill **comfyui**; ahí están las trampas.
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).
