@@ -4,6 +4,7 @@
   ensayo_k3d.py render --rama R               solo escribe la raíz del ensayo (para probarla con flux build)
   ensayo_k3d.py instalar --rama R --clave-git K   Flux desde la rama R: CRD y controladores, secrets flux-system
                                               (clave SSH de solo lectura K) y sops-age, y la Kustomization raíz
+                [--como-prod]                 sin quitar el suspend: Flux instalado sin gestionar nada (fase 3)
   ensayo_k3d.py estado                        Kustomizations, HelmRelease, los *.sops.* descifrados y pods por ns
   ensayo_k3d.py borrar                        borra el cluster y su kubeconfig
 
@@ -70,7 +71,7 @@ spec:
   validationActions: [Deny]
 """
 
-PARCHES_RAIZ = f"""\
+PARCHES_HIJAS = f"""\
 - target:
     group: kustomize.toolkit.fluxcd.io
     kind: Kustomization
@@ -93,6 +94,8 @@ PARCHES_RAIZ = f"""\
       name: operadores
     spec:
       wait: true
+"""
+PARCHES_RAIZ = """\
 - target:
     group: source.toolkit.fluxcd.io
     kind: GitRepository
@@ -162,7 +165,8 @@ def render(a):
     overlay = DIR / "raiz"
     overlay.mkdir(parents=True, exist_ok=True)
     rama = json.dumps(a.rama)
-    parches = "\n".join("        " + l if l else "" for l in PARCHES_RAIZ.splitlines())
+    texto = PARCHES_RAIZ if a.como_prod else PARCHES_HIJAS + PARCHES_RAIZ
+    parches = "\n".join("        " + l if l else "" for l in texto.splitlines())
     (overlay / "kustomization.yaml").write_text(f"""\
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -266,12 +270,15 @@ def borrar(_):
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 sub = ap.add_subparsers(dest="cmd", required=True)
 sub.add_parser("crear").set_defaults(f=crear)
+COMO_PROD = "deja las hijas como en git (suspendidas): ensayo de la fase 3, Flux sin gestionar nada"
 r = sub.add_parser("render", help="solo escribe la raíz del ensayo, sin cluster")
 r.add_argument("--rama", required=True)
+r.add_argument("--como-prod", action="store_true", help=COMO_PROD)
 r.set_defaults(f=render)
 i = sub.add_parser("instalar")
 i.add_argument("--rama", required=True)
 i.add_argument("--clave-git", required=True, help="clave SSH privada con acceso de lectura al repo")
+i.add_argument("--como-prod", action="store_true", help=COMO_PROD)
 i.set_defaults(f=instalar)
 sub.add_parser("estado").set_defaults(f=estado)
 sub.add_parser("borrar").set_defaults(f=borrar)

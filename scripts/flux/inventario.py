@@ -25,6 +25,8 @@ SYSTEM_NS = {"kube-system", "kube-public", "kube-node-lease"}
 CONTROLADORES = {
     ("Secret", "cert-manager", "cert-manager-webhook-ca"),   # lo genera el webhook de cert-manager (su CA)
     ("ConfigMap", "postgresql", "cnpg-default-monitoring"),  # lo copia el operador CNPG en cada ns con un Cluster
+    ("Secret", "flux-system", "flux-system"),                # bootstrap de Flux (deploy key), a mano por diseño
+    ("Secret", "flux-system", "sops-age"),                   # bootstrap de Flux (clave age), a mano por diseño
 }
 
 
@@ -61,10 +63,12 @@ def objs_from_json(text):
 
 # --- 1. Lo que describe el repo ---
 known, errors = set(), []
-# Sin Components (components/, solo-flux/: los SOPS se cuentan abajo) ni cluster/flux (sus CRD no existen hasta la
-# fase 3 de docs/PLAN-FLUX.md; ahí hay que sumarla para que Flux no salga como huérfano).
+# Sin Components (components/, solo-flux/: los SOPS se cuentan abajo). cluster/flux entra solo si el cluster ya tiene
+# los CRD de Flux (fase 3 de docs/PLAN-FLUX.md); desde ahí cuenta, para que Flux no salga como huérfano.
+FLUX = run(["kubectl", "get", "crd", "kustomizations.kustomize.toolkit.fluxcd.io"])[0] == 0
 kdirs = sorted({p.parent for p in REPO.rglob("kustomization.y*ml")
-                if "components" not in p.relative_to(REPO).parts and p.relative_to(REPO).parts[0] != "flux"
+                if "components" not in p.relative_to(REPO).parts
+                and (FLUX or p.relative_to(REPO).parts[0] != "flux")
                 and "kind: Component" not in p.read_text()})
 for d in kdirs:
     rc, out, err = run(["kubectl", "kustomize", str(d)])

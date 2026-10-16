@@ -5,11 +5,16 @@ import subprocess
 REPO = pathlib.Path(__file__).resolve().parents[2] / "cluster"
 
 
+# cluster/flux entra solo cuando el cluster ya tiene los CRD de Flux (fase 3 de docs/PLAN-FLUX.md).
+FLUX = subprocess.run(["kubectl", "get", "crd", "kustomizations.kustomize.toolkit.fluxcd.io"],
+                      capture_output=True).returncode == 0
+
+
 def aplicable(k):
-    """Lo que se aplica con kubectl apply -k: sin Components (components/, solo-flux/) ni cluster/flux (la aplica
-    Flux; entra cuando el cluster tenga sus CRD, fase 3 de docs/PLAN-FLUX.md)."""
+    """Carpetas con kustomization, sin Components (components/, solo-flux/) ni, antes de la fase 3, cluster/flux."""
     rel = k.relative_to(REPO).parts
-    return "components" not in rel and rel[0] != "flux" and "kind: Component" not in k.read_text()
+    return ("components" not in rel and (FLUX or rel[0] != "flux")
+            and "kind: Component" not in k.read_text())
 
 
 for d in sorted({p.parent for p in REPO.rglob("kustomization.y*ml") if aplicable(p)}):
