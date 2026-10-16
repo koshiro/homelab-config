@@ -13,7 +13,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 
 ## Estado (marcar al cerrar cada fase; retomar desde la primera sin marcar)
 
-- [ ] Fase 0 — k3s 1.35 y kit de recuperación
+- [x] Fase 0 — k3s 1.35 y kit de recuperación (2026-10-16)
 - [ ] Fase 1 — Repo = cluster en ambas direcciones
 - [ ] Fase 2 — Ensayo en k3d
 - [ ] Fase 3 — Flux instalado sin gestionar nada
@@ -75,6 +75,11 @@ Cada fase termina con un **«Listo cuando»** que comprueba una máquina. No se 
 **Listo cuando:** `kubectl get nodes` muestra los 4 nodos en v1.35.x, `hl.py status` da 0 pods con problema y, en
 una carpeta vacía y **con cada copia por separado**, `sops -d` descifra un secreto del repo y `ansible-vault view`
 abre el vault.
+
+**Cerrada (2026-10-16):** k3s v1.35.9+k3s1 en los 4 nodos (etcd 3.6.14, containerd 2.2.7, Traefik 3.7.13), 0 pods con
+problema, snapshots `pre-k3s-1.34` y `pre-k3s-1.35` en pibot; kubectl v1.35.9 en el CronJob de minecraft y en
+claude-remote. Kit: copia A (Contraseñas) y copia B (`r2://homelab-recuperacion/homelab-kit.age`) pasaron cada una
+`sops -d` y `ansible-vault view` en carpeta vacía (`scripts/kit-recuperacion.sh verificar-notas|verificar-archivo`).
 
 ### Fase 1 — Repo = cluster en ambas direcciones (~2 h) · `chore/flux-preparar-repo`
 

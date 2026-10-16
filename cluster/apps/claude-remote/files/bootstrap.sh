@@ -8,7 +8,7 @@ log() { echo "[bootstrap $(date '+%F %T')] $*"; }
 trap 'log "SIGTERM: cerrando tmux"; tmux kill-server 2>/dev/null; exit 0' TERM INT
 
 REPOS="homelab-config:homelab-config SAC:SAC cyano:cyanotype_curves_calculator"   # carpeta:repo de github.com/koshiro
-KUBECTL_VER=v1.33.4      # = versión del servidor k3s
+KUBECTL_VER=v1.35.9      # = versión del servidor k3s
 SOPS_VER=3.12.2
 GH_VER=2.102.0
 NODE_VER=v22.20.0

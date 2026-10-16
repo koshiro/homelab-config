@@ -6,7 +6,7 @@ NodePorts libres, resumen de una app, ssh con nombres que resuelven, SOPS sin ol
 `sleep`, secciones de documentos sin leerlos enteros y la API de Cloudflare con el token del vault.
 Lo que escribe en Cloudflare es dry-run salvo --apply.
 """
-import argparse, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.request
+import argparse, hashlib, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from collections import Counter
 from pathlib import Path
 
@@ -201,18 +201,26 @@ def cf_token():
 _TOKEN = None
 
 
-def cf(method, path, body=None):
+def _cf_req(method, path, data=None, tipo="application/json", timeout=30):
     global _TOKEN
     _TOKEN = _TOKEN or cf_token()
     path = path.replace("{acc}", CF_ACCOUNT)
-    req = urllib.request.Request(f"https://api.cloudflare.com/client/v4/{path.lstrip('/')}", method=method,
-                                 data=json.dumps(body).encode() if body is not None else None,
-                                 headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": "application/json"})
+    req = urllib.request.Request(f"https://api.cloudflare.com/client/v4/{path.lstrip('/')}", method=method, data=data,
+                                 headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": tipo})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.load(r)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read()
     except urllib.error.HTTPError as e:
         sys.exit(f"ERROR cf {method} {path}: {e.code} {e.read().decode()[:400]}")
+
+
+def cf(method, path, body=None):
+    return json.loads(_cf_req(method, path, json.dumps(body).encode() if body is not None else None))
+
+
+def cf_bytes(method, path, data=None):
+    """Como cf() pero con cuerpo y respuesta binarios (objetos de R2)."""
+    return _cf_req(method, path, data, "application/octet-stream", timeout=120)
 
 
 def zona(host):
@@ -270,6 +278,52 @@ def cmd_cf(a):
         print(f"aplicado (config anterior en {respaldo})")
 
 
+def cmd_r2(a):
+    """R2 por la API de cuenta (sin claves S3). Crear bucket y subir son dry-run salvo --apply."""
+    b = "accounts/{acc}/r2/buckets"
+    minimo, maximo = {"ls": (0, 1), "mb": (1, 1), "put": (2, 3), "get": (3, 3)}[a.accion]
+    if not minimo <= len(a.args) <= maximo:
+        sys.exit("uso: r2 ls [bucket] | mb <bucket> | put <bucket> <archivo> [clave] | get <bucket> <clave> <destino>")
+    if a.accion == "ls" and not a.args:
+        for x in cf("GET", b)["result"]["buckets"]:
+            print(x["name"], x["creation_date"][:10])
+    elif a.accion == "ls":           # pagina con el cursor hasta el final
+        cursor = ""
+        while True:
+            r = cf("GET", f"{b}/{a.args[0]}/objects?per_page=1000" + (f"&cursor={urllib.parse.quote(cursor)}" if cursor else ""))
+            res = r["result"]
+            for o in res if isinstance(res, list) else res.get("objects", []):
+                print(o["key"], o["size"], "B", o.get("last_modified", "")[:19])
+            info = r.get("result_info") or {}
+            cursor = info.get("cursor") or ""
+            if not (info.get("is_truncated") and cursor):
+                break
+    elif a.accion == "mb":
+        print(f"crear bucket {a.args[0]}")
+        if not a.apply:
+            print("dry-run: repetir con --apply")
+            return
+        cf("POST", b, {"name": a.args[0]})
+        print("creado")
+    elif a.accion == "put":          # put <bucket> <archivo> [clave]
+        bucket, archivo = a.args[0], Path(a.args[1])
+        clave = a.args[2] if len(a.args) > 2 else archivo.name
+        if not archivo.is_file():
+            sys.exit(f"no existe {archivo}")
+        datos = archivo.read_bytes()
+        print(f"{archivo} ({len(datos)} B, sha256 {hashlib.sha256(datos).hexdigest()}) → r2://{bucket}/{clave}")
+        if not a.apply:
+            print("dry-run: repetir con --apply")
+            return
+        cf_bytes("PUT", f"{b}/{bucket}/objects/{urllib.parse.quote(clave)}", datos)
+        print("subido")
+    elif a.accion == "get":          # get <bucket> <clave> <destino>
+        bucket, clave, destino = a.args
+        datos = cf_bytes("GET", f"{b}/{bucket}/objects/{urllib.parse.quote(clave)}")
+        Path(destino).write_bytes(datos)
+        print(f"{destino} ({len(datos)} B, sha256 {hashlib.sha256(datos).hexdigest()})")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -290,6 +344,9 @@ def main():
     s = sp.add_parser("cf", help="Cloudflare: zones | tunnels | routes <túnel> | route <túnel> <host> <servicio> [--apply] | api <M> <ruta> [-d JSON|@archivo]")
     s.add_argument("accion", choices=["zones", "tunnels", "routes", "route", "api"]); s.add_argument("args", nargs="*")
     s.add_argument("-d", "--data"); s.add_argument("--apply", action="store_true")
+    s = sp.add_parser("r2", help="R2: ls [bucket] | mb <bucket> [--apply] | put <bucket> <archivo> [clave] [--apply] | get <bucket> <clave> <destino>")
+    s.add_argument("accion", choices=["ls", "mb", "put", "get"]); s.add_argument("args", nargs="*")
+    s.add_argument("--apply", action="store_true")
     a = p.parse_args()
     globals()[f"cmd_{a.cmd}"](a)
 
