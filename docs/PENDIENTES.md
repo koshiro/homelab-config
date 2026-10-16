@@ -209,8 +209,9 @@ Plan completo en fases: `docs/PLAN-FLUX.md` (2026-10-15).
 - [x] `sops-age` en `flux-system` y `decryption` en las 9 Kustomizations con secretos (Component `solo-flux/`).
 - [x] Adopción (2026-10-16, fase 4): 28/28 Kustomizations activas, una por carpeta hoja de `cluster/`. Un merge a
   `main` es el despliegue; `kubectl apply -k` ya no se usa.
-- [ ] Fases 5–8 de `docs/PLAN-FLUX.md`: avisos (hoy un fallo de Flux no avisa), prueba de fallas, prune y automerge,
-  `hl.py inventario`.
+- [x] Fase 5 de `docs/PLAN-FLUX.md` (2026-10-16): errores de Flux a Telegram, estado en los commits de GitHub y
+  `FluxSinReconciliar` en vmalert.
+- [ ] Fases 6–8 de `docs/PLAN-FLUX.md`: prueba de fallas, prune y automerge, `hl.py inventario`.
 - [ ] Decidir si se borran `cluster/kustomization.yml` y los `kustomization.yaml` de capa (`00-infrastructure/`…): son
   de la época de `kubectl apply -k`, Flux no los usa y la raíz no incluye immich, minecraft, claude-remote ni
   postgresql (el CI los valida igual).
