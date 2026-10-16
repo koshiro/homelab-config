@@ -45,6 +45,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   incluido Flux mismo: un cambio en Flux va por PR, no con `kubectl apply`. Deploy key `166666091` «flux-system (prod,
   solo lectura)»: vive solo en el secret `flux-system`; si se pierde, se crea otra (receta *Flux*). `sops-age` =
   `~/.config/sops/age/keys.txt`. Estado: `hl.py flux`. (2026-10-16)
+- **Desde 2026-10-16 (`main@be8de3e`) Flux gestiona todo `cluster/`:** 28 Kustomizations activas, 0 suspendidas,
+  prune apagado (fase 7) y el operador CNPG como HelmRelease `cnpg` (release v2). Un merge a `main` es el despliegue;
+  `kubectl apply -k` y `hl.py sops apply` ya no se usan en ninguna carpeta. Probar en caliente: `flux suspend ks <ks>`
+  → cambio → PR → `flux resume`. (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
@@ -78,7 +82,7 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `git pull` «Permission denied (publickey)» → reintentar; si persiste, pedir `! git pull` al usuario.
 - Tras reiniciar pibot, flannel tarda 1–2 min: 502 transitorio hacia pods de la Pi.
 - Pods GPU con «NVML Unknown Error» tras `daemon-reload` en node-1 → `kubectl -n nvidia-device-plugin rollout restart
-  ds` y reiniciar los pods con GPU (avisar antes por Plex).
+  ds --field-manager=reinicio-manual` y reiniciar igual los pods con GPU (avisar antes por Plex).
 - `systemctl enable zfs-import@homelab-storage` → `%I` cambia `-` por `/` y busca `homelab/storage`: escapar con
   `systemd-escape` → `zfs-import@homelab\x2dstorage.service` (falló en el reinicio de pve del 2026-10-15).
 - `ssh root@pve` no responde tras `reboot` aunque `uptime` diga que arrancó hace rato → esperar con `until`; el
@@ -126,3 +130,21 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `subprocess`; la revisión, con `hl.py flux` o `kubectl -n flux-system get gitrepository flux-system -o
   jsonpath='{.status.artifact.revision}'`. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).
+- `flux diff ks` daba solo etiquetas y aun así Flux reinició `pve-exporter` → al adoptar, kustomize-controller absorbe
+  los campos de **todo manager que empiece con `kubectl`** (prefijo en `fluxcd/pkg/ssa`) y borra los que no vienen
+  del render (`restartedAt` de un rollout restart, `imagePullPolicy: Always` por defecto de una imagen `:latest`).
+  Antes de adoptar o de sumar una app con objetos vivos: `python3 -I scripts/flux/simular_adopcion.py <ks>`. (2026-10-16)
+- Con Flux gestionando una carpeta, `kubectl rollout restart` reinicia dos veces (Flux borra el `restartedAt` en su
+  pasada siguiente) → `kubectl rollout restart … --field-manager=reinicio-manual` (cualquier nombre sin el prefijo
+  `kubectl`). Lo mismo en CronJobs que reinician (minecraft-restart). `kubectl edit/patch/scale/label` se revierten. (2026-10-16)
+- `flux diff ks` no muestra los Secrets SOPS (`flux build` los enmascara como base64 de `**SOPS**`) → los compara,
+  descifrados y sin imprimir valores, `simular_adopcion.py`. (2026-10-16)
+- `kubectl diff -k` (y `kubectl apply` client-side) no ven dos puertos con el mismo número en TCP y UDP (strategic
+  merge usa solo `containerPort`/`port` de clave) → `flux diff`, que usa SSA, sí; así apareció el UDP 6881 de
+  qbittorrent que faltaba en vivo. (2026-10-16)
+- `kubectl apply --dry-run=server -o json` sin managedFields → `--show-managed-fields`. (2026-10-16)
+- `kubectl get … -o custom-columns=…[*]…` → la guarda del worktree lo rechaza («glob pattern») → la columna entre
+  comillas simples. (2026-10-16)
+- `linea_base.py comparar` con «generation distinta» en todos los Deployments adoptados → normal: Flux quita la
+  anotación `last-applied-configuration` y en un Deployment un cambio de anotaciones sube la generation. Lo que
+  cuenta es el hash de plantilla. (2026-10-16)

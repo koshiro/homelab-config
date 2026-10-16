@@ -13,7 +13,9 @@ ExitWorktree `keep` → en `~/git/homelab-config`: `git pull --ff-only` → `git
 2. Carpeta `cluster/apps/<app>/` copiando una app parecida (`$H app <similar>` muestra su carpeta).
 3. Puerto: `$H ports --serie 30xxx`. Secreto: escribir en claro en `$CLAUDE_JOB_DIR/tmp`, `$H sops encrypt`, mover.
 4. `kubectl kustomize cluster/apps/<app> >/dev/null` → `kubectl apply -k … --dry-run=server` (crear namespace antes).
-5. `$H sops apply …` → `kubectl apply -k …` → `$H wait <ns> <deploy>` → `$H app <ns>`.
+5. Una Kustomization en `cluster/flux/apps.yaml` copiando una parecida (los `*.sops.*` en `solo-flux/` con
+   `components` y `decryption`); `bash scripts/flux/flate.sh test`. Desde 2026-10-16 la app la crea Flux al mergear:
+   nada de `$H sops apply` ni `kubectl apply -k`. Después: `$H flux` → `$H wait <ns> <deploy>` → `$H app <ns>`.
 6. `cluster/kustomization.yml`, fila en `README.md` § Servicios, respaldo (receta *respaldo*), PR.
 
 ## Sitio estático en pibot
@@ -69,7 +71,12 @@ todo como Flux, sin los suspend; `diff [ref]` para comparar), `$S render --rama 
 
 ## Flux en prod (estado, deploy key, reinstalar)
 `F=~/.cache/flux-plan/bin/flux`. **Estado:** `$H flux` (sale 1 si una Kustomization activa no está Ready en el SHA de
-`main`) y `$F check`; errores, con `$F logs --all-namespaces --level=error --since=15m`. **Deploy key nueva** (si se pierde o hay
+`main`) y `$F check`; errores, con `$F logs --all-namespaces --level=error --since=15m`. **Antes de un PR que adopte
+objetos vivos** (app que ya corre, `suspend` quitado): `$F diff ks <ks> --path <dir> --kustomization-file
+cluster/flux/<apps|capas>.yaml` + `python3 -I scripts/flux/simular_adopcion.py <ks>` (lo que `flux diff` no ve:
+campos de `kubectl*` que Flux borra y Secrets SOPS); después del merge, `kubectl wait ks/<ks>
+--for=jsonpath='{.status.lastAppliedRevision}'=main@sha1:<git rev-parse origin/main>` y `scripts/flux/linea_base.py
+comparar --nombre <base>` (fase 4 de `docs/PLAN-FLUX.md`). **Deploy key nueva** (si se pierde o hay
 que rotarla): `ssh-keygen -q -t ed25519 -N "" -C flux-system-prod -f ~/.cache/flux-plan/deploy-key-prod` →
 `gh repo deploy-key add …pub -R koshiro/homelab-config --title "flux-system (prod, solo lectura)"` → script en
 `$CLAUDE_JOB_DIR/tmp` que corre `$F create secret git flux-system --url=ssh://git@github.com/koshiro/homelab-config

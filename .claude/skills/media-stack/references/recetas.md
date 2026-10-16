@@ -91,6 +91,6 @@ versión antes → después). qBittorrent y Plex cortan descargas/streams: avisa
 setup-qbittorrent-unified`. Recreate + hostPort 6881: nunca dos réplicas.
 
 ## Cambiar un manifiesto
-Rama `feat|fix/…`, editar `cluster/04-media-stack/<app>/…`, `kubectl apply -k cluster/04-media-stack/<app>`,
-verificar con `$M`, PR y merge (`AGENTS.md`). Ajustes que viven en la BD de los *arr (perfiles, indexers) no se
+Rama `feat|fix/…`, editar `cluster/04-media-stack/<app>/…`, PR y merge (`AGENTS.md`): desde 2026-10-16 lo aplica
+Flux al mergear, no `kubectl apply -k`. Verificar con `$M` después de `hl.py flux`. Ajustes que viven en la BD de los *arr (perfiles, indexers) no se
 versionan: anotarlos en `hechos.md`.

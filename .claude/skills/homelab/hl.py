@@ -177,6 +177,17 @@ def cmd_flux(a):
     sys.exit(1 if malas else 0)
 
 
+def cmd_alertas(a):
+    """Alertas activas de vmalert (pending/firing) por el proxy del apiserver, sin port-forward. Horas en UTC."""
+    al = json.loads(sh(["kubectl", "get", "--raw", "/api/v1/namespaces/monitoring/services/vmalert:8880/proxy/api/v1/alerts",
+                        "--request-timeout=20s"], reintentos=1))["data"]["alerts"]
+    print(f"alertas activas: {len(al)}")
+    for x in sorted(al, key=lambda x: (x.get("activeAt", ""), x["name"])):
+        l = x.get("labels", {})
+        extra = ",".join(f"{k}={l[k]}" for k in ("namespace", "pod", "deployment", "instance", "severity") if k in l)
+        print(f"{x['state']:8} {x['name']} desde {x.get('activeAt', '?')} [{extra}]")
+
+
 def cmd_sops(a):
     env = {**os.environ, "SOPS_AGE_KEY_FILE": str(AGE_KEY)}
     if a.accion == "keys":           # nombres de claves, nunca valores
@@ -377,6 +388,7 @@ def main():
     s = sp.add_parser("wait", help="esperar un rollout (en vez de sleep); si falla muestra pods y logs")
     s.add_argument("ns"); s.add_argument("name"); s.add_argument("--kind", default="deploy"); s.add_argument("--timeout", default="5m")
     sp.add_parser("flux", help="fuente vs SHA de main, Kustomizations activas (Ready y revisión), suspendidas, HelmReleases y nodo de cada pod")
+    sp.add_parser("alertas", help="alertas activas de vmalert (pending/firing), una por línea; horas en UTC")
     s = sp.add_parser("sops", help="keys|apply|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto")
     s.add_argument("accion", choices=["keys", "apply", "encrypt"]); s.add_argument("archivo")
     s = sp.add_parser("ssh", help="ssh <pibot|pve|node-1..3> <comando>: LAN y si no, tailnet")

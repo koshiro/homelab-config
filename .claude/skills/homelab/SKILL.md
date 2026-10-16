@@ -16,6 +16,7 @@ $H app <ns>                   # pods (nodo, imagen, reinicios), svc/NodePort, in
 $H ports [--serie 30890]      # NodePorts en uso (vivo) o siguiente libre de una serie
 $H wait <ns> <deploy> [--kind sts] [--timeout 5m]   # en vez de sleep; si falla imprime pods y logs
 $H flux                       # fuente vs SHA de main, ks activas (Ready, revisión), suspendidas, HelmReleases, nodo de los pods
+$H alertas                    # alertas activas de vmalert (pending/firing), horas en UTC
 $H sops keys|apply|encrypt <archivo>                # con SOPS_AGE_KEY_FILE puesto; keys = solo nombres
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet
 $H doc <archivo> [sección]    # índice de encabezados o una sección: doc DISENO-APPS 4.2

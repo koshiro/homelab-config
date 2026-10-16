@@ -25,7 +25,7 @@ $M grab "<consulta>" [--indexer 4] [--match RE] [--apply [--pick N]]   # Prowlar
 $M buscar "<serie RE>" [--season N|--ep S3E1…] [--apply [--pick S3E1=N]]   # faltantes con mapeo propio (anime)
 $M imported [--apply]              # completos, fuera de cola e importados → borrar con archivos
 $M prefs [regex]   |   $M profiles radarr|sonarr [--sizes]   |   $M logs <app> [--since 6h] [--grep RE]
-$M update <app…|all> [--apply]     # rollout restart (imágenes :latest, pullPolicy Always)
+$M update <app…|all> [--apply]     # reinicio; versión nueva = PR que sube el tag (Flux aplica)
 $M api <sonarr|radarr|prowlarr> <ruta> [-X M] [-d JSON|@archivo] | jq …   # crudo; ruta sin /api/vN
 $M qb <ruta> [-d 'form=urlencoded']                                      # qBittorrent API v2 cruda
 ```

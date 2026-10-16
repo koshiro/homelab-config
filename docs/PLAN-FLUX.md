@@ -17,7 +17,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [x] Fase 1 — Repo = cluster en ambas direcciones (2026-10-16)
 - [x] Fase 2 — Ensayo en k3d (2026-10-16)
 - [x] Fase 3 — Flux instalado sin gestionar nada (2026-10-16)
-- [ ] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres)
+- [x] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres) (2026-10-16)
 - [ ] Fase 5 — Avisos
 - [ ] Fase 6 — Prueba de fallas
 - [ ] Fase 7 — Prune y automerge
@@ -334,6 +334,53 @@ menos y 910 objetos (+1, el Secret). plex quedó solo con `kustomize-controller/
 RTX 3070 (sin NVML Unknown Error) y qbittorrent tiene los dos hostPort. `hl.py status` sin pods con problema. vmalert
 dio un `DeploymentIncompleto` *pending* en webodm durante su rollout `Recreate`, que se apagó solo; no hubo alertas
 *firing*. Los 9 Secrets SOPS descifrados eran iguales al vivo antes del merge.
+
+**Lote 3, infra y postgres (PR #96, mergeado 13:47 GMT-3 en `main@be8de3e`).** Antes del PR: el ScheduledBackup
+`homelab-postgres-diario` tenía `homelab-postgres-diario-20261016062000` *completed* (03:20 GMT-3), CNPG estaba
+healthy con 3/3, había un snapshot de etcd `pre-flux-lote3-pibot-1792168291` y la línea base `pre-lote3` (910
+objetos). `flux diff`: solo etiquetas, más la creación del `HelmRepository` y el `HelmRelease` `cnpg`. El simulador
+dio 0 cambios en cert-manager, cnpg, el plugin, postgresql, backups y **traefik**. Para que **cloudflared** también
+diera 0, con la aprobación del usuario fueron a git sus valores vivos: la etiqueta `name: cloudflared` del namespace
+(la usa `allow-plex-ingress`, y Flux la habría borrado), el `restartedAt` de la plantilla e `imagePullPolicy: Always`.
+Se aceptó un reinicio único en immich-server, immich-machine-learning y el DaemonSet de nvidia, por `restartedAt`.
+También se corrigió el comentario de `helmrelease.yaml`: los 10 CRD de cnpg tienen `helm.sh/resource-policy: keep`.
+
+Resultado: la raíz y las 9 llegaron a `main@be8de3e` y `hl.py flux` dio **29 activas Ready en el SHA de main, 0
+suspendidas** y el HelmRelease «Helm upgrade succeeded for release cnpg-system/cnpg.v2 with chart
+cloudnative-pg@0.26.0». `helm_valores.py` mostró `cnpg.v1` *superseded* y `cnpg.v2` *deployed*, los dos con
+`cloudnative-pg 0.26.0` y `values: {}`. **Ni el operador ni las instancias de Postgres se reiniciaron** (el operador
+sigue con 5 días y `homelab-postgres-1/4/5` con 14 h; healthy 3/3, primario `-1`). `linea_base.py comparar --nombre
+pre-lote3` dio hash distinto solo en los 3 aceptados, 0 objetos menos y 914 objetos (+4: HelmRelease,
+HelmRepository, HelmChart y el secret `cnpg.v2`). Después del reinicio del device plugin, comfyui, ollama y plex ven
+la RTX 3070 con `nvidia-smi`. Los sitios dieron los mismos códigos que antes: 200 en josekast, noledigasanadie,
+cyano, immich y pingvin; overseerr 307, plex 401 y grafana 302. vmalert sin alertas y `hl.py status` sin pods con problema.
+
+**Cierre de la fase (2026-10-16, 13:53 GMT-3).** Contra la línea base `pre-flux`:
+
+- **Reinicios: 23.** Uno no buscado (`pve-exporter`, lote 1, ya explicado) y 22 buscados, aprobados antes de cada
+  PR (19 del lote 2 y 3 del lote 3). El criterio «0 `pod-template-hash` distintos» se cumple solo en ese sentido:
+  ningún reinicio sin explicar.
+- **0 objetos menos** (909 → 914).
+- **28/28 Kustomizations** (más la raíz) con `lastAppliedRevision` = `git rev-parse origin/main`, 0 suspendidas.
+- `inventario.py`: los 430 objetos del repo tienen `kustomize-controller/Apply` y **ninguno conserva
+  `kubectl-client-side-apply`**. Quedan, sin efecto, `kubectl-patch` en el subrecurso `status` del Cluster
+  (`targetPrimary`, de un switchover; Flux no absorbe subrecursos) y `before-first-apply` en el Namespace
+  `cert-manager`. Vivos sin archivo: solo los releases de Traefik y `cnpg` (más los objetos del HelmRelease).
+- **vmalert:** ninguna alerta causada por la adopción. `SwapOutHostProxmox` estaba *pending* antes de empezar (host
+  pve) y `DeploymentIncompleto` quedó *pending* unos minutos durante el rollout `Recreate` de webodm.
+- Sitios públicos en 200 (o en su código normal: Access o login) y CNPG con 3 instancias sanas.
+
+**Lo que cambia desde ahora** (hasta la fase 8, que lo pasa a AGENTS.md y a la skill):
+
+- Todo `cluster/` lo aplica Flux al mergear. `kubectl apply -k` y `hl.py sops apply` ya no se usan en ninguna carpeta.
+- Un cambio a mano se revierte: Flux absorbe **todo manager que empiece con `kubectl`** (`edit`, `patch`, `scale`,
+  `label`, `set`, `rollout`). `kubectl rollout restart` reinicia **dos veces**, porque Flux borra el `restartedAt` en
+  su pasada siguiente. Para reiniciar sin que eso pase: `kubectl rollout restart … --field-manager=reinicio-manual`.
+  Para probar en caliente: `flux suspend ks <ks>`.
+- `scripts/flux/simular_adopcion.py <ks>` es el control para una app nueva o para cualquier cambio que `flux diff`
+  no muestra.
+- Pendiente para la fase 8: el comentario de cabecera de `apps.yaml` y `capas.yaml` todavía dice «suspend: true
+  hasta que su lote se adopte».
 
 ### Fase 5 — Avisos (~45 min) · `feat/flux-avisos`
 

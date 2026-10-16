@@ -6,8 +6,8 @@ description: Operar y depurar ComfyUI del homelab (namespace comfyui, RTX 3070 e
 # ComfyUI
 
 Manifiestos en `cluster/apps/comfyui/` (README con acceso, galería, modelos y cómo actualizar). Todo el estado
-vive en el NFS `/app` (código, venv, custom_nodes, modelos, `user/`, `output/`). Aplicar con
-`kubectl apply -k cluster/apps/comfyui` (el ConfigMap del shim lleva hash y reinicia el deployment).
+vive en el NFS `/app` (código, venv, custom_nodes, modelos, `user/`, `output/`). Cambios en los manifiestos: PR y
+merge; los aplica Flux (desde 2026-10-16), no `kubectl apply -k`. El ConfigMap del shim lleva hash y reinicia el deployment.
 
 ```bash
 C="python3 -I .claude/skills/comfyui/comfy.py"

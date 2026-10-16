@@ -12,7 +12,9 @@
   `qbittorrent/arr-api-keys` (SONARR/RADARR_API_KEY) es solo para el CronJob. No hace falta sops ni port-forward.
 - Pod de qBittorrent trae curl, jq, python3. Los de Sonarr/Radarr traen curl (sin jq).
 - Respaldo de config: CronJobs `config-backup-<app>` (`cluster/00-infrastructure/backups/app-config-backup.yaml`).
-- Imágenes `:latest` (o sin tag) con pullPolicy Always: `rollout restart` = actualizar. No hay versión fija en el repo.
+- Imágenes con tag fijo en git (Renovate abre los PR) y `imagePullPolicy: IfNotPresent` desde la adopción de Flux
+  (2026-10-16): actualizar = PR que sube el tag; al mergear, Flux lo aplica. `rollout restart` solo reinicia, y sin
+  `--field-manager` propio reinicia dos veces (Flux borra el `restartedAt`). (2026-10-16)
 
 ## qBittorrent (`qbittorrent/deployment.yml`, init container)
 - El init reescribe `qBittorrent.conf` en cada arranque: **un cambio solo por API se pierde al reiniciar**. Persistir

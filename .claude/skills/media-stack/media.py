@@ -720,10 +720,12 @@ def c_update(a):
         aviso = " (corta descargas/streams)" if app in DISRUPTIVOS else ""
         print(f"{app}: {img} {antes.get(app, '')}{aviso}")
     if not a.apply:
-        print("dry-run: --apply hace rollout restart (las imágenes :latest con pullPolicy Always bajan la nueva)")
+        print("dry-run: --apply reinicia (rollout restart). Las versiones están fijas en git: subirlas es un PR "
+              "(Renovate) que Flux aplica al mergear")
         return
     for app in apps:
-        sh(["kubectl", "rollout", "restart", "-n", app, f"deploy/{app}"])
+        # Manager propio: con el de por defecto (kubectl-rollout) Flux absorbe el restartedAt y reinicia otra vez
+        sh(["kubectl", "rollout", "restart", "-n", app, f"deploy/{app}", "--field-manager=media-update"])
     for app in apps:
         sh(["kubectl", "rollout", "status", "-n", app, f"deploy/{app}", "--timeout=600s"])
         print(f"{app}: listo" + (f" {antes[app]} → {arr(app, 'system/status')['version']}" if app in ARRS else ""))
@@ -815,7 +817,7 @@ def main():
     x = s.add_parser("logs", help="warn/error deduplicados")
     x.add_argument("app", choices=NAMESPACES); x.add_argument("--since", default="6h"); x.add_argument("--grep")
     x.set_defaults(f=c_logs)
-    x = s.add_parser("update", help="rollout restart para tomar la imagen nueva")
+    x = s.add_parser("update", help="reinicio (rollout restart con manager propio); las versiones se suben por PR")
     x.add_argument("apps", nargs="+", help="apps o 'all'"); x.add_argument("--apply", action="store_true")
     x.set_defaults(f=c_update)
     x = s.add_parser("api", help="llamada cruda a un *arr (JSON compacto; pipear a jq)")
