@@ -5,8 +5,10 @@ Por workload (Deployment, StatefulSet, DaemonSet, CronJob y el Cluster de CNPG):
 de sus pods (sin los de Jobs). Además, los objetos de cada namespace, sin los tipos que cambian solos.
 
   linea_base.py guardar [--nombre pre-flux] [--forzar]   # ~/.cache/flux-plan/linea-base-<nombre>.json (fuera del repo)
-  linea_base.py comparar [--nombre pre-flux]             # sale con 1 si hay un hash o generation distinto, un pod
-                                                         # reemplazado, un workload que falta o un objeto menos
+  linea_base.py comparar [--nombre pre-flux]             # sale con 1 si hay un hash distinto, un pod reemplazado,
+                                                         # un workload que falta o un objeto menos
+La generation distinta es solo aviso: al adoptar, Flux quita la anotación last-applied-configuration y en un
+Deployment un cambio de anotaciones sube la generation sin tocar la plantilla.
 """
 import argparse
 import collections
@@ -25,7 +27,7 @@ VOLATILES = {
     "events", "events.events.k8s.io", "pods", "replicasets.apps", "controllerrevisions.apps", "jobs.batch",
     "endpoints", "endpointslices.discovery.k8s.io", "leases.coordination.k8s.io", "nodes", "componentstatuses",
     "certificatesigningrequests.certificates.k8s.io", "etcdsnapshotfiles.k3s.cattle.io", "csinodes.storage.k8s.io",
-    "nodemetrics.metrics.k8s.io", "podmetrics.metrics.k8s.io", "ipaddresses.networking.k8s.io",
+    "nodes.metrics.k8s.io", "pods.metrics.k8s.io", "ipaddresses.networking.k8s.io",
     "volumeattachments.storage.k8s.io", "certificaterequests.cert-manager.io", "orders.acme.cert-manager.io",
     "challenges.acme.cert-manager.io", "backups.postgresql.cnpg.io",
 }
@@ -136,7 +138,7 @@ def comparar(a, archivo):
         if b["hash"] != h["hash"]:
             hash_.append(f"HASH  {r}: {b['hash']} -> {h['hash']}")
         if b["gen"] != h["gen"]:
-            gen.append(f"GEN   {r}: {b['gen']} -> {h['gen']}")
+            gen.append(f"gen   {r}: {b['gen']} -> {h['gen']} (aviso)")
         idos = set(b["pods"]) - set(h["pods"])
         if idos:
             pods.append(f"PODS  {r}: {len(idos)} de {len(b['pods'])} reemplazados")
@@ -144,7 +146,7 @@ def comparar(a, archivo):
     menos, total_b, total_h = [], 0, 0
     for ns in sorted(set(base["objetos"]) | set(hoy["objetos"])):
         bt, ht = base["objetos"].get(ns, {}), hoy["objetos"].get(ns, {})
-        for t in sorted(set(bt) | set(ht)):
+        for t in sorted((set(bt) | set(ht)) - VOLATILES):  # también en bases guardadas con otra lista
             total_b, total_h = total_b + len(bt.get(t, [])), total_h + len(ht.get(t, []))
             idos = sorted(set(bt.get(t, [])) - set(ht.get(t, [])))
             if idos:
@@ -157,7 +159,7 @@ def comparar(a, archivo):
         print(linea)
     for r in nuevos:
         print(f"NUEVO {r}")
-    sys.exit(1 if hash_ or gen or pods or faltan or menos else 0)
+    sys.exit(1 if hash_ or pods or faltan or menos else 0)
 
 
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
