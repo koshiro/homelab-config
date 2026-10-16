@@ -14,7 +14,6 @@ metadata:
   name: cert-manager
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/00-infrastructure/cert-manager
   sourceRef:
     kind: GitRepository
@@ -32,7 +31,6 @@ metadata:
   name: cnpg
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/00-infrastructure/cnpg
   sourceRef:
     kind: GitRepository
@@ -52,7 +50,6 @@ metadata:
   name: cnpg-plugin-barman-cloud
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/00-infrastructure/cnpg-plugin-barman-cloud
   sourceRef:
     kind: GitRepository
@@ -73,7 +70,6 @@ metadata:
   name: postgresql
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/apps/postgresql
   sourceRef:
     kind: GitRepository
@@ -101,7 +97,6 @@ metadata:
   name: nvidia-device-plugin
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/00-infrastructure/infra
   sourceRef:
     kind: GitRepository
@@ -118,7 +113,6 @@ metadata:
   name: traefik
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/01-networking/traefik
   sourceRef:
     kind: GitRepository
@@ -158,7 +152,6 @@ metadata:
   name: cloudflared
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/06-external/cloudflared
   sourceRef:
     kind: GitRepository
@@ -183,7 +176,6 @@ metadata:
   name: backups
   namespace: flux-system
 spec:
-  suspend: true
   path: ./cluster/00-infrastructure/backups
   sourceRef:
     kind: GitRepository
