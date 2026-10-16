@@ -55,7 +55,13 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `kubectl apply -k` ya no se usa en ninguna carpeta (`hl.py sops apply` se quitó). Probar en caliente: receta
   *cambio temporal en vivo*. `cluster/kustomization.yml` y los `kustomization.yaml` de capa (`00-infrastructure/`…)
   son de la época de `kubectl apply -k`: Flux no los usa y la raíz no incluye immich, minecraft, claude-remote ni
-  postgresql. Sin `Alert` ni `Provider` todavía (fase 5): un fallo de Flux no avisa, solo lo muestra `hl.py flux`. (2026-10-16)
+  postgresql. (2026-10-16)
+- Avisos de Flux (fase 5, PR #101): ks `flux-avisos` → `cluster/flux/avisos/`. Alert `telegram` (eventSeverity error,
+  bot de Alertmanager; el chat va en claro en `spec.channel`, el Provider telegram no lo lee del secret) y Alert
+  `github` (checks `flux/<ks>` en el commit de main; token fine-grained «flux-homelab-commit-status», solo Commit
+  statuses: write, sin vencimiento, en `secret-flux-github.sops.yaml`). Ready de los objetos: `gotk_resource_info`
+  de kube-state-metrics (`kube-state-metrics-flux.yml`; Flux 2.9 no expone `gotk_reconcile_condition`); reglas
+  `FluxSinReconciliar` (15 min) y `FluxSuspendida` (6 h); job de scrape `flux`. (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
@@ -175,3 +181,12 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `CertificateExpirationWarning` (k3s-cert-monitor) en un agent → mirar la CA de los vencidos con `k3s certificate
   check`: si no es la `@1757082010` del cluster, es un `/var/lib/rancher/k3s/server` viejo («Server detected»);
   moverlo a un lado y el check pasa a «Agent detected». (2026-10-16)
+- `kubectl get --raw /api/v1/namespaces/flux-system/pods/<pod>:8080/proxy/metrics` → 502 (la NetworkPolicy de
+  flux-system solo deja entrar pods) → `kubectl -n monitoring exec deploy/victoria-metrics -- wget -qO-
+  http://<IP del pod>:8080/metrics`. (2026-10-16)
+- `kubectl … -o custom-columns=X:.spec.versions[*].name` → la guarda lo rechaza (glob) → `kubectl api-resources
+  --api-group=<grupo>` o `-o json`. (2026-10-16)
+- Probar una config de kube-state-metrics sin tocar prod → `docker run --add-host k3s-node-0:100.85.107.82 -v
+  <dir con kubeconfig y config>:/cfg:ro registry.k8s.io/kube-state-metrics/kube-state-metrics:<ver> --kubeconfig=…`
+  (solo lectura; borrar el kubeconfig copiado al terminar). Reglas de vmalert: `docker run … victoriametrics/vmalert:<ver>
+  -rule=/r/alert-rules.yml -dryRun`. (2026-10-16)

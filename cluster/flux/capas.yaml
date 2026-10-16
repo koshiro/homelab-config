@@ -169,6 +169,29 @@ spec:
     secretRef:
       name: sops-age
 ---
+# Avisos de Flux (Provider/Alert de Telegram y GitHub). Aparte de la raíz flux-system porque lleva tokens SOPS.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-avisos
+  namespace: flux-system
+spec:
+  path: ./cluster/flux/avisos
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
 # Escribe CronJobs en el namespace de cada app: sin dependsOn para que una app caída no frene los respaldos;
 # si falta un namespace (cluster nuevo), falla y reintenta cada retryInterval hasta que exista.
 apiVersion: kustomize.toolkit.fluxcd.io/v1

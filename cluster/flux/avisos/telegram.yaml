@@ -1,0 +1,38 @@
+# Errores de Flux → Telegram, mismo bot y chat que Alertmanager (03-monitoring/monitoring/alertmanager.yml).
+# El token sale de secret-flux-telegram.sops.yaml (copia de bot_token de secret-alertmanager-telegram); el chat va
+# en claro en spec.channel porque el Provider telegram no lo lee del secret (sin el token no sirve para nada).
+# Solo eventSeverity error: los info (cada reconciliación con cambios) serían ruido.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: telegram
+  namespace: flux-system
+spec:
+  type: telegram
+  channel: "6277559"
+  secretRef:
+    name: flux-telegram
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: telegram
+  namespace: flux-system
+spec:
+  providerRef:
+    name: telegram
+  eventSeverity: error
+  eventSources:
+    - kind: GitRepository
+      name: "*"
+    - kind: Kustomization
+      name: "*"
+    - kind: HelmRepository
+      name: "*"
+      namespace: cnpg-system
+    - kind: HelmChart
+      name: "*"
+      namespace: cnpg-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: cnpg-system

@@ -149,11 +149,16 @@ def cmd_flux(a):
     """Lo que dice si Flux está sano: fuente en el SHA de main, Kustomizations activas Ready en ese SHA y dónde corre."""
     main = sha_main()
     ready = lambda o: next((c for c in o.get("status", {}).get("conditions", []) if c["type"] == "Ready"), {})
+    fuente = ""
     for g in kj("get", "gitrepositories", "-A")["items"]:
         rev = g.get("status", {}).get("artifact", {}).get("revision", "")
+        fuente = fuente or rev.split(":")[-1]
         print(f"fuente {g['metadata']['name']} {rev} Ready={ready(g).get('status', '?')}"
               f"{'' if main and rev.endswith(main) else f'  ≠ main {main[:8]}'}")
-    susp, malas = [], 0
+    # Merge reciente: la fuente aún no trae main (polling de 5 min). Las ks Ready en la revisión de la fuente esperan,
+    # no fallan; se cuentan aparte.
+    atrasada = bool(main and fuente) and fuente != main
+    susp, malas, esperan = [], 0, 0
     for k in kj("get", "kustomizations.kustomize.toolkit.fluxcd.io", "-A")["items"]:
         n = k["metadata"]["name"]
         if k["spec"].get("suspend"):
@@ -164,9 +169,12 @@ def cmd_flux(a):
         ok = c.get("status") == "True" and en_main
         # Una pasada en curso sobre una revisión ya aplicada (Unknown/Progressing, cada 10 min) no es un problema
         en_curso = c.get("status") == "Unknown" and c.get("reason") == "Progressing" and en_main
-        malas += not (ok or en_curso)
+        espera = atrasada and c.get("status") == "True" and rev.endswith(fuente)
+        malas += not (ok or en_curso or espera)
+        esperan += espera
         print(f"ks {n} Ready={c.get('status', '?')} {rev.split(':')[-1][:8] or '-'}"
-              + ("" if ok else "  (reconciliando)" if en_curso else f"  {c.get('reason', '')}: {c.get('message', '')[:160]}"))
+              + ("" if ok else "  (reconciliando)" if en_curso else "  (espera main)" if espera
+                 else f"  {c.get('reason', '')}: {c.get('message', '')[:160]}"))
     print(f"suspendidas ({len(susp)}):", " ".join(susp) or "-")
     for h in kj("get", "helmreleases.helm.toolkit.fluxcd.io", "-A")["items"]:
         c = ready(h)
@@ -177,6 +185,8 @@ def cmd_flux(a):
                             f"{'' if p['status'].get('phase') == 'Running' else '(' + p['status'].get('phase', '?') + ')'}"
                             for p in pods))
     print(f"activas con problema: {malas}" + ("  (pibot tiene pods de Flux)" if any(p["spec"].get("nodeName") == "pibot" for p in pods) else ""))
+    if esperan:
+        print(f"esperan main: {esperan} (fuente sin el último commit; $F reconcile ks flux-system --with-source)")
     sys.exit(1 if malas else 0)
 
 
