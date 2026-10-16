@@ -41,6 +41,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   aplica Flux (los `*.sops.*`, el HelmRelease de cnpg) va en el Component `<carpeta>/solo-flux/` y entra por
   `spec.components`; `kubectl apply -k` no lo ve. Binarios `flux`, `k3d`, `flate` y `kubeconform` en `~/.cache/flux-plan/bin`;
   Docker del Mac = OrbStack (`orb start`). (2026-10-16)
+- Flux 2.9.6 en prod desde 2026-10-16 (`main@1e0b6fb`). La raíz `flux-system` (prune off) aplica `cluster/flux`,
+  incluido Flux mismo: un cambio en Flux va por PR, no con `kubectl apply`. Deploy key `166666091` «flux-system (prod,
+  solo lectura)»: vive solo en el secret `flux-system`; si se pierde, se crea otra (receta *Flux*). `sops-age` =
+  `~/.config/sops/age/keys.txt`. Estado: `hl.py flux`. (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
@@ -117,4 +121,8 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   valida una copia con `git init` y sin los `suspend`. (2026-10-16)
 - Pre-commit en un worktree imprime «mkdir: .git: Not a directory» → inofensivo (`.git` es archivo); el commit
   se hace igual. (2026-10-16)
+- `flux create secret git …` o `flux get sources git` → la guarda del worktree los rechaza («runs flux with a git
+  command among its operands») → el secret, con un script en `$CLAUDE_JOB_DIR/tmp` que llama a `flux` con
+  `subprocess`; la revisión, con `hl.py flux` o `kubectl -n flux-system get gitrepository flux-system -o
+  jsonpath='{.status.artifact.revision}'`. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).

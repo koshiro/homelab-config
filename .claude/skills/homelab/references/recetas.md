@@ -67,6 +67,17 @@ todo como Flux, sin los suspend; `diff [ref]` para comparar), `$S render --rama 
 `flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 29/29 Ready en 134 s.)
 `instalar --como-prod` deja las hijas suspendidas como en git: ensaya «Flux sin gestionar nada» (fase 3).
 
+## Flux en prod (estado, deploy key, reinstalar)
+`F=~/.cache/flux-plan/bin/flux`. **Estado:** `$H flux` (sale 1 si una Kustomization activa no está Ready en el SHA de
+`main`) y `$F check`; errores, con `$F logs --all-namespaces --level=error --since=15m`. **Deploy key nueva** (si se pierde o hay
+que rotarla): `ssh-keygen -q -t ed25519 -N "" -C flux-system-prod -f ~/.cache/flux-plan/deploy-key-prod` →
+`gh repo deploy-key add …pub -R koshiro/homelab-config --title "flux-system (prod, solo lectura)"` → script en
+`$CLAUDE_JOB_DIR/tmp` que corre `$F create secret git flux-system --url=ssh://git@github.com/koshiro/homelab-config
+--private-key-file=<clave>` (con `subprocess`, porque la guarda rechaza el comando directo) → borrar los dos archivos y
+`gh repo deploy-key delete <id viejo>`. **Desde cero:** `kubectl apply --server-side -k cluster/flux/flux-system` (falla
+el GitRepository, porque no están los CRD) → `kubectl wait --for=condition=established crd -l
+app.kubernetes.io/part-of=flux` → secrets `flux-system` y `sops-age` → otra pasada. (2026-10-16: Ready en 7 s.)
+
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →
 snapshot de etcd en pibot (`sudo k3s etcd-snapshot save --name pre-reboot-pve-<fecha>`) → `nohup systemctl reboot &`

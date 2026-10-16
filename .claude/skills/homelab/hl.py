@@ -136,6 +136,47 @@ def cmd_wait(a):
         sys.exit(1)
 
 
+def sha_main():
+    """SHA de main en GitHub (ls-remote); si no hay red, el origin/main local."""
+    for cmd in (["git", "ls-remote", "origin", "refs/heads/main"], ["git", "rev-parse", "origin/main"]):
+        r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=30)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.split()[0]
+    return ""
+
+
+def cmd_flux(a):
+    """Lo que dice si Flux está sano: fuente en el SHA de main, Kustomizations activas Ready en ese SHA y dónde corre."""
+    main = sha_main()
+    ready = lambda o: next((c for c in o.get("status", {}).get("conditions", []) if c["type"] == "Ready"), {})
+    for g in kj("get", "gitrepositories", "-A")["items"]:
+        rev = g.get("status", {}).get("artifact", {}).get("revision", "")
+        print(f"fuente {g['metadata']['name']} {rev} Ready={ready(g).get('status', '?')}"
+              f"{'' if main and rev.endswith(main) else f'  ≠ main {main[:8]}'}")
+    susp, malas = [], 0
+    for k in kj("get", "kustomizations.kustomize.toolkit.fluxcd.io", "-A")["items"]:
+        n = k["metadata"]["name"]
+        if k["spec"].get("suspend"):
+            susp.append(n)
+            continue
+        c, rev = ready(k), k.get("status", {}).get("lastAppliedRevision", "")
+        ok = c.get("status") == "True" and main and rev.endswith(main)
+        malas += not ok
+        print(f"ks {n} Ready={c.get('status', '?')} {rev.split(':')[-1][:8] or '-'}"
+              + ("" if ok else f"  {c.get('reason', '')}: {c.get('message', '')[:160]}"))
+    print(f"suspendidas ({len(susp)}):", " ".join(susp) or "-")
+    for h in kj("get", "helmreleases.helm.toolkit.fluxcd.io", "-A")["items"]:
+        c = ready(h)
+        print(f"helmrelease {h['metadata']['namespace']}/{h['metadata']['name']} Ready={c.get('status', '?')} "
+              f"{h.get('status', {}).get('lastAttemptedRevision', '-')}  {c.get('message', '')[:120]}")
+    pods = kj("get", "pods", "-n", "flux-system")["items"]
+    print("pods:", " ".join(f"{p['metadata']['labels'].get('app', p['metadata']['name'])}@{p['spec'].get('nodeName', '-')}"
+                            f"{'' if p['status'].get('phase') == 'Running' else '(' + p['status'].get('phase', '?') + ')'}"
+                            for p in pods))
+    print(f"activas con problema: {malas}" + ("  (pibot tiene pods de Flux)" if any(p["spec"].get("nodeName") == "pibot" for p in pods) else ""))
+    sys.exit(1 if malas else 0)
+
+
 def cmd_sops(a):
     env = {**os.environ, "SOPS_AGE_KEY_FILE": str(AGE_KEY)}
     if a.accion == "keys":           # nombres de claves, nunca valores
@@ -335,6 +376,7 @@ def main():
     s.add_argument("ns")
     s = sp.add_parser("wait", help="esperar un rollout (en vez de sleep); si falla muestra pods y logs")
     s.add_argument("ns"); s.add_argument("name"); s.add_argument("--kind", default="deploy"); s.add_argument("--timeout", default="5m")
+    sp.add_parser("flux", help="fuente vs SHA de main, Kustomizations activas (Ready y revisión), suspendidas, HelmReleases y nodo de cada pod")
     s = sp.add_parser("sops", help="keys|apply|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto")
     s.add_argument("accion", choices=["keys", "apply", "encrypt"]); s.add_argument("archivo")
     s = sp.add_parser("ssh", help="ssh <pibot|pve|node-1..3> <comando>: LAN y si no, tailnet")

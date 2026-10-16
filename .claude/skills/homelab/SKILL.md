@@ -15,6 +15,7 @@ $H status [--deep]            # nodos (disco libre, cordon, presión) + pods con
 $H app <ns>                   # pods (nodo, imagen, reinicios), svc/NodePort, ingress, pvc, cronjobs, carpeta del repo
 $H ports [--serie 30890]      # NodePorts en uso (vivo) o siguiente libre de una serie
 $H wait <ns> <deploy> [--kind sts] [--timeout 5m]   # en vez de sleep; si falla imprime pods y logs
+$H flux                       # fuente vs SHA de main, ks activas (Ready, revisión), suspendidas, HelmReleases, nodo de los pods
 $H sops keys|apply|encrypt <archivo>                # con SOPS_AGE_KEY_FILE puesto; keys = solo nombres
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet
 $H doc <archivo> [sección]    # índice de encabezados o una sección: doc DISENO-APPS 4.2
@@ -31,6 +32,7 @@ $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave
 | Sitio estático / publicar web | receta *sitio estático* (túnel `pibot-webs` → `http://192.168.1.15:<nodePort>`) |
 | Cloudflare (hostname, DNS, túnel, reglas) | `$H cf …` (autorizado; lo hace el agente, nunca el usuario) |
 | Respaldos | receta *respaldo*; `$H doc proxmox/README Tareas` |
+| Flux / GitOps (estado, deploy key, fases del plan) | `$H flux`; receta *Flux en prod*; `$H doc PLAN-FLUX Estado` |
 | VM, RAM, ZFS, NFS del host | `$H doc proxmox/README <tema>` |
 | Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |
 | Apagar/encender cluster | `$H doc README Operación` (siempre playbook ordenado) |
