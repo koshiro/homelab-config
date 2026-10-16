@@ -52,7 +52,18 @@ CNPG de ese nodo Ready. Antes del último: `kubectl -n postgresql patch cluster 
 --subresource status -p '{"status":{"targetPrimary":"<instancia en nodo ya subido>"}}'` y esperar
 `currentPrimary` y la ex-primaria Ready. En node-1: `nvidia-smi` dentro de comfyui. Al final: `hl.py status`, sondear
 los Ingress y actualizar `k3s_version` del playbook, el tope de `registry.k8s.io/kubectl` en renovate.json y
-`KUBECTL_VER` de claude-remote. (2026-10-15: 1.33.4 → 1.34.12 → 1.35.9 en ~1 h, sin cortes salvo los pods drenados.)
+`KUBECTL_VER` de claude-remote (y `IMAGEN` de `scripts/flux/ensayo_k3d.py`). (2026-10-15: 1.33.4 → 1.34.12 → 1.35.9
+en ~1 h, sin cortes salvo los pods drenados.)
+
+## Ensayo de Flux en k3d (cluster desechable)
+`S="python3 -I scripts/flux/ensayo_k3d.py"`. Si `docker version` no conecta: `orb start` (OrbStack). Push de la rama
+primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza pods de apps, comprobada) →
+`ssh-keygen -q -t ed25519 -N "" -f ~/.cache/flux-plan/ensayo/deploy-key` → `gh repo deploy-key add …pub --title
+"flux-ensayo-k3d (temporal)"` → `$S instalar --rama <rama> --clave-git ~/.cache/flux-plan/ensayo/deploy-key` →
+`kubectl --kubeconfig ~/.cache/flux-plan/ensayo/kubeconfig wait ks --all -n flux-system --for=condition=Ready` (dos
+veces: la 1.ª sale con la raíz) → `$S estado` (ks, HelmRelease, 17 SOPS, pods fuera de la guarda) → `$S borrar` →
+`gh repo deploy-key delete <id>` y borrar la clave. Probar sin cluster: `$S render --rama <r>` y
+`flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 29/29 Ready en 134 s.)
 
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →

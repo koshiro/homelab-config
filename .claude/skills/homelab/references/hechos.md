@@ -3,7 +3,8 @@
 Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta con `hl.py`.
 
 ## Hosts y acceso
-- Master `pibot` (RPi CM4, arm64, 192.168.1.15): ssh `daniel@k3s-node-0` (el nombre `pibot` no resuelve). (2026-10-14)
+- Master `pibot` (RPi CM4, arm64, 192.168.1.15): ssh `daniel@k3s-node-0` (el nombre `pibot` no resuelve). En
+  Kubernetes el nodo se llama `pibot` (afinidades, `kubectl drain pibot`). (2026-10-16)
 - Workers VM 102–104 `k3s-node-1/2/3` (192.168.1.131–133, amd64, `cpu: host`): ssh `daniel@192.168.1.13N` o, fuera
   de la LAN, `daniel@k3s-node-N-k3s`. `ssh k3s-node-1` **no resuelve**. (2026-10-14)
 - Proxmox `pve` 192.168.1.100; fuera de la LAN `root@pve` (Tailscale). Timeout a 192.168.1.x = no estamos en la red,
@@ -36,6 +37,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Datos: `local-path` = disco de la VM, sin cuota ni respaldo (CronJob `config-backup-<app>` 02:40–02:48);
   valiosos → NFS `nvme/k8s/<app>`; voluminosos reemplazables → `/mnt/homelab-storage/<app>`; pibot → hostPath.
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
+- Flux: `cluster/flux/` (`flux-system/`, `capas.yaml`, `apps.yaml`, una Kustomization por carpeta hoja). Lo que solo
+  aplica Flux (los `*.sops.*`, el HelmRelease de cnpg) va en el Component `<carpeta>/solo-flux/` y entra por
+  `spec.components`; `kubectl apply -k` no lo ve. Binarios `flux`, `k3d` y `kubeconform` en `~/.cache/flux-plan/bin`;
+  Docker del Mac = OrbStack (`orb start`). (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
@@ -95,4 +100,15 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Un YAML en una carpeta con kustomization no se aplica si no está en `resources:` → antes de dar por versionado un
   objeto, confirmar que su archivo entra en una kustomization (Flux ignora los sueltos). (2026-10-16)
 - ComfyUI (assets, LoadImage `[output]`, frontend) → skill **comfyui**; ahí están las trampas.
+- `kubectl kustomize <carpeta>/solo-flux` falla (Component con `../`) → no es un error: Flux construye sin
+  restricción de carga; renderizar con `flux build ks <ks> --path <carpeta> --kustomization-file <ks.yaml> --dry-run`
+  (lo mismo que usa flux-local). (2026-10-16)
+- kustomize «new root … cannot be absolute» → en `resources:` solo rutas relativas (`os.path.relpath`). (2026-10-16)
+- `kubectl wait ks --all` sale enseguida en un Flux recién instalado → solo veía la raíz; las hijas aparecen
+  después: volver a esperar o esperar por nombre. (2026-10-16)
+- `docker version` «failed to connect … orbstack/run/docker.sock» → OrbStack apagado: `orb start`. (2026-10-16)
+- Ensayo de Flux con secretos reales → sin la guarda de `ensayo_k3d.py`, cloudflared se sumaría a los túneles de
+  prod y los bots, alertmanager y respaldos actuarían de verdad: nunca instalar Flux en un cluster de prueba sin ella. (2026-10-16)
+- Pre-commit en un worktree imprime «mkdir: .git: Not a directory» → inofensivo (`.git` es archivo); el commit
+  se hace igual. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).

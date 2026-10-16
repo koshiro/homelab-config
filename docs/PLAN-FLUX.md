@@ -15,7 +15,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 
 - [x] Fase 0 — k3s 1.35 y kit de recuperación (2026-10-16)
 - [x] Fase 1 — Repo = cluster en ambas direcciones (2026-10-16)
-- [ ] Fase 2 — Ensayo en k3d
+- [x] Fase 2 — Ensayo en k3d (2026-10-16)
 - [ ] Fase 3 — Flux instalado sin gestionar nada
 - [ ] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres)
 - [ ] Fase 5 — Avisos
@@ -56,7 +56,7 @@ versión de Flux.
 | Estructura | `cluster/flux/` con `flux-system/`, `capas.yaml` y `apps.yaml` (una Kustomization por app) | Si una app falla, no bloquea a las demás |
 | Salud | `wait: true` en todas y `timeout` de 5 min (10 en comfyui) | Que el verde signifique «el rollout terminó», no solo «se aplicó» |
 | Borrado | `prune: false` en la adopción; **`deletionPolicy: Orphan`** en las Kustomizations con estado; `kustomize.toolkit.fluxcd.io/prune: disabled` en PV, PVC, Namespaces con datos y el `Cluster` CNPG | Con el valor por defecto (`MirrorPrune`), renombrar o borrar una Kustomization con prune activo borra todo lo que contiene |
-| SOPS | `.sops.yaml` en la raíz (`encrypted_regex: ^(data\|stringData)$`, el destinatario age actual); los 17 archivos dentro de sus kustomizations | Un solo formato para todos, y es el que Flux descifra |
+| SOPS | `.sops.yaml` en la raíz (`encrypted_regex: ^(data\|stringData)$`, el destinatario age actual); los 17 archivos dentro de sus Kustomizations de Flux, con el Component `solo-flux/` (fase 2) | Un solo formato para todos, y es el que Flux descifra |
 | CI | `flux-local` (`test` + `diff` comentado en el PR), `kubeconform -strict` con los schemas de los CRD y una revisión de que todo `*.sops.*` esté estructurado y cifrado | `flux-local` renderiza igual que Flux; sin checks, Renovate no hace automerge |
 | Actualizar Flux | El manager `flux` de Renovate para `gotk-components.yaml`; si la app de Mend no trae el CLI `flux` (la documentación no lo confirma), un workflow mensual que corre `flux install --export` y abre el PR | Que Flux no quede viejo en silencio |
 
@@ -150,6 +150,58 @@ SOPS`) pasa en el PR #91.
 
 **Listo cuando:** todas las Kustomizations quedan `Ready=True` en k3d sin tocar nada a mano, salvo los dos secretos del bootstrap.
 
+**Avance (2026-10-16, rama `feat/flux-instalar`).**
+
+- **`cluster/flux/`:** `flux-system/` (Flux 2.9.6 con `flux install --components=…,helm-controller --export`, sin
+  editar; un patch de afinidad: nunca en `pibot` y preferencia por node-2/3, preferencia y no obligación para que Flux
+  siga vivo si caen ambos), `gotk-sync.yaml` (sigue `main` por SSH con la deploy key y solo trae `cluster/` al
+  artefacto), `capas.yaml` (9: cert-manager, cnpg, plugin, postgresql, nvidia, traefik, monitoring, cloudflared,
+  backups) y `apps.yaml` (19). Las 28 llevan `suspend: true`, `wait: true`, `timeout` 5m (10m en comfyui),
+  `prune: false`, `retryInterval` 2m y `deletionPolicy: Orphan` en las 19 con PV/PVC, CRD o el `Cluster`. `dependsOn`:
+  cert-manager y cnpg → `cnpg-plugin-barman-cloud` → `postgresql` → `immich`. `backups` no tiene `dependsOn` (escribe
+  CronJobs en 17 namespaces y una app caída no debe frenarlo): en un cluster nuevo falla hasta que existen y reintenta.
+  La raíz va con `wait: false`, porque si no la bloquearían sus hijas suspendidas.
+- **Punto abierto resuelto, los `*.sops.*` sin romper `kubectl apply -k`:** cada carpeta con secretos tiene un
+  Component `solo-flux/kustomization.yaml` que los lista (`../secret.sops.yaml`), y su Kustomization de Flux lo suma
+  con `spec.components: [solo-flux]`, con `decryption` y `sops-age` solo en esas 9. `kubectl apply -k` no lo ve, porque
+  no está en `resources`. Las rutas `../` funcionan porque Flux construye sin restricción de carga dentro del
+  artefacto, y flux-local (CI de la fase 3) renderiza con `flux build ks`, así que da lo mismo. El HelmRelease de `cnpg`
+  va igual (`cnpg/solo-flux/`), para que un `kubectl apply -k` no adopte el release fuera del lote 3. `validar.sh`,
+  `diff_todo.py` e `inventario.py` saltan los Component y `cluster/flux`. Consecuencia para la fase 4: ya no hay que
+  meter los SOPS en ningún kustomization, porque quitar el `suspend` también activa sus secretos. Cuando se retire
+  `kubectl apply -k` (fase 8), pueden pasar a `resources` y `solo-flux/` desaparece.
+- **Guarda del ensayo:** como el cluster lleva los secretos reales, si los pods arrancaran pasaría esto: cloudflared
+  se sumaría a los túneles de prod, el bot y alertmanager hablarían con Telegram, `minecraft-ddns` movería el DNS y
+  Postgres o los respaldos podrían escribir en el S3 de garage y en el NFS. Una ValidatingAdmissionPolicy, cargada
+  desde los manifiestos de arranque de k3s, rechaza todo pod fuera de `kube-system`, `flux-system`, `cert-manager` y
+  `cnpg-system`. Con `wait: false` las Kustomizations quedan Ready igual, y los 3 operadores sí corren (`wait: true`),
+  así que el `dependsOn` se prueba de verdad: el `Cluster` pasa por el webhook de CNPG.
+- **Cómo se repite** (`scripts/flux/ensayo_k3d.py`, kubeconfig propio en `~/.cache/flux-plan/ensayo/`, nunca el de
+  prod; binarios en `~/.cache/flux-plan/bin`): `crear` → deploy key temporal de solo lectura (`gh repo deploy-key add`)
+  → `instalar --rama <rama> --clave-git <clave>` → `kubectl wait ks --all` (repetirlo cuando aparezcan las hijas) →
+  `estado` → `borrar` y `gh repo deploy-key delete`. La raíz del ensayo es la de git con 3 cambios: la rama, sus
+  `spec.patches` (quitan el `suspend`, ponen `wait: false` salvo en los operadores) y la salida del render de la
+  fuente y la raíz de git, porque si no Flux se reaplicaría `gotk-sync.yaml` y volvería a `main`.
+
+**Cerrada (2026-10-16):** k3d con `rancher/k3s:v1.35.9-k3s1`, Flux 2.9.6 desde `feat/flux-instalar@7b899e1`, solo
+con los secrets `flux-system` (deploy key temporal, ya borrada) y `sops-age`. Resultado: **29/29 Kustomizations
+`Ready=True`** sin tocar nada más. Los **17/17 `*.sops.*`** quedaron descifrados como Secrets, sin ningún valor
+`ENC[`. El HelmRelease `cnpg` dio «Helm install succeeded … cloudnative-pg@0.26.0» y se aplicaron el `Cluster`
+`homelab-postgres`, el `ObjectStore` `garage` y el `ScheduledBackup`. El orden se ve en los tiempos, desde que se creó
+la fuente: raíz +12 s, cert-manager +31 s, cnpg +40 s, plugin +66 s, postgresql +78 s, immich +106 s y backups +134 s
+(un reintento por el namespace `cyano`). Mientras esperaban, los dependientes mostraban `DependencyNotReady`.
+`flux check` pasó entero. La guarda rechazó 417 pods en 22 namespaces y no corrió ningún pod fuera de ella.
+`validar.sh` dio 0 fallas (incluye `cluster/flux`) y `diff_todo.py` 0 cambios en las 37 carpetas. El cluster se borró.
+
+**Para la fase 3 (misma rama):**
+
+- `gotk-sync.yaml` ya apunta a `main` y las 28 están suspendidas, así que aplicar `cluster/flux/flux-system` en prod
+  instala Flux sin gestionar nada. La deploy key definitiva reemplaza a la temporal del ensayo.
+- Sumar `cluster/flux` a `inventario.py` y `diff_todo.py` (hoy la saltan porque prod no tiene los CRD de Flux) y
+  agregar el job de flux-local al CI.
+- `kubectl wait ks --all` sale apenas la raíz está Ready, cuando las hijas todavía no existen: esperar de nuevo, o
+  esperar por nombre.
+
 ### Fase 3 — Instalar Flux sin que gestione nada (~45 min) · `feat/flux-instalar`
 
 1. `flux check --pre` y después `flux install --components=…,helm-controller --export` con el patch de afinidad.
@@ -162,9 +214,10 @@ SOPS`) pasa en el PR #91.
 
 1. Tomar la línea base: un script que guarda, por workload, `pod-template-hash`, `generation` y UID de los pods, más el
    número de objetos por namespace. Además, `k3s etcd-snapshot save --name pre-flux`.
-2. Todas las Kustomizations quedan en git con `suspend: true`. Cada PR quita el `suspend` a un lote y, en ese mismo
-   PR, mete los `*.sops.y*ml` del lote en sus kustomizations. Orden: primero las webs y el monitoreo, después media y
-   apps, y al final infra, `cnpg` (adopción del release) y `postgres`.
+2. Todas las Kustomizations quedan en git con `suspend: true`. Cada PR quita el `suspend` a un lote; sus
+   `*.sops.y*ml` ya entran por `solo-flux/` (fase 2), así que desde ese PR dejan de aplicarse con `hl.py sops apply`.
+   Orden: primero las webs y el monitoreo, después media y apps, y al final infra, `cnpg` (adopción del release) y
+   `postgres`.
 3. Antes de cada PR: `flux diff ks <ks> --path <dir>` debe mostrar solo cambios de etiquetas o de manager.
 
 Se puede parar entre lotes: lo que está en un lote ya activo lo despliega Flux, y el resto se sigue aplicando con

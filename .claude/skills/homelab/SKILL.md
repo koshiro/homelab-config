@@ -34,6 +34,7 @@ $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave
 | VM, RAM, ZFS, NFS del host | `$H doc proxmox/README <tema>` |
 | Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |
 | Apagar/encender cluster | `$H doc README Operación` (siempre playbook ordenado) |
+| Flux (`cluster/flux`, fases del plan, ensayo) | `docs/PLAN-FLUX.md` (primera fase sin marcar) + receta *ensayo de Flux en k3d* |
 | Sonarr/Radarr/qBittorrent/Plex/Seerr | skill **media-stack** |
 | ComfyUI | skill **comfyui** |
 
