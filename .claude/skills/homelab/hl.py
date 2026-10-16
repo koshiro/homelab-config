@@ -201,32 +201,26 @@ def cf_token():
 _TOKEN = None
 
 
-def cf(method, path, body=None):
-    global _TOKEN
-    _TOKEN = _TOKEN or cf_token()
-    path = path.replace("{acc}", CF_ACCOUNT)
-    req = urllib.request.Request(f"https://api.cloudflare.com/client/v4/{path.lstrip('/')}", method=method,
-                                 data=json.dumps(body).encode() if body is not None else None,
-                                 headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.load(r)
-    except urllib.error.HTTPError as e:
-        sys.exit(f"ERROR cf {method} {path}: {e.code} {e.read().decode()[:400]}")
-
-
-def cf_bytes(method, path, data=None):
-    """Como cf() pero con cuerpo y respuesta binarios (objetos de R2)."""
+def _cf_req(method, path, data=None, tipo="application/json", timeout=30):
     global _TOKEN
     _TOKEN = _TOKEN or cf_token()
     path = path.replace("{acc}", CF_ACCOUNT)
     req = urllib.request.Request(f"https://api.cloudflare.com/client/v4/{path.lstrip('/')}", method=method, data=data,
-                                 headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": "application/octet-stream"})
+                                 headers={"Authorization": f"Bearer {_TOKEN}", "Content-Type": tipo})
     try:
-        with urllib.request.urlopen(req, timeout=120) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.read()
     except urllib.error.HTTPError as e:
         sys.exit(f"ERROR cf {method} {path}: {e.code} {e.read().decode()[:400]}")
+
+
+def cf(method, path, body=None):
+    return json.loads(_cf_req(method, path, json.dumps(body).encode() if body is not None else None))
+
+
+def cf_bytes(method, path, data=None):
+    """Como cf() pero con cuerpo y respuesta binarios (objetos de R2)."""
+    return _cf_req(method, path, data, "application/octet-stream", timeout=120)
 
 
 def zona(host):
@@ -287,13 +281,23 @@ def cmd_cf(a):
 def cmd_r2(a):
     """R2 por la API de cuenta (sin claves S3). Crear bucket y subir son dry-run salvo --apply."""
     b = "accounts/{acc}/r2/buckets"
+    minimo, maximo = {"ls": (0, 1), "mb": (1, 1), "put": (2, 3), "get": (3, 3)}[a.accion]
+    if not minimo <= len(a.args) <= maximo:
+        sys.exit("uso: r2 ls [bucket] | mb <bucket> | put <bucket> <archivo> [clave] | get <bucket> <clave> <destino>")
     if a.accion == "ls" and not a.args:
         for x in cf("GET", b)["result"]["buckets"]:
             print(x["name"], x["creation_date"][:10])
-    elif a.accion == "ls":
-        res = cf("GET", f"{b}/{a.args[0]}/objects")["result"]
-        for o in res if isinstance(res, list) else res.get("objects", []):
-            print(o["key"], o["size"], "B", o.get("last_modified", "")[:19])
+    elif a.accion == "ls":           # pagina con el cursor hasta el final
+        cursor = ""
+        while True:
+            r = cf("GET", f"{b}/{a.args[0]}/objects?per_page=1000" + (f"&cursor={urllib.parse.quote(cursor)}" if cursor else ""))
+            res = r["result"]
+            for o in res if isinstance(res, list) else res.get("objects", []):
+                print(o["key"], o["size"], "B", o.get("last_modified", "")[:19])
+            info = r.get("result_info") or {}
+            cursor = info.get("cursor") or ""
+            if not (info.get("is_truncated") and cursor):
+                break
     elif a.accion == "mb":
         print(f"crear bucket {a.args[0]}")
         if not a.apply:
@@ -304,6 +308,8 @@ def cmd_r2(a):
     elif a.accion == "put":          # put <bucket> <archivo> [clave]
         bucket, archivo = a.args[0], Path(a.args[1])
         clave = a.args[2] if len(a.args) > 2 else archivo.name
+        if not archivo.is_file():
+            sys.exit(f"no existe {archivo}")
         datos = archivo.read_bytes()
         print(f"{archivo} ({len(datos)} B, sha256 {hashlib.sha256(datos).hexdigest()}) → r2://{bucket}/{clave}")
         if not a.apply:

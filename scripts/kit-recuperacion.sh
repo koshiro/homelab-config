@@ -46,9 +46,9 @@ probar() {  # $1 = carpeta con keys.txt y ansible-vault-pass
 }
 
 desde_portapapeles() {  # deja en $1 las dos notas, pegadas desde Contraseñas
-  read -r -p "Copia el contenido de «$NOTA_AGE» y presiona Enter… "
+  read -r -p "Copia el contenido de «${NOTA_AGE}» y presiona Enter… "
   pbpaste > "$1/keys.txt"
-  read -r -p "Copia el contenido de «$NOTA_VAULT» y presiona Enter… "
+  read -r -p "Copia el contenido de «${NOTA_VAULT}» y presiona Enter… "
   pbpaste > "$1/ansible-vault-pass"
   printf '' | pbcopy
   chmod 600 "$1/keys.txt" "$1/ansible-vault-pass"
@@ -64,10 +64,10 @@ desde_kit() {  # descifra el kit $1 (pide la frase) y deja las raíces en $2
 case "${1:-}" in
   notas)
     pbcopy < "$AGE_KEY"
-    echo "1/2 Clave age copiada. En Contraseñas: + (nueva), título «$NOTA_AGE», pégala en Notas y guarda."
+    echo "1/2 Clave age copiada. En Contraseñas: + (nueva), título «${NOTA_AGE}», pégala en Notas y guarda."
     read -r -p "Enter para seguir… "
     pbcopy < "$VAULT_PASS"
-    echo "2/2 Contraseña del vault copiada. Nueva entrada «$NOTA_VAULT», pégala en Notas y guarda."
+    echo "2/2 Contraseña del vault copiada. Nueva entrada «${NOTA_VAULT}», pégala en Notas y guarda."
     read -r -p "Enter para limpiar el portapapeles… "
     printf '' | pbcopy
     echo "Listo. Comprueba con: $0 verificar-notas"

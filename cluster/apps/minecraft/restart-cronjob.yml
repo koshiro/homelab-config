@@ -55,7 +55,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: restart
-              image: registry.k8s.io/kubectl:v1.33.4
+              image: registry.k8s.io/kubectl:v1.35.9
               # El proxy primero (Geyser vive ahí y debe seguir a las actualizaciones de Bedrock)
               args: ["rollout", "restart", "deployment/minecraft-proxy", "deployment/minecraft", "-n", "minecraft"]
               resources:
