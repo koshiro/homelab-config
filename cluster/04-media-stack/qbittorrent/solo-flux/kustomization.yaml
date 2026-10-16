@@ -1,0 +1,10 @@
+# Lo que solo aplica Flux: la Kustomization de Flux de esta carpeta lo suma con `spec.components: [solo-flux]`
+# (cluster/flux/{capas,apps}.yaml) y kustomize-controller descifra los *.sops.* con el secret sops-age.
+# No va en ../kustomization: `kubectl apply -k` aplicaría el texto cifrado.
+# Las rutas ../ funcionan porque Flux construye sin restricción de carga dentro del repo; `kubectl kustomize` no
+# las acepta, por eso los scripts de validación saltan los Component (docs/PLAN-FLUX.md, fase 2).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ../secret-arr-api.sops.yml
+  - ../secret-credentials.sops.yml

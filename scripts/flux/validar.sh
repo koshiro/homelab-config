@@ -19,6 +19,9 @@ while IFS= read -r k; do
   dir="$(dirname "$k")"
   rel="${dir#"$raiz"/}"
   [[ "$rel" == cluster/components/* ]] && continue
+  # Los Component solo-flux/ no se construyen solos (y usan ../, que kubectl kustomize no acepta): sus SOPS los
+  # revisa revisar_sops.py y el HelmRelease de cnpg se valida abajo.
+  grep -q '^kind: Component' "$k" && continue
   if ! salida="$("${render[@]}" "$dir" 2>&1)"; then
     echo "FALLA render $rel: ${salida##*$'\n'}"
     fallas=$((fallas + 1))
@@ -33,7 +36,7 @@ while IFS= read -r k; do
   fi
 done < <(find "$raiz/cluster" -name 'kustomization.y*ml' | sort)
 
-# Manifiestos de Flux preparados que se activan en la fase 3 (comentados en su kustomization).
+# Manifiestos que solo aplica Flux (Component solo-flux/) y que no son secretos.
 for f in "$raiz"/cluster/00-infrastructure/cnpg/helmrelease.yaml; do
   [[ -f "$f" ]] || continue
   if ! res="$("$kc" "${kc_args[@]}" "$f" 2>&1)"; then

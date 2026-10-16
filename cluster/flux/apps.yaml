@@ -1,0 +1,386 @@
+# Apps: una Kustomization por app.
+# Una Kustomization de Flux por carpeta hoja de cluster/ (si una falla, no bloquea a las demás). Convenciones del
+# plan (docs/PLAN-FLUX.md § Decisiones):
+# - suspend: true hasta que su lote se adopte en la fase 4; esta lista es la que manda.
+# - wait: true y timeout 5m (10m en comfyui): verde = el rollout terminó.
+# - prune: false durante la adopción; deletionPolicy: Orphan donde hay datos (PV/PVC, CRD, Cluster de Postgres).
+# - components: [solo-flux] suma los *.sops.* (y el HelmRelease de cnpg) que kubectl apply -k no debe ver;
+#   decryption con sops-age solo donde hay secretos.
+---
+# Suite multimedia.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: bazarr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/bazarr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flaresolverr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/flaresolverr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: plex
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/plex
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: prowlarr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/prowlarr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: qbittorrent
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/qbittorrent
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: radarr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/radarr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: sonarr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/04-media-stack/sonarr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: overseerr
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/05-services/overseerr
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+# Servicios y apps.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pingvin
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/05-services/pingvin
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: canon-mp250-airprint
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/canon-mp250-airprint
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: claude-remote
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/claude-remote
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: comfyui
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/comfyui
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 10m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: immich
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/immich
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  dependsOn:
+    - name: postgresql
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: minecraft
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/minecraft
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: ollama-stack
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/ollama-stack
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: webodm
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/webodm
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+---
+# Sitios estáticos en pibot (hostPath; los datos no dependen de la Kustomization).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cyano
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/cyano
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: josekast
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/josekast
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: noledigasanadie
+  namespace: flux-system
+spec:
+  suspend: true
+  path: ./cluster/apps/noledigasanadie
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false

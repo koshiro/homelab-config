@@ -1,8 +1,8 @@
 # Operador CloudNativePG (release de Helm «cnpg»). El plugin Barman Cloud va en ../cnpg-plugin-barman-cloud/.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# helmrelease.yaml lo suma solo Flux (solo-flux/): con kubectl apply -k se adoptaría el release fuera de su lote.
 resources:
   - namespace.yaml
-  # - helmrelease.yaml   # fase 3 del plan de Flux: requiere los CRD HelmRepository y HelmRelease
 components:
   - ../../components/proteger-datos

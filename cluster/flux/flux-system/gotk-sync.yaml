@@ -1,0 +1,35 @@
+# Fuente y Kustomization raíz de Flux: siguen `main` y aplican cluster/flux (este directorio, capas.yaml y apps.yaml).
+# El secret `flux-system` (deploy key de solo lectura) y `sops-age` se crean a mano: son los dos únicos objetos del
+# bootstrap que no viven en git (docs/PLAN-FLUX.md, fase 3).
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: ssh://git@github.com/koshiro/homelab-config
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  # Flux solo necesita cluster/: el resto del repo (ansible, docs, scripts) no entra en el artefacto.
+  ignore: |
+    /*
+    !/cluster/
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 2m
+  path: ./cluster/flux
+  # La raíz no espera a sus hijas: las que siguen suspendidas nunca quedan Ready y la bloquearían.
+  wait: false
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

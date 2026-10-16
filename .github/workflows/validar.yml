@@ -1,5 +1,4 @@
 # Checks de cada PR (docs/PLAN-FLUX.md, decisión «CI»). Sin ellos Renovate no puede hacer automerge.
-# flux-local (test + diff comentado en el PR) entra en la fase 3, cuando existan las Kustomizations de Flux.
 name: validar
 
 on:
@@ -39,3 +38,42 @@ jobs:
       - uses: actions/checkout@v5
       - name: Todo *.sops.* estructurado y cifrado
         run: python3 -I scripts/flux/revisar_sops.py
+
+  flate:
+    name: flate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # el diff lee origin/main con git archive
+      - name: Instalar flate
+        uses: home-operations/flate/action@v0.6.5
+        with:
+          base: ""
+      # Renderiza como Flux las Kustomizations de cluster/flux (sin sus suspend: lo que se aplicaría al quitarlos)
+      # y el HelmRelease de cnpg con su chart. Es el gate.
+      - name: flate test
+        run: scripts/flux/flate.sh test
+      - name: flate diff contra main
+        if: github.event_name == 'pull_request'
+        run: scripts/flux/flate.sh diff origin/main > diff.txt
+      - name: Comentar el diff en el PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo '### flate diff (lo que renderiza Flux, contra main)'
+            if [[ -s diff.txt ]]; then
+              echo '```diff'
+              head -c 60000 diff.txt
+              echo '```'
+            else
+              echo 'Sin cambios.'
+            fi
+          } > diff.md
+          gh pr comment "$PR" --body-file diff.md --edit-last --create-if-none
