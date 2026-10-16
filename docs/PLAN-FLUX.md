@@ -14,7 +14,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 ## Estado (marcar al cerrar cada fase; retomar desde la primera sin marcar)
 
 - [x] Fase 0 — k3s 1.35 y kit de recuperación (2026-10-16)
-- [ ] Fase 1 — Repo = cluster en ambas direcciones
+- [x] Fase 1 — Repo = cluster en ambas direcciones (2026-10-16)
 - [ ] Fase 2 — Ensayo en k3d
 - [ ] Fase 3 — Flux instalado sin gestionar nada
 - [ ] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres)
@@ -134,9 +134,12 @@ No cambia cómo se despliega: `kubectl apply -k` sigue funcionando y se puede pa
 - CI: `.github/workflows/validar.yml` con `scripts/flux/validar.sh` (kubeconform `-strict`, salta los CRD upstream) y
   `scripts/flux/revisar_sops.py`. En verde en el PR.
 - `diff_todo.py`: 0 cambios en las 37 carpetas.
-- **Falta:** borrar los 23 huérfanos, que están exportados en `~/.cache/flux-plan/huerfanos.yaml`. El clasificador
-  bloqueó el borrado: lo autoriza o lo corre el usuario. Después, `inventario.py` debe mostrar solo los releases de
-  Traefik y `cnpg`.
+- Los 23 huérfanos, exportados en `~/.cache/flux-plan/huerfanos.yaml`, se borraron con autorización del usuario (el
+  clasificador bloquea el borrado en lote sin ella).
+
+**Cerrada (2026-10-16):** `inventario.py` solo muestra los releases de Traefik y `cnpg` (0 errores), `diff_todo.py`
+da 0 cambios en las 37 carpetas, `sops_formato.py` no muestra ningún `BINARIO` y el CI (`kubeconform` y `secretos
+SOPS`) pasa en el PR #91.
 
 ### Fase 2 — Ensayo en un cluster desechable (~1 h) · misma rama de la fase 3
 
