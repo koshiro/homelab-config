@@ -18,7 +18,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [x] Fase 2 — Ensayo en k3d (2026-10-16)
 - [x] Fase 3 — Flux instalado sin gestionar nada (2026-10-16)
 - [x] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres) (2026-10-16)
-- [ ] Fase 5 — Avisos
+- [x] Fase 5 — Avisos (2026-10-16, PR #101)
 - [ ] Fase 6 — Prueba de fallas
 - [ ] Fase 7 — Prune y automerge
 - [ ] Fase 8 — Documentación y skill (adelantada el 2026-10-16: `AGENTS.md`, `DISENO-APPS`, `README`, `ARQUITECTURA`,
@@ -389,6 +389,15 @@ cyano, immich y pingvin; overseerr 307, plex 401 y grafana 302. vmalert sin aler
 2. Scrape de los controladores y la regla `FluxSinReconciliar` (`Ready=False` por más de 15 min).
 
 **Listo cuando:** los commits de `main` muestran el estado de Flux en GitHub.
+
+**Hecho (2026-10-16):** Kustomization `flux-avisos` → `cluster/flux/avisos/` (Provider/Alert `telegram` y `github`,
+tokens por `solo-flux/` con decryption; el chat de Telegram va en claro en `spec.channel` porque ese Provider no lo
+lee del secret). Flux 2.9 ya no expone `gotk_reconcile_condition`: el Ready sale de kube-state-metrics con custom
+resource state (`03-monitoring/monitoring/kube-state-metrics-flux.yml` → `gotk_resource_info`); los custom resources
+se suman solos al `--resources` explícito. Job de scrape `flux` (puerto `http-prom`) y reglas `FluxSinReconciliar`
+(15 min) y `FluxSuspendida` (6 h). Verificado: checks `flux/<ks>` en `main@90f79ca`; un GitRepository de prueba con
+URL inexistente (fuera de git, borrado al terminar) llegó a Telegram por el Alert de Flux y, a los 15 min, por
+`FluxSinReconciliar`. Una falla de prueba así no ensucia main: el Alert `github` solo mira Kustomizations.
 
 ### Fase 6 — Prueba de fallas (~45 min)
 

@@ -47,8 +47,8 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 - **Cluster**: k3s en pibot (master) + 3 workers
 - **Storage**: ZFS en el host Proxmox 192.168.1.100 (`nvme`, `respaldo`, `homelab-storage`), NFS desde el host; TrueNAS retirado
 - **Dominio**: danielriquelme.cl
-- **GitOps**: Flux 2.9 aplica `cluster/` desde `main` (`cluster/flux/`, 28 Kustomizations); prune apagado y avisos
-  pendientes (`docs/PLAN-FLUX.md`, fases 5–8)
+- **GitOps**: Flux 2.9 aplica `cluster/` desde `main` (`cluster/flux/`, 29 Kustomizations); errores a Telegram y
+  estado en los commits de GitHub (`cluster/flux/avisos/`); prune apagado (`docs/PLAN-FLUX.md`, fases 6–8)
 - **Acceso remoto**: Tailscale (`ssh daniel@k3s-node-0`, MagicDNS del master pibot; kubectl local funciona)
 
 ## Flujo de ramas (GitHub Flow)

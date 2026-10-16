@@ -109,7 +109,8 @@ Recomendación: **R2 para lo crítico** (Immich, Minecraft, Postgres ≈ 10 GB, 
   - Pública por túnel con comodín: Immich, Pingvin, Overseerr, Open WebUI, Plex.
   - Solo tailnet (NodePort, sin Ingress): qBittorrent, *arr, ComfyUI, Grafana; o Cloudflare Access si se quieren desde fuera.
 - **GitOps:** Flux 2.9 con SOPS desde 2026-10-16: una Kustomization por carpeta de `cluster/` (`cluster/flux/`), un
-  merge a `main` es el despliegue. Quedan avisos, prueba de fallas y prune (`docs/PLAN-FLUX.md`, fases 5–7).
+  merge a `main` es el despliegue. Avisos a Telegram y GitHub desde 2026-10-16; quedan prueba de fallas y prune
+  (`docs/PLAN-FLUX.md`, fases 6–7).
 - **Monitoreo:** VictoriaMetrics + Grafana en manifiestos planos (sin Helm), aplicados por Flux; falta `node_exporter`, `zfs_exporter` y `smartctl_exporter` en el host (`docs/PENDIENTES.md` §5).
 
 ## Plan por fases

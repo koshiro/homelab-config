@@ -34,7 +34,7 @@ $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave
 | Sitio estático / publicar web | receta *sitio estático* (túnel `pibot-webs` → `http://192.168.1.15:<nodePort>`) |
 | Cloudflare (hostname, DNS, túnel, reglas) | `$H cf …` (autorizado; lo hace el agente, nunca el usuario) |
 | Respaldos | receta *respaldo*; `$H doc proxmox/README Tareas` |
-| Flux / GitOps (estado, deploy key, fases del plan, ensayo) | `$H flux`; recetas *Flux en prod* y *ensayo de Flux en k3d*; `$H doc PLAN-FLUX Estado` (primera fase sin marcar) |
+| Flux / GitOps (estado, deploy key, fases del plan, ensayo, avisos) | `$H flux`; recetas *Flux en prod*, *probar los avisos de Flux* y *ensayo de Flux en k3d*; `$H doc PLAN-FLUX Estado` (primera fase sin marcar) |
 | Cambio temporal en vivo (escalar a 0, probar un parche) | receta *cambio temporal en vivo* (`flux suspend` → … → `flux resume`) |
 | VM, RAM, ZFS, NFS del host | `$H doc proxmox/README <tema>` |
 | Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |

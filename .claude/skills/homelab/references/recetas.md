@@ -98,6 +98,14 @@ que rotarla): `ssh-keygen -q -t ed25519 -N "" -C flux-system-prod -f ~/.cache/fl
 el GitRepository, porque no están los CRD) → `kubectl wait --for=condition=established crd -l
 app.kubernetes.io/part-of=flux` → secrets `flux-system` y `sops-age` → otra pasada. (2026-10-16: Ready en 7 s.)
 
+## Probar los avisos de Flux (sin tocar main)
+`kubectl apply` de un GitRepository suelto en `flux-system` con URL inexistente (`spec.interval: 10m`, `timeout: 20s`)
+→ en segundos `kubectl -n flux-system logs deploy/notification-controller --since=3m | grep <nombre>` muestra
+«dispatching event» y ningún `"level":"error"` (= Telegram lo aceptó) → a los ~15 min `$H alertas` da
+`FluxSinReconciliar` en firing (vmalert → Alertmanager → Telegram) → `kubectl delete gitrepository <nombre> -n
+flux-system`. No usar una Kustomization rota: el Alert `github` dejaría un check en rojo en el commit de main.
+(2026-10-16)
+
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →
 snapshot de etcd en pibot (`sudo k3s etcd-snapshot save --name pre-reboot-pve-<fecha>`) → `nohup systemctl reboot &`
