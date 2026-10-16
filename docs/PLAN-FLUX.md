@@ -95,6 +95,28 @@ No cambia cómo se despliega: `kubectl apply -k` sigue funcionando y se puede pa
 **Listo cuando:** `inventario.py` no muestra objetos sin archivo (solo los releases de Traefik y `cnpg`),
 `kubectl diff -k` da 0 cambios en cada carpeta, `sops_formato.py` no muestra ningún `BINARIO` y el CI pasa en el PR.
 
+**Revisión antes de empezar (2026-10-16, tras la fase 0).** Se mantiene lo de arriba, con estos ajustes:
+
+- **Drift nuevo en 2 carpetas** (`scripts/flux/diff_todo.py`): `plex/allow-plex-egress` y `minecraft/minecraft-policy`
+  solo suben `generation`. La causa es `- to: []` (`plex/networkpolicy-egress.yml:33`) y `- from: []`
+  (`minecraft/networkpolicy.yml:15`): desde k3s 1.35 el dry-run cuenta la lista vacía como un cambio. Hay que borrar
+  la clave, que significa lo mismo (todos los pares).
+- **Huérfanos: 23, no 22.** La fase 0 dejó un segundo ConfigMap viejo en claude-remote (`claude-remote-files-*`:
+  hoy son 2, y ninguno es el vigente).
+- **Redis de Immich: la imagen ya no existe.** `docker.io/bitnami/redis:7.4.3-debian-12-r0` da 404 en Docker Hub; el
+  pod corre de la caché de node-3 (`IfNotPresent`), así que si lo mueven a otro nodo queda en `ImagePullBackOff`. Al
+  versionarlo, usar `docker.io/bitnamilegacy/redis:7.4.3-debian-12-r0@sha256:a25b5d07a14ec13730022c7cd9bab6308d55ccd86b74af7315553c17be884889`
+  (el mismo digest que corre hoy). El cambio de imagen reinicia el pod una vez. No hay secret de release de Helm: son
+  objetos sueltos con etiquetas de Helm.
+- **`cnpg`: los valores de usuario están vacíos** (`scripts/flux/helm_valores.py`): el `HelmRelease` lleva solo el chart
+  `cloudnative-pg` 0.26.0. El CRD `HelmRelease` no existe hasta la fase 3, así que su archivo no puede entrar en una
+  kustomization que se aplique con `kubectl apply -k`: va en `cluster/flux/` sin referenciar.
+- **`inventario.py` además lista** `cert-manager/cert-manager-webhook-ca` (lo crea el webhook) y
+  `postgresql/cnpg-default-monitoring` (lo crea el operador). Son de controladores: hay que excluirlos en el script, no
+  borrarlos. `cloudflared/cloudflared-token` deja de salir cuando su SOPS quede estructurado.
+- **No hay `.github/`.** `kubeconform` y la revisión de SOPS se pueden armar ahora; `flux-local` necesita las
+  Kustomizations de Flux, así que su job entra en la fase 3.
+
 ### Fase 2 — Ensayo en un cluster desechable (~1 h) · misma rama de la fase 3
 
 1. Crear un cluster local con `k3d` en la misma versión de k3s, usando la imagen de prod.
