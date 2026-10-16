@@ -52,8 +52,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `~/.config/sops/age/keys.txt`. Estado: `hl.py flux`. (2026-10-16)
 - **Desde 2026-10-16 (`main@be8de3e`) Flux gestiona todo `cluster/`:** 28 Kustomizations activas, 0 suspendidas,
   prune apagado (fase 7) y el operador CNPG como HelmRelease `cnpg` (release v2). Un merge a `main` es el despliegue;
-  `kubectl apply -k` y `hl.py sops apply` ya no se usan en ninguna carpeta. Probar en caliente: `flux suspend ks <ks>`
-  → cambio → PR → `flux resume`. (2026-10-16)
+  `kubectl apply -k` ya no se usa en ninguna carpeta (`hl.py sops apply` se quitó). Probar en caliente: receta
+  *cambio temporal en vivo*. `cluster/kustomization.yml` y los `kustomization.yaml` de capa (`00-infrastructure/`…)
+  son de la época de `kubectl apply -k`: Flux no los usa y la raíz no incluye immich, minecraft, claude-remote ni
+  postgresql. Sin `Alert` ni `Provider` todavía (fase 5): un fallo de Flux no avisa, solo lo muestra `hl.py flux`. (2026-10-16)
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
@@ -133,7 +135,15 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `flux create secret git …` o `flux get sources git` → la guarda del worktree los rechaza («runs flux with a git
   command among its operands») → el secret, con un script en `$CLAUDE_JOB_DIR/tmp` que llama a `flux` con
   `subprocess`; la revisión, con `hl.py flux` o `kubectl -n flux-system get gitrepository flux-system -o
-  jsonpath='{.status.artifact.revision}'`. (2026-10-16)
+  jsonpath='{.status.artifact.revision}'`. Traer el commit tras un merge: no `flux reconcile source git
+  flux-system` sino `flux reconcile ks <ks> --with-source` (sin «git» entre los operandos). (2026-10-16)
+- `bash scripts/flux/validar.sh` en el Mac → «kubeconform: command not found» en todas las carpetas →
+  `PATH="/Users/daniel/.cache/flux-plan/bin:$PATH" bash scripts/flux/validar.sh`. (2026-10-16)
+- `hl.py flux` salía 1 con `Ready=Unknown … Progressing: Reconciliation in progress` → era una pasada en curso
+  (cada 10 min); desde 2026-10-16 se muestra «(reconciliando)» y no cuenta si la revisión ya es la de `main`.
+- `flux suspend ks …` → el clasificador lo bloquea («Shared Cluster Mutation») → dar el comando al usuario. Después
+  del bloqueo, hasta un `cat …; sed -n …` de solo lectura salió bloqueado («Modify Shared Resources»): avisar y, con
+  el OK del usuario, leer con la herramienta Read. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).
 - `flux diff ks` daba solo etiquetas y aun así Flux reinició `pve-exporter` → al adoptar, kustomize-controller absorbe
   los campos de **todo manager que empiece con `kubectl`** (prefijo en `fluxcd/pkg/ssa`) y borra los que no vienen
@@ -141,7 +151,8 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   Antes de adoptar o de sumar una app con objetos vivos: `python3 -I scripts/flux/simular_adopcion.py <ks>`. (2026-10-16)
 - Con Flux gestionando una carpeta, `kubectl rollout restart` reinicia dos veces (Flux borra el `restartedAt` en su
   pasada siguiente) → `kubectl rollout restart … --field-manager=reinicio-manual` (cualquier nombre sin el prefijo
-  `kubectl`). Lo mismo en CronJobs que reinician (minecraft-restart). `kubectl edit/patch/scale/label` se revierten. (2026-10-16)
+  `kubectl`). Lo mismo en CronJobs que reinician (minecraft-restart). `kubectl edit/patch/scale/label` se revierten
+  en la pasada siguiente (≤10 min) → receta *cambio temporal en vivo* (`flux suspend` antes). (2026-10-16)
 - `flux diff ks` no muestra los Secrets SOPS (`flux build` los enmascara como base64 de `**SOPS**`) → los compara,
   descifrados y sin imprimir valores, `simular_adopcion.py`. (2026-10-16)
 - `kubectl diff -k` (y `kubectl apply` client-side) no ven dos puertos con el mismo número en TCP y UDP (strategic

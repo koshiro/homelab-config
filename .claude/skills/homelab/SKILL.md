@@ -16,8 +16,9 @@ $H app <ns>                   # pods (nodo, imagen, reinicios), svc/NodePort, in
 $H ports [--serie 30890]      # NodePorts en uso (vivo) o siguiente libre de una serie
 $H wait <ns> <deploy> [--kind sts] [--timeout 5m]   # en vez de sleep; si falla imprime pods y logs
 $H flux                       # fuente vs SHA de main, ks activas (Ready, revisión), suspendidas, HelmReleases, nodo de los pods
+$F reconcile ks <ks> --with-source                  # F=~/.cache/flux-plan/bin/flux; tras un merge, sin esperar los 5 min
 $H alertas                    # alertas activas de vmalert (pending/firing), horas en UTC
-$H sops keys|apply|encrypt <archivo>                # con SOPS_AGE_KEY_FILE puesto; keys = solo nombres
+$H sops keys|encrypt <archivo>                      # con SOPS_AGE_KEY_FILE puesto; keys = solo nombres; aplicar = merge
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet
 $H doc <archivo> [sección]    # índice de encabezados o una sección: doc DISENO-APPS 4.2
 $H cf zones|tunnels|routes <túnel>|route <túnel> <host> <servicio> [--apply]|api <M> <ruta> [-d JSON|@f]
@@ -33,11 +34,11 @@ $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave
 | Sitio estático / publicar web | receta *sitio estático* (túnel `pibot-webs` → `http://192.168.1.15:<nodePort>`) |
 | Cloudflare (hostname, DNS, túnel, reglas) | `$H cf …` (autorizado; lo hace el agente, nunca el usuario) |
 | Respaldos | receta *respaldo*; `$H doc proxmox/README Tareas` |
-| Flux / GitOps (estado, deploy key, fases del plan) | `$H flux`; receta *Flux en prod*; `$H doc PLAN-FLUX Estado` |
+| Flux / GitOps (estado, deploy key, fases del plan, ensayo) | `$H flux`; recetas *Flux en prod* y *ensayo de Flux en k3d*; `$H doc PLAN-FLUX Estado` (primera fase sin marcar) |
+| Cambio temporal en vivo (escalar a 0, probar un parche) | receta *cambio temporal en vivo* (`flux suspend` → … → `flux resume`) |
 | VM, RAM, ZFS, NFS del host | `$H doc proxmox/README <tema>` |
 | Reiniciar pve (kernel, módulos) | receta *reiniciar el host pve* (verificar los 4 pools al volver) |
 | Apagar/encender cluster | `$H doc README Operación` (siempre playbook ordenado) |
-| Flux (`cluster/flux`, fases del plan, ensayo) | `docs/PLAN-FLUX.md` (primera fase sin marcar) + receta *ensayo de Flux en k3d* |
 | Sonarr/Radarr/qBittorrent/Plex/Seerr | skill **media-stack** |
 | ComfyUI | skill **comfyui** |
 
@@ -49,6 +50,9 @@ Los errores más caros entre sesiones fueron rechazos de la guarda del worktree 
   heredocs que mencionen git, ni rutas `/Users/daniel/git/...` dentro de construcciones complejas (la guarda las lee
   como git). Lógica con bucles → script en `$CLAUDE_JOB_DIR/tmp/x.py` y `python3 -I <ruta absoluta>`.
 - **Nunca `sleep`**: `$H wait`, `kubectl wait`, o Monitor con condición.
+- **Flux aplica todo `cluster/` al mergear a `main`** (desde 2026-10-16). `kubectl apply/edit/patch/scale/label` sobre
+  algo gestionado se revierte en ≤10 min; `rollout restart` solo con `--field-manager=reinicio-manual`. Para un cambio
+  que deba durar sin PR: receta *cambio temporal en vivo*.
 - Si el clasificador bloquea: detenerse, dar el comando exacto y por qué, y esperar (regla global del usuario).
 - Más trampas con su arreglo: `references/hechos.md` § Trampas.
 

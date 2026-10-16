@@ -160,10 +160,13 @@ def cmd_flux(a):
             susp.append(n)
             continue
         c, rev = ready(k), k.get("status", {}).get("lastAppliedRevision", "")
-        ok = c.get("status") == "True" and main and rev.endswith(main)
-        malas += not ok
+        en_main = bool(main) and rev.endswith(main)
+        ok = c.get("status") == "True" and en_main
+        # Una pasada en curso sobre una revisión ya aplicada (Unknown/Progressing, cada 10 min) no es un problema
+        en_curso = c.get("status") == "Unknown" and c.get("reason") == "Progressing" and en_main
+        malas += not (ok or en_curso)
         print(f"ks {n} Ready={c.get('status', '?')} {rev.split(':')[-1][:8] or '-'}"
-              + ("" if ok else f"  {c.get('reason', '')}: {c.get('message', '')[:160]}"))
+              + ("" if ok else "  (reconciliando)" if en_curso else f"  {c.get('reason', '')}: {c.get('message', '')[:160]}"))
     print(f"suspendidas ({len(susp)}):", " ".join(susp) or "-")
     for h in kj("get", "helmreleases.helm.toolkit.fluxcd.io", "-A")["items"]:
         c = ready(h)
@@ -190,12 +193,10 @@ def cmd_alertas(a):
 
 def cmd_sops(a):
     env = {**os.environ, "SOPS_AGE_KEY_FILE": str(AGE_KEY)}
+    # Sin «apply»: desde 2026-10-16 Flux descifra y aplica los *.sops.* (Component solo-flux) al mergear.
     if a.accion == "keys":           # nombres de claves, nunca valores
         out = sh(["sops", "-d", a.archivo], env=env)
         print("\n".join(re.findall(r"^\s+([A-Za-z0-9_.-]+):", out, re.M)))
-    elif a.accion == "apply":
-        out = sh(["sops", "-d", a.archivo], env=env)
-        print(sh(["kubectl", "apply", "-f", "-"], inp=out).strip())
     elif a.accion == "encrypt":      # cifra en el lugar un Secret en claro (data/stringData)
         sh(["sops", "--encrypt", "--in-place", "--age", "age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs",
             "--encrypted-regex", "^(data|stringData)$", a.archivo], env=env)
@@ -389,8 +390,8 @@ def main():
     s.add_argument("ns"); s.add_argument("name"); s.add_argument("--kind", default="deploy"); s.add_argument("--timeout", default="5m")
     sp.add_parser("flux", help="fuente vs SHA de main, Kustomizations activas (Ready y revisión), suspendidas, HelmReleases y nodo de cada pod")
     sp.add_parser("alertas", help="alertas activas de vmalert (pending/firing), una por línea; horas en UTC")
-    s = sp.add_parser("sops", help="keys|apply|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto")
-    s.add_argument("accion", choices=["keys", "apply", "encrypt"]); s.add_argument("archivo")
+    s = sp.add_parser("sops", help="keys|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto (aplicar = merge; lo hace Flux)")
+    s.add_argument("accion", choices=["keys", "encrypt"]); s.add_argument("archivo")
     s = sp.add_parser("ssh", help="ssh <pibot|pve|node-1..3> <comando>: LAN y si no, tailnet")
     s.add_argument("host"); s.add_argument("comando", nargs=argparse.REMAINDER)
     s = sp.add_parser("doc", help="doc <archivo> [sección]: índice o una sola sección (p. ej. doc DISENO-APPS 4.2)")
