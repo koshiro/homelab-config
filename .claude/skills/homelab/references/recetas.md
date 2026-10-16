@@ -64,6 +64,7 @@ primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza po
 veces: la 1.ª sale con la raíz) → `$S estado` (ks, HelmRelease, 17 SOPS, pods fuera de la guarda) → `$S borrar` →
 `gh repo deploy-key delete <id>` y borrar la clave. Probar sin cluster: `$S render --rama <r>` y
 `flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 29/29 Ready en 134 s.)
+`instalar --como-prod` deja las hijas suspendidas como en git: ensaya «Flux sin gestionar nada» (fase 3).
 
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →

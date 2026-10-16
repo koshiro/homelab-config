@@ -109,6 +109,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `docker version` «failed to connect … orbstack/run/docker.sock» → OrbStack apagado: `orb start`. (2026-10-16)
 - Ensayo de Flux con secretos reales → sin la guarda de `ensayo_k3d.py`, cloudflared se sumaría a los túneles de
   prod y los bots, alertmanager y respaldos actuarían de verdad: nunca instalar Flux en un cluster de prueba sin ella. (2026-10-16)
+- `docker run ghcr.io/…` «error getting credentials … Keychain Error (-60008)» → en un `DOCKER_CONFIG` temporal,
+  `config.json` con `{"credHelpers": {"ghcr.io": ""}}` y `DOCKER_HOST=unix:///Users/daniel/.orbstack/run/docker.sock`
+  (un config vacío no basta: macOS usa osxkeychain por defecto). (2026-10-16)
+- Imagen de flux-local: `helm template` falla con «mkdir /.cache: permission denied» → `-e HOME=/tmp`. flux-local está
+  deprecado (reemplazo: flate), pero `flate test` salta las Kustomizations suspendidas. (2026-10-16)
 - Pre-commit en un worktree imprime «mkdir: .git: Not a directory» → inofensivo (`.git` es archivo); el commit
   se hace igual. (2026-10-16)
 - SOPS en formato binario (`{"data": "ENC[…]", "sops": …}`, sin `kind`) → Flux no lo descifra como manifiesto; re-cifrar con `.sops.yaml` (`encrypted_regex`). Detectar con `scripts/flux/sops_formato.py` (2026-10-15: cloudflared/secret.sops.yml, qbittorrent/secret-credentials.sops.yml).

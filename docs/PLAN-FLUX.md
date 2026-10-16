@@ -197,8 +197,8 @@ la fuente: raíz +12 s, cert-manager +31 s, cnpg +40 s, plugin +66 s, postgresql
 
 - `gotk-sync.yaml` ya apunta a `main` y las 28 están suspendidas, así que aplicar `cluster/flux/flux-system` en prod
   instala Flux sin gestionar nada. La deploy key definitiva reemplaza a la temporal del ensayo.
-- Sumar `cluster/flux` a `inventario.py` y `diff_todo.py` (hoy la saltan porque prod no tiene los CRD de Flux) y
-  agregar el job de flux-local al CI.
+- ~~Sumar `cluster/flux` a `inventario.py` y `diff_todo.py` y agregar el job de flux-local al CI~~: hecho, ver la
+  revisión de la fase 3.
 - `kubectl wait ks --all` sale apenas la raíz está Ready, cuando las hijas todavía no existen: esperar de nuevo, o
   esperar por nombre.
 
@@ -209,6 +209,41 @@ la fuente: raíz +12 s, cert-manager +31 s, cnpg +40 s, plugin +66 s, postgresql
 3. Mergear y aplicar `cluster/flux/flux-system`. Es el último apply manual.
 
 **Listo cuando:** `flux check` sale limpio y el GitRepository está `Ready` en el SHA de `main`.
+
+**Revisión antes de empezar (2026-10-16, tras la fase 2).** El paso 1 ya está hecho en la rama y el CI listo. Queda
+solo lo que toca prod:
+
+- **Prod, solo lectura:** `flux check --pre` pasa (1.35.9+k3s1). No quedan CRD, namespaces (`flux-system`,
+  `argocd`) ni objetos con `app.kubernetes.io/part-of=flux` de los intentos de 2025. RAM libre: node-2 ~2,8 GiB y
+  node-3 ~3,8 GiB. Renovate no limita `enabledManagers`, así que su manager `flux` ya ve `gotk-components.yaml`.
+- **Ensayo de esta fase en k3d** (`ensayo_k3d.py instalar --como-prod`, con la configuración de git): la raíz y la
+  fuente quedan Ready en el SHA de la rama, las 28 hijas siguen suspendidas sin `lastAppliedRevision` y no se crea
+  ningún namespace de app ni HelmRelease. Instalar Flux no toca nada más.
+- **CI:** job `flux-local` en `validar.yml`. El test (30/30 en local, con la imagen 8.4.0) es el gate; el diff contra
+  `main` es informativo y en este PR falla sin bloquear, porque `main` no tiene `cluster/flux`. flux-local está
+  deprecado y su reemplazo, flate, salta las Kustomizations suspendidas (1 pasada, 28 saltadas): migrar cuando la
+  fase 4 quite los `suspend`, antes del automerge de la fase 7.
+- `diff_todo.py` e `inventario.py` suman `cluster/flux` solos cuando existe el CRD de Kustomization. Los secrets
+  `flux-system` y `sops-age` no cuentan como huérfanos.
+
+**Runbook** (cada paso es un comando; si el clasificador bloquea uno, parar y pedirlo):
+
+1. `gh pr create --base main --head feat/flux-instalar` con el cuerpo en un archivo. Con el CI en verde
+   (kubeconform, secretos SOPS y flux-local), el usuario mergea: `gh pr merge <n> --merge`.
+2. `git fetch` y comprobar que `git diff origin/main -- cluster/flux` sale vacío.
+3. `kubectl apply --server-side -k cluster/flux/flux-system`: en esta pasada fallan el GitRepository y la
+   Kustomization porque todavía no existen sus CRD (esperable).
+4. `kubectl wait --for=condition=established crd -l app.kubernetes.io/part-of=flux --timeout=2m`.
+5. Deploy key: `ssh-keygen -q -t ed25519 -N "" -C flux-system-prod -f ~/.cache/flux-plan/deploy-key-prod` →
+   `gh repo deploy-key add ~/.cache/flux-plan/deploy-key-prod.pub -R koshiro/homelab-config --title "flux-system
+   (prod, solo lectura)"` → `flux create secret git flux-system --url=ssh://git@github.com/koshiro/homelab-config
+   --private-key-file=<clave>` → borrar los dos archivos de la clave. Vive solo en el secret; si se pierde, se crea otra.
+6. `kubectl create secret generic sops-age -n flux-system --from-file=age.agekey=/Users/daniel/.config/sops/age/keys.txt`.
+7. `kubectl apply --server-side -k cluster/flux/flux-system` (2.ª pasada).
+8. Verificación: `flux check`; `kubectl -n flux-system wait gitrepository/flux-system kustomization/flux-system
+   --for=condition=Ready`; que la revisión de `flux get sources git` sea `git rev-parse origin/main`; `flux get ks`
+   (las 28 suspendidas); pods de `flux-system` fuera de `pibot`; `hl.py status`; `diff_todo.py`; `inventario.py`.
+9. Marcar la fase 3 aquí con la evidencia, en una rama `docs/` con su PR (`main` ya tiene la instalación).
 
 ### Fase 4 — Adopción con prune apagado (~1,5 h) · 3 PR seguidos
 
