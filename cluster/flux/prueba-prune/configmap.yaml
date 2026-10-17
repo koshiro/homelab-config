@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prueba-prune
-  namespace: flux-prueba
-data:
-  nota: "Debe desaparecer cuando este archivo salga de git"
