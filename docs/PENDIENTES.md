@@ -175,9 +175,12 @@ sin workers.
   Samsung 970 EVO Plus, WD Red SN700, Kingston KC3000). La cifra que importa es la **escritura sostenida tras la caché**
   (buscarla en reseñas, no en la ficha): ≥500 MB/s; el NE-512 da ~75 MB/s y su ficha dice 1700–1800. La ranura negocia
   PCIe Gen3 x4, así que un Gen4 no rinde más. Al instalarlo, correr `scripts/ssd/prueba.sh` antes del `zpool attach`.
-- [ ] **TRIM del pool `nvme`**: `autotrim=off` y solo el TRIM mensual de Debian (primer domingo; el último, 2026-10-04).
-  Sin TRIM, el NE-512 escribía 128K a 29 MB/s con p99 de 169 ms; tras TRIM, a 1250 MB/s con p99 de 0,8 ms. `nvme0n1`
-  también es sin DRAM: proponer `zpool set autotrim=on nvme` (o un `zpool trim` semanal) y medir con `hl.py io`.
+- [x] **TRIM del pool `nvme`** (2026-10-17 10:55): `zpool set autotrim=on nvme` y un `zpool trim nvme` para lo
+  acumulado desde el TRIM mensual de Debian del 4-oct. Motivo: sin TRIM, el NE-512 escribía 128K a 29 MB/s con p99 de
+  169 ms; tras TRIM, a 1250 MB/s con p99 de 0,8 ms, y `nvme0n1` también es sin DRAM. El TRIM manual tardó 5 min
+  (10:55–11:00) con `nvme0n1` al 97 % de uso, pero escribiendo en 1 ms y con los workers en ≤5 % de iowait. El cron mensual de Debian sigue como red de seguridad.
+- [ ] Revisar `hl.py io --ventana 24h` el 2026-10-18 y una semana después: `esc_ms` de `pve/nvme0n1` en ≤5 ms y de los
+  workers bajo 50 ms, sin ráfagas de iowait.
 - [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
   `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
