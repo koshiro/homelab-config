@@ -19,7 +19,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [x] Fase 3 — Flux instalado sin gestionar nada (2026-10-16)
 - [x] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres) (2026-10-16)
 - [x] Fase 5 — Avisos (2026-10-16, PR #101)
-- [x] Fase 6 — Prueba de fallas (2026-10-16, PR #103–#108; ajuste del ruido de avisos pendiente de decisión)
+- [x] Fase 6 — Prueba de fallas (2026-10-16, PR #103–#108; ruido de avisos ajustado en #110)
 - [ ] Fase 7 — Prune y automerge
 - [ ] Fase 8 — Documentación y skill (adelantada el 2026-10-16: `AGENTS.md`, `DISENO-APPS`, `README`, `ARQUITECTURA`,
   `PENDIENTES`, READMEs de apps y las 3 skills ya describen Flux; falta `hl.py inventario` y repasar tras las fases 5–7)
@@ -445,11 +445,11 @@ rate limit del notification-controller no los agrupa porque el texto lleva la du
 cambian los labels `ready` (Unknown ↔ False) o `revision` de `gotk_resource_info`: el pending de flaresolverr empezó
 a las 21:49 y se reinició a las 21:59, de modo que avisó a los 25 min y no a los 15.
 
-Propuesta: (a) en el Alert `telegram`, `exclusionList: ["failed early due to stalled resources"]` (en la prueba
-habría dejado 2 avisos de Flux en vez de 10; el seguimiento lo hace `FluxSinReconciliar`, agrupado y cada 12 h); (b)
-en la regla, `max by (customresource_kind, exported_namespace, name) (gotk_resource_info{ready!="True",
-suspended!="true"}) == 1`, para que el `for` no se reinicie. Alternativa a (a): `retryInterval: 10m` en todas las
-Kustomizations (~6 avisos/h, pero tarda más en recuperarse tras una falla pasajera).
+Aplicado en #110 (opción elegida a+b, 2026-10-16): (a) en el Alert `telegram`, `exclusionList: ["failed early due
+to stalled resources"]` (en la prueba habría dejado 2 avisos de Flux en vez de 10; el seguimiento lo hace
+`FluxSinReconciliar`, agrupado y cada 12 h); (b) en la regla, `max by (customresource_kind, exported_namespace, name)
+(gotk_resource_info{ready!="True", suspended!="true"}) == 1`, para que el `for` no se reinicie. Descartado:
+`retryInterval: 10m` en todas las Kustomizations (~6 avisos/h, pero más lento en recuperarse de una falla pasajera).
 
 ### Fase 7 — Prune y automerge (~30 min + 1 sábado) · `feat/flux-prune-automerge`
 
