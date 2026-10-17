@@ -112,8 +112,8 @@ App sin estado y `RollingUpdate` con 1 réplica (flaresolverr): tag inexistente 
 merge → `$F reconcile ks <ks> --with-source` en background (espera el timeout y sale con «context deadline
 exceeded») → vigilar con un script en `$CLAUDE_JOB_DIR/tmp` (Ready de la ks, pods, «dispatching event» del
 notification-controller, `$H alertas`). Qué esperar: aviso a los 5 min y check `flux/<ks>` en rojo; tras
-`progressDeadlineSeconds` (10 min) un aviso cada `retryInterval` (2 min); `FluxSinReconciliar` puede tardar más de
-15 min (ver trampa). Revert con `git revert -m 1 <merge>` en rama `fix/` → PR → merge → reconcile → `gh api
+`progressDeadlineSeconds` (10 min) los «failed early due to stalled resources» quedan fuera por el `exclusionList`
+(#110; antes, uno cada `retryInterval` de 2 min) y a los 15 min llega `FluxSinReconciliar`. Revert con `git revert -m 1 <merge>` en rama `fix/` → PR → merge → reconcile → `gh api
 repos/koshiro/homelab-config/commits/<sha>/statuses`. El pod viejo sigue sirviendo. (2026-10-16)
 
 ## Reiniciar el host pve (kernel, módulos)

@@ -197,5 +197,5 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Write/commit en otro worktree (`../x`) → rechazado aunque sea del mismo repo → `EnterWorktree path=<ruta>` antes
   (se puede alternar; cada cambio deja el anterior sin escritura). (2026-10-16)
 - `FluxSinReconciliar` pending que «se reinicia»: `gotk_resource_info` lleva `ready` y `revision` como labels; una ks
-  que alterna Unknown ↔ False o un commit nuevo crean otra serie y el `for: 15m` vuelve a cero (fase 6, propuesta de
-  `max by` en PLAN-FLUX). (2026-10-16)
+  que alterna Unknown ↔ False o un commit nuevo crean otra serie y el `for: 15m` vuelve a cero → agregar con `max by
+  (customresource_kind, exported_namespace, name)` (aplicado en la regla, #110). (2026-10-16)
