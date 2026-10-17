@@ -89,6 +89,11 @@ spec:
               value: /var/lib/grafana/dashboards/cluster/resumen.json
             - name: GF_DATE_FORMATS_DEFAULT_TIMEZONE
               value: America/Santiago
+            # SQLite en WAL: las lecturas (incluido /api/health) no esperan a las escrituras. Sin WAL, una
+            # ráfaga de I/O lenta en el host daba SQLITE_BUSY y readiness en 503 (2026-10-16). El respaldo
+            # copia con `sqlite3 .backup`, que es consistente con WAL.
+            - name: GF_DATABASE_WAL
+              value: "true"
             # Login con Cloudflare Access: el túnel añade Cf-Access-Jwt-Assertion (firmado por el
             # equipo driquelme, aud = app «Homelab admin»). Grafana lo valida y crea/entra con el
             # correo. Access solo deja pasar los correos de su política, así que todos son admin.
@@ -118,6 +123,9 @@ spec:
               path: /api/health
               port: http
             periodSeconds: 10
+            # el timeout por defecto (1 s) fallaba con el disco lento; 1 min de fallas antes de sacarlo del Service
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests: {cpu: 20m, memory: 128Mi}
             limits: {memory: 512Mi}

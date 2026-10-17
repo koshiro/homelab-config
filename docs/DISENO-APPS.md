@@ -28,7 +28,7 @@ Ningún nodo tiene taints salvo los de control-plane de pibot. El scheduler repa
 | Opción | Cómo se pide | Dónde vive | Respaldo | Úsala para |
 |---|---|---|---|---|
 | `local-path` (default) | PVC dinámico, `ReadWriteOnce` | Disco de la VM worker donde cae el pod la primera vez (el pod queda **atado a ese nodo**) | Ninguno automático: hay que añadir un CronJob `config-backup-<app>` (§4.6) | Config, SQLite, caches, datos pequeños y reconstruibles |
-| `nfs-proxmox` | **PV estático** + PVC con `volumeName` | Dataset ZFS `nvme/k8s/<app>` (mirror NVMe) exportado por NFS desde 192.168.1.100 | Automático: sanoid (24 h · 14 d · 4 sem · 6 meses) + syncoid a `respaldo` + opcional restic a R2 | Datos de usuario valiosos (fotos, archivos subidos, mundos) |
+| `nfs-proxmox` | **PV estático** + PVC con `volumeName` | Dataset ZFS `nvme/k8s/<app>` (pool NVMe) exportado por NFS desde 192.168.1.100 | Automático: sanoid (24 h · 14 d · 4 sem · 6 meses) + syncoid a `respaldo` + opcional restic a R2 | Datos de usuario valiosos (fotos, archivos subidos, mundos) |
 | NFS de `homelab-storage` | PV estático sin StorageClass (ver `cluster/04-media-stack/pv-media-library.yml`) | Disco de 12 TB **sin redundancia**, `/mnt/homelab-storage/<x>` | Ninguno (datos reemplazables) | Media, modelos de IA, descargas, datos voluminosos que se pueden volver a obtener |
 | `hostPath` en pibot | `hostPath: /var/lib/homelab-<app>` + `nodeName: pibot` | NVMe de la Pi | CronJob en `webs-estaticas-backup.yaml` | **Solo** sitios estáticos y cosas que deben sobrevivir a Proxmox |
 | `emptyDir` | volumen del pod | efímero | — | Temporales, `/tmp` con `readOnlyRootFilesystem` |

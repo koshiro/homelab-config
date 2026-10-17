@@ -128,3 +128,12 @@ y `scratch`), `pct status 110` running y `exportfs | grep homelab-storage`. Si f
 ## Salud tras corte de luz
 `$H status --deep`; si faltan workers: `ansible-playbook -i ansible/inventory ansible/playbooks/maintenance/playbook_startup_cluster.yml`.
 Apagar: siempre `playbook_graceful_shutdown_cluster.yml`, nunca `poweroff --force`.
+
+## App lenta o con errores intermitentes (SQLITE_BUSY, readiness con timeout, iowait)
+1. Agrupar los errores de la app por minuto (`kubectl logs --since=24h` → contar por `t=…[:16]`): si llegan en
+   ráfagas de minutos, sospechar del disco antes que de la app.
+2. `$H io --en <fin de la ráfaga en UTC> --ventana 6m` y comparar con un momento de calma. Disco con `esc_ms` alto y
+   pocos MB/s = disco lento; iowait y `psi_io_full` altos en los tres workers a la vez = el problema está en pve.
+3. Zvol → VM: `$H ssh pve "ls -l /dev/zvol/nvme/"` (`zdNN`); por VM: `pve_disk_read_bytes`/`pve_disk_written_bytes`.
+4. Descartar la ranura: `lspci -vv` (`LnkSta` igual a `LnkCap`) y `journalctl -k | grep -i aer`; SMART con `smartctl -a`.
+5. Así se encontró `nvme1n1` (2026-10-17, `proxmox/README.md` § Discos y pools).

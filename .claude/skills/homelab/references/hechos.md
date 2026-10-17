@@ -9,6 +9,9 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   de la LAN, `daniel@k3s-node-N-k3s`. `ssh k3s-node-1` **no resuelve**. (2026-10-14)
 - Proxmox `pve` 192.168.1.100; fuera de la LAN `root@pve` (Tailscale). Timeout a 192.168.1.x = no estamos en la red,
   no una caída. (2026-10-13)
+- Pool `nvme` de pve (discos de las VMs 102–104 y `nvme/k8s/*`): **un solo disco** `nvme0n1` NXM-512 2242 desde el
+  2026-10-17; `nvme1n1` NE-512 2280 salió del espejo por lento (113–389 ms por escritura en ráfagas, workers con
+  0,6–6,8 s). Sigue en el host sin uso; reemplazo y destino en `docs/PENDIENTES.md` § 4f. (2026-10-17)
 - kubectl local apunta a `k3s-node-0:6443`; no hace falta ssh para kubectl. GPU RTX 3070 solo en node-1.
 - k3s v1.35.9+k3s1 en los 4 nodos (etcd 3.6.14, containerd 2.2.7, Traefik 3.7.13; todos cgroup v2). La unidad `k3s`
   de pibot lleva `--write-kubeconfig-mode 644 --node-ip 192.168.1.15` y hay una `k3s-agent` vieja, desactivada, que
