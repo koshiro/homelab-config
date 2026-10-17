@@ -149,15 +149,17 @@ groups:
   # Flux: gotk_resource_info lo arma kube-state-metrics (kube-state-metrics-flux.yml). Las fallas puntuales ya
   # llegan al instante por el Alert telegram de Flux (cluster/flux/avisos); esto atrapa lo que queda trabado.
   # Los controladores caídos los cubre TargetCaido (job flux).
+  # max by: ready (Unknown ↔ False en cada reintento) y revision (cada commit) son labels; sin agregar, cada cambio
+  # crea otra serie y el for vuelve a cero (fase 6: avisó a los 25 min en vez de 15).
   - name: flux
     rules:
       - alert: FluxSinReconciliar
-        expr: gotk_resource_info{ready!="True", suspended!="true"} == 1
+        expr: max by (customresource_kind, exported_namespace, name) (gotk_resource_info{ready!="True", suspended!="true"}) == 1
         for: 15m
         labels: {severity: warning}
         annotations:
           summary: "Flux: {{ $labels.customresource_kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} sin Ready"
-          description: "Ready={{ $labels.ready }} hace 15 min: main no se está aplicando ahí. flux get all -A --status-selector ready=false"
+          description: "Sin Ready hace 15 min: main no se está aplicando ahí. flux get all -A --status-selector ready=false"
       - alert: FluxSuspendida
         expr: gotk_resource_info{suspended="true"} == 1
         for: 6h

@@ -2,6 +2,9 @@
 # El token sale de secret-flux-telegram.sops.yaml (copia de bot_token de secret-alertmanager-telegram); el chat va
 # en claro en spec.channel porque el Provider telegram no lo lee del secret (sin el token no sirve para nada).
 # Solo eventSeverity error: los info (cada reconciliación con cambios) serían ruido.
+# exclusionList: pasado el progressDeadlineSeconds el Deployment queda Failed y cada retryInterval (2 min) repite
+# «failed early due to stalled resources» con otra duración, que el rate limit no agrupa (fase 6: 8 de 10 avisos en
+# 21 min). El primer aviso (timeout de la health check) sí llega; lo que sigue trabado lo avisa FluxSinReconciliar.
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
@@ -22,6 +25,8 @@ spec:
   providerRef:
     name: telegram
   eventSeverity: error
+  exclusionList:
+    - "failed early due to stalled resources"
   eventSources:
     - kind: GitRepository
       name: "*"
