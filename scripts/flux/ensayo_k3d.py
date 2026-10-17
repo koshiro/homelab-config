@@ -16,8 +16,9 @@ de prod. Las Kustomizations quedan Ready igual (wait: false), pero ningún workl
 
 Diferencias con prod, solo en la Kustomization raíz del ensayo: sigue la rama R en vez de main, y sus spec.patches
 quitan el suspend de las hijas, ponen wait: false (salvo cert-manager, cnpg y el plugin, que sí corren y así prueban
-el dependsOn CRD → operador → Cluster) y sacan del render la fuente y la raíz de git (si no, Flux se reaplicaría
-gotk-sync.yaml y volvería a main).
+el dependsOn CRD → operador → Cluster), sacan del render la fuente y la raíz de git (si no, Flux se reaplicaría
+gotk-sync.yaml y volvería a main) y suspenden las Alert de flux-avisos: el notification-controller corre con los
+tokens reales y, sin eso, una falla del ensayo llegaría a Telegram y dejaría un check en rojo en el commit de main.
 Binarios: k3d y flux en el PATH o en ~/.cache/flux-plan/bin.
 """
 import argparse
@@ -118,6 +119,23 @@ PARCHES_RAIZ = """\
     metadata:
       name: flux-system
       namespace: flux-system
+- target:
+    group: kustomize.toolkit.fluxcd.io
+    kind: Kustomization
+    name: flux-avisos
+  patch: |
+    apiVersion: kustomize.toolkit.fluxcd.io/v1
+    kind: Kustomization
+    metadata:
+      name: flux-avisos
+    spec:
+      patches:
+        - target:
+            kind: Alert
+          patch: |
+            - op: add
+              path: /spec/suspend
+              value: true
 """
 
 
@@ -259,6 +277,9 @@ def estado(_):
     print("pods: " + ", ".join(f"{n}={len(v)}" for n, v in sorted(por_ns.items())))
     fuera = sorted(set(por_ns) - set(GUARDA_NS))
     print(f"pods fuera de la guarda: {fuera or 'ninguno'}")
+    alertas = json.loads(kubectl("get", "alerts.notification.toolkit.fluxcd.io", "-A", "-o", "json").stdout)["items"]
+    activas = [a["metadata"]["name"] for a in alertas if not a["spec"].get("suspend")]
+    print(f"Alert de Flux activas (avisarían a prod): {activas or 'ninguna'} de {len(alertas)}")
 
 
 def borrar(_):

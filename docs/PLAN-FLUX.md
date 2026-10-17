@@ -19,7 +19,7 @@ fase deja `kubectl apply -k` roto ni un estado a medias.
 - [x] Fase 3 — Flux instalado sin gestionar nada (2026-10-16)
 - [x] Fase 4 — Adopción (lote 1: webs y monitoreo · lote 2: media y apps · lote 3: infra y postgres) (2026-10-16)
 - [x] Fase 5 — Avisos (2026-10-16, PR #101)
-- [ ] Fase 6 — Prueba de fallas
+- [x] Fase 6 — Prueba de fallas (2026-10-16, PR #103–#108; ajuste del ruido de avisos pendiente de decisión)
 - [ ] Fase 7 — Prune y automerge
 - [ ] Fase 8 — Documentación y skill (adelantada el 2026-10-16: `AGENTS.md`, `DISENO-APPS`, `README`, `ARQUITECTURA`,
   `PENDIENTES`, READMEs de apps y las 3 skills ya describen Flux; falta `hl.py inventario` y repasar tras las fases 5–7)
@@ -408,6 +408,48 @@ URL inexistente (fuera de git, borrado al terminar) llegó a Telegram por el Ale
 5. **Reconstrucción:** un k3d nuevo desde `main` llega a `Ready` solo con los dos secretos.
 
 **Listo cuando:** las 5 pruebas dan el resultado esperado y queda registro de cada una (hora, aviso, captura del estado del commit).
+
+**Hecho (2026-10-16, horas GMT-3):**
+
+1. **Deriva** — `scale --replicas=0` a las 18:28:48 (sin suspend); Flux lo repuso en su pasada de 10 min a las 18:31:49
+   (`Deployment … configured`, 3 min 1 s) y el pod quedó Ready a las 18:32:03. Sin aviso: el evento es info (Telegram
+   solo recibe error) y GitHub lo descarta por no traer commit. El peor caso es el `interval` (10 min) de caída.
+2. **PR roto** — #103 con `replicas: uno` en noledigasanadie: `kubeconform` falla (18:29:54, `/spec/replicas: got
+   string, want null or integer`); `flate` y `secretos SOPS` pasan (flate renderiza, no valida schemas). Cerrado sin
+   merge y rama borrada.
+3. **Merge válido pero roto** — #105: flaresolverr `v3.5.2` → `v0.0.0-fase6-no-existe` (pasa el CI: el tag no se
+   valida). Elegida por no tener estado, PVC ni hostname público y ser `RollingUpdate` con 1 réplica (las webs son
+   `Recreate`). Merge `6a22d6b` a las 21:48:07; pod nuevo en ImagePullBackOff y el viejo (`s78xt`) Ready todo el tiempo,
+   con su endpoint `ready=true`. A las 21:53:37 (timeout de 5 min) aviso de Flux en Telegram y `flux/flaresolverr` =
+   `failure` («health check failed», 21:53:38) en `6a22d6b`; las otras 30 ks (con `flux-prueba-prune`) en `success` en el mismo commit.
+   `FluxSinReconciliar` en firing a las 22:14 → Alertmanager → Telegram. Revert #107, merge `f1c0370` a las 22:15:20:
+   `flux/flaresolverr` = `success` a las 22:15:51 y el commit en verde (estado combinado `success`).
+4. **Prune** — Kustomization desechable `flux-prueba-prune` (`prune: true`, `wait: false`, ns `flux-prueba`) en tres
+   PR: #104 crea ConfigMap y PVC (Pending, con `prune: disabled` de proteger-datos); #106 los saca de git → 21:47
+   `garbage collection completed: PersistentVolumeClaim/flux-prueba/prueba-prune skipped, ConfigMap/…/prueba-prune
+   deleted`; #108 saca la ks. La raíz no poda, así que la ks quedó viva hasta `kubectl delete ks` (22:16); su
+   finalizer se saltó el Namespace anotado, que se borró a mano con el PVC. Ninguna otra ks cambió `prune`.
+5. **Reconstrucción** — k3d nuevo desde `main` (`185beb8`) con solo los secrets `flux-system` y `sops-age`: 30/30
+   Ready en 2 min 22 s (18:35:43 → 18:38:05), HelmRelease cnpg Ready, 19/19 SOPS descifrados y ningún pod fuera de la
+   guarda. **Hueco encontrado en la guarda:** el notification-controller del ensayo corría `flux-avisos` con los tokens
+   reales (en la primera pasada despachó eventos info, que GitHub ignoró por ser idénticos a los de prod; un error
+   habría llegado a Telegram y dejado un check rojo en el commit de main). `ensayo_k3d.py` ahora suspende las Alert de
+   `flux-avisos` y `estado` lo verifica («Alert de Flux activas: ninguna de 2»; 0 eventos despachados).
+
+**Ruido medido (decisión pendiente, no se cambió nada):** la falla de la prueba 3 mandó 10 avisos de Flux en 21 min
+(21:53 → 22:14) más 1 de Alertmanager. Dos fases: mientras el Deployment progresa, un aviso por cada timeout de 5 min
+(21:53, 21:58); al pasar `progressDeadlineSeconds` (600 s) queda `Failed`, la health check falla al instante («failed
+early due to stalled resources») y hay un aviso por cada `retryInterval` de 2 min (8 entre 22:00 y 22:14, ~30/h). El
+rate limit del notification-controller no los agrupa porque el texto lleva la duración (`after 94.9ms`, `after
+238ms`…). La reconstrucción no generó ninguno. Además, `FluxSinReconciliar` reinicia su `for: 15m` cada vez que
+cambian los labels `ready` (Unknown ↔ False) o `revision` de `gotk_resource_info`: el pending de flaresolverr empezó
+a las 21:49 y se reinició a las 21:59, de modo que avisó a los 25 min y no a los 15.
+
+Propuesta: (a) en el Alert `telegram`, `exclusionList: ["failed early due to stalled resources"]` (en la prueba
+habría dejado 2 avisos de Flux en vez de 10; el seguimiento lo hace `FluxSinReconciliar`, agrupado y cada 12 h); (b)
+en la regla, `max by (customresource_kind, exported_namespace, name) (gotk_resource_info{ready!="True",
+suspended!="true"}) == 1`, para que el `for` no se reinicie. Alternativa a (a): `retryInterval: 10m` en todas las
+Kustomizations (~6 avisos/h, pero tarda más en recuperarse tras una falla pasajera).
 
 ### Fase 7 — Prune y automerge (~30 min + 1 sábado) · `feat/flux-prune-automerge`
 

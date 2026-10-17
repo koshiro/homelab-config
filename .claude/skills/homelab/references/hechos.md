@@ -190,3 +190,12 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   <dir con kubeconfig y config>:/cfg:ro registry.k8s.io/kube-state-metrics/kube-state-metrics:<ver> --kubeconfig=…`
   (solo lectura; borrar el kubeconfig copiado al terminar). Reglas de vmalert: `docker run … victoriametrics/vmalert:<ver>
   -rule=/r/alert-rules.yml -dryRun`. (2026-10-16)
+- `gh pr create --body "…"` con texto que la guarda lee como git (p. ej. «kubectl delete», `#104`) → rechazado →
+  `--body-file $CLAUDE_JOB_DIR/tmp/pr.md`. (2026-10-16)
+- `flux reconcile source git flux-system` → la guarda lo rechaza («source») → `flux reconcile ks <ks> --with-source`
+  (en background si la ks va a fallar: espera hasta el timeout). (2026-10-16)
+- Write/commit en otro worktree (`../x`) → rechazado aunque sea del mismo repo → `EnterWorktree path=<ruta>` antes
+  (se puede alternar; cada cambio deja el anterior sin escritura). (2026-10-16)
+- `FluxSinReconciliar` pending que «se reinicia»: `gotk_resource_info` lleva `ready` y `revision` como labels; una ks
+  que alterna Unknown ↔ False o un commit nuevo crean otra serie y el `for: 15m` vuelve a cero (fase 6, propuesta de
+  `max by` en PLAN-FLUX). (2026-10-16)

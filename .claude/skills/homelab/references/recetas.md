@@ -74,10 +74,11 @@ primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza po
 `ssh-keygen -q -t ed25519 -N "" -f ~/.cache/flux-plan/ensayo/deploy-key` → `gh repo deploy-key add …pub --title
 "flux-ensayo-k3d (temporal)"` → `$S instalar --rama <rama> --clave-git ~/.cache/flux-plan/ensayo/deploy-key` →
 `kubectl --kubeconfig ~/.cache/flux-plan/ensayo/kubeconfig wait ks --all -n flux-system --for=condition=Ready` (dos
-veces: la 1.ª sale con la raíz) → `$S estado` (ks, HelmRelease, 17 SOPS, pods fuera de la guarda) → `$S borrar` →
+veces: la 1.ª sale con la raíz) → `$S estado` (ks, HelmRelease, 19 SOPS, pods fuera de la guarda y «Alert de Flux
+activas: ninguna»: el ensayo suspende las Alert de flux-avisos, que llevan los tokens reales) → `$S borrar` →
 `gh repo deploy-key delete <id>` y borrar la clave. Probar sin cluster: `bash scripts/flux/flate.sh test` (render de
 todo como Flux, sin los suspend; `diff [ref]` para comparar), `$S render --rama <r>` y
-`flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 29/29 Ready en 134 s.)
+`flux build ks <ks> --path <dir> --kustomization-file <ks.yaml> --dry-run`. (2026-10-16: 30/30 Ready en 142 s.)
 `instalar --como-prod` deja las hijas suspendidas como en git: ensaya «Flux sin gestionar nada» (fase 3).
 
 ## Flux en prod (estado, deploy key, reinstalar)
@@ -105,6 +106,15 @@ app.kubernetes.io/part-of=flux` → secrets `flux-system` y `sops-age` → otra 
 `FluxSinReconciliar` en firing (vmalert → Alertmanager → Telegram) → `kubectl delete gitrepository <nombre> -n
 flux-system`. No usar una Kustomization rota: el Alert `github` dejaría un check en rojo en el commit de main.
 (2026-10-16)
+
+## Falla real de Flux en prod (prueba con merge, fase 6)
+App sin estado y `RollingUpdate` con 1 réplica (flaresolverr): tag inexistente → PR → **confirmación del usuario** →
+merge → `$F reconcile ks <ks> --with-source` en background (espera el timeout y sale con «context deadline
+exceeded») → vigilar con un script en `$CLAUDE_JOB_DIR/tmp` (Ready de la ks, pods, «dispatching event» del
+notification-controller, `$H alertas`). Qué esperar: aviso a los 5 min y check `flux/<ks>` en rojo; tras
+`progressDeadlineSeconds` (10 min) un aviso cada `retryInterval` (2 min); `FluxSinReconciliar` puede tardar más de
+15 min (ver trampa). Revert con `git revert -m 1 <merge>` en rama `fix/` → PR → merge → reconcile → `gh api
+repos/koshiro/homelab-config/commits/<sha>/statuses`. El pod viejo sigue sirviendo. (2026-10-16)
 
 ## Reiniciar el host pve (kernel, módulos)
 Revisar que no corran respaldos (`systemctl list-units 'syncoid*' 'restic*'`) y que las VMs/LXC tengan `onboot: 1` →
