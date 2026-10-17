@@ -11,8 +11,8 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   no una caída. (2026-10-13)
 - Pool `nvme` de pve (discos de las VMs 102–104 y `nvme/k8s/*`): **un solo disco** `nvme0n1` NXM-512 2242 desde el
   2026-10-17; `nvme1n1` NE-512 2280 salió del espejo por lento (113–389 ms por escritura en ráfagas, workers con
-  0,6–6,8 s). Es un KingSpec: ~120 GB de caché SLC y ~75 MB/s sostenidos; sin TRIM, 29 MB/s (`autotrim=off` en
-  `nvme`). Sigue en el host, vacío y con TRIM; reemplazo y destino en `docs/PENDIENTES.md` § 4f. `fio` instalado en
+  0,6–6,8 s). Es un KingSpec: ~120 GB de caché SLC y ~75 MB/s sostenidos; sin TRIM, 29 MB/s. `nvme` tiene
+  `autotrim=on` desde el 2026-10-17 (antes solo el TRIM mensual de Debian). Sigue en el host, vacío y con TRIM; reemplazo y destino en `docs/PENDIENTES.md` § 4f. `fio` instalado en
   pve; resultados crudos en `/root/nvme1-test/`. (2026-10-17)
 - kubectl local apunta a `k3s-node-0:6443`; no hace falta ssh para kubectl. GPU RTX 3070 solo en node-1.
 - k3s v1.35.9+k3s1 en los 4 nodos (etcd 3.6.14, containerd 2.2.7, Traefik 3.7.13; todos cgroup v2). La unidad `k3s`

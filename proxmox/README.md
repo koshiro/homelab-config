@@ -127,6 +127,9 @@ MB/s con p99 de 0,8 ms, pero un llenado de 1M QD8 rinde 1260 MB/s solo durante *
 en la fase rápida y bajó a 75 °C cuando cayó la velocidad), APST (escrituras esporádicas iguales con y sin APST,
 p99 ~15 ms) y la ranura (Gen3 x4, sin AER). Conclusión: la NAND, sin DRAM y casi llena sin TRIM, no da abasto con las
 escrituras de los txg de ZFS. Los umbrales térmicos que declara el firmware (110/255 °C) no son reales.
+**`autotrim=on` en `nvme` desde el 2026-10-17** (antes solo el TRIM mensual del cron `zfsutils-linux`, que sigue
+activo): los SSD sin DRAM pierden la caché SLC si no se les avisa del espacio libre. El disco que se agregue al
+espejo hereda la propiedad.
 Mientras no haya reemplazo, **los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica
 nocturna de syncoid a `respaldo` y restic a R2. Volver a espejo: `zpool attach nvme nvme-NXM-512_2242_0007134003512
 /dev/disk/by-id/nvme-<nuevo>` (resilver de ~192 GB) y después `zpool scrub nvme`.
