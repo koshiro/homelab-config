@@ -8,7 +8,7 @@ Configuración de un homelab en Proxmox + k3s: VMs con Ansible, manifiestos de K
 
 | Componente | Detalle |
 |---|---|
-| **Proxmox** | `192.168.1.100` · 64 GB de RAM · pool ZFS `nvme` (mirror 2×512 GB) para discos de VMs. Presupuesto de RAM y cómo reiniciar una VM del cluster: [proxmox/README.md](proxmox/README.md) |
+| **Proxmox** | `192.168.1.100` · 64 GB de RAM · pool ZFS `nvme` (512 GB, un solo disco desde 2026-10-17 hasta reponer el espejo) para discos de VMs. Presupuesto de RAM y cómo reiniciar una VM del cluster: [proxmox/README.md](proxmox/README.md) |
 | **k3s** v1.35 | Master `pibot` (Raspberry Pi, `192.168.1.15`, sin taints) + workers `k3s-node-1/2/3` (VMs 102–104, `192.168.1.131–133`, 24/8/12 GB, `cpu: host`) |
 | **GPU** | NVIDIA RTX 3070 en `k3s-node-1` (VM 102), `runtimeClassName: nvidia` |
 | **Almacenamiento** | ZFS en el host Proxmox: `nvme` (datos de apps en `nvme/k8s/<app>`), `respaldo` (réplica), `homelab-storage` 12 TB (un disco, sin redundancia: `media` RAW, `k8s-media-library`, `comfyui`, `timemachine`). NFS desde `192.168.1.100`; SMB/Time Machine en el LXC 110 `nas`. Detalle: [proxmox/README.md](proxmox/README.md) |

@@ -6,7 +6,7 @@ Versión: 2026-10-01 · Estado: **propuesta** (fase 0 en curso, esperando cables
 
 1. **Se retira TrueNAS.** Proxmox gestiona ZFS, NFS y snapshots directamente. La VM 101 fue el punto que se colgó y duplica funciones que el host ya tiene (ZFS, sanoid, NFS, Tailscale).
 2. **El disco de 12 TB se sigue usando** (SMART limpio; el problema era cable/puerto/NCQ), pero como **capa masiva y destino de respaldo**, no como única copia de datos irremplazables.
-3. **Datos de apps en el NVMe** (mirror), con snapshots y réplica en otros discos.
+3. **Datos de apps en el NVMe** (mirror; un solo disco desde 2026-10-17 hasta reemplazar `nvme1n1`, `PENDIENTES.md` § 4f), con snapshots y réplica en otros discos.
 4. **Las fotos RAW ya tienen copia externa**; aquí solo se necesita acceso para seguir respaldándolas.
 5. **Time Machine** sigue disponible por SMB, en LAN y tailnet.
 6. **No se rescatan más datos**: media de *arr es reemplazable y queda en el disco de 12 TB.
@@ -18,7 +18,7 @@ flowchart TB
   subgraph PVE["Proxmox pve · i7-7700 · 62 GB · 192.168.1.100 · tailnet: pve"]
     direction TB
     subgraph POOLS["ZFS en el host"]
-      NVME["nvme · mirror 2×512 GB<br/>discos VM + nvme/k8s/*"]
+      NVME["nvme · 1×512 GB (mirror pendiente)<br/>discos VM + nvme/k8s/*"]
       BULK["homelab-storage · 12 TB<br/>media, *arr, Time Machine, respaldos"]
       RESP["respaldo · 3 TB (WD30EZRX)<br/>2ª copia de nvme/k8s"]
     end
@@ -48,7 +48,7 @@ flowchart TB
 
 | Pool | Discos | Uso | Notas |
 |---|---|---|---|
-| `nvme` | 2 × NVMe 512 GB, mirror | Discos de VMs, `nvme/k8s/<app>` (Immich, Minecraft, Pingvin, futuras apps con datos de valor) | ~260 GB libres (zvols de TrueNAS borrados 2026-10-10) |
+| `nvme` | 1 × NVMe 512 GB (mirror sin su segundo disco desde 2026-10-17, § 4f de `PENDIENTES.md`) | Discos de VMs, `nvme/k8s/<app>` (Immich, Minecraft, Pingvin, futuras apps con datos de valor) | ~260 GB libres (zvols de TrueNAS borrados 2026-10-10) |
 | `homelab-storage` | Seagate 12 TB (único) | `k8s-media-library` (6.2 TB), `media` (1.7 TB, RAW), `timemachine`, `comfyui`, `backup/` (réplicas y vzdump) | Sin redundancia → solo datos reemplazables o copias. Montaje en `/mnt/homelab-storage` para no cambiar rutas de los PV |
 | `respaldo` | WD 3 TB (WD30EZRX, SATA6G_6) | Réplica de `nvme/k8s` y de dumps de Postgres | Disco viejo (1 sector reasignado): es *copia*, nunca original |
 | — | WD 2 TB (WD20EURS, SATA6G_5, enlace SATA II 3 Gbps) | **Retirar** del pool (SLOG en HDD no aporta; 89 000 h) | Opcional: tercer destino frío |

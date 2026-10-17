@@ -109,10 +109,19 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 | Disco | Uso |
 |---|---|
 | `sda` SSD SATA GIGABYTE 240 GB | Arranque: `sda1-3` (BIOS, EFI, LVM `pve` de 112 GB). `sda4` (32 GiB, etiqueta `zfs-slog-homelab`): SLOG de `homelab-storage`. Quedan ~78 GiB sin particionar. Respaldo de la GPT previa: `/root/sda-gpt-backup-20261010.bin` |
-| `nvme0n1` + `nvme1n1` (512 GB) | Pool `nvme` (espejo, raíz) |
+| `nvme0n1` NXM-512 2242 (512 GB, MAXIO MAP1202 sin DRAM) | Pool `nvme` (raíz, **un solo disco desde 2026-10-17**) |
+| `nvme1n1` NE-512 2280 (512 GB, INNOGRIT IG5216 sin DRAM) | **Fuera de uso** (sacado del espejo `nvme` el 2026-10-17); reemplazo y destino en `docs/PENDIENTES.md` § 4f |
 | `sdb` Seagate 12 TB | Pool `homelab-storage` (un solo disco) |
 | `sde` WD 3 TB | Pool `respaldo` (réplica syncoid) |
 | `sdc` WD 1 TB (2,5") + `sdd` WD 2 TB (~10 años de uso) | Pool `scratch` (stripe, 2,6 TB, sin redundancia ni snapshots). `scratch/qbittorrent` (`recordsize=16K`, `sync=disabled`): descargas incompletas de qBittorrent vía NFS. Si muere un disco: recrear el pool y volver a descargar |
+
+**`nvme` sin espejo (2026-10-17)**: `nvme1n1` escribía con 113–389 ms de latencia en ráfagas de 4–7 min (31 ms en
+calma) contra 1–3 ms de `nvme0n1`, con el mismo enlace PCIe Gen3 x4, sin errores AER y SMART sano (13 % de desgaste,
+0 errores; controlador a 81–91 °C). Un espejo escribe al ritmo del disco más lento: los tres workers llegaban a
+50–85 % de iowait y Grafana daba `SQLITE_BUSY`. Se sacó con `zpool detach nvme nvme-NE-512_2280_9C50506007658`.
+Mientras no haya reemplazo, **los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica
+nocturna de syncoid a `respaldo` y restic a R2. Volver a espejo: `zpool attach nvme nvme-NXM-512_2242_0007134003512
+/dev/disk/by-id/nvme-<nuevo>` (resilver de ~192 GB) y después `zpool scrub nvme`.
 
 **SLOG (2026-10-10)**: el export NFS es `sync` y cada COMMIT esperaba al ZIL en el mismo HDD de 12 TB (COMMIT ~1,2 s, WRITE ~91 ms en el cliente). Con el ZIL en `sda4` bajó a ~200 ms y ~20 ms. Es un SSD de consumo sin PLP y sin espejo: si falla solo, ZFS sigue sin él; se pierden datos únicamente si falla junto con una caída del host. Quitarlo: `zpool remove homelab-storage <id>-part4`.
 

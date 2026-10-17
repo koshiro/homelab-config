@@ -163,6 +163,31 @@ en `config.txt`).
   `pibot/boot/config.txt`, reiniciar y correr `pibot/vtest.sh` (~11 min). Aceptar solo con 0 muestras con bajo voltaje
   en la fase de carga; si no, volver a 1500.
 
+## 4f. Pool `nvme` sin espejo: reemplazar `nvme1n1` (2026-10-17)
+
+`nvme1n1` (NE-512 2280, INNOGRIT IG5216 sin DRAM) frenaba todo el pool: 113–389 ms por escritura en ráfagas de 4–7 min
+contra 1–3 ms de `nvme0n1`. Se sacó del espejo el 2026-10-17 09:06 (detalle y cómo volver a espejo en
+`proxmox/README.md` § Discos y pools). Hasta reemplazarlo, los discos de las VMs y `nvme/k8s/*` dependen de la
+réplica nocturna a `respaldo` y de restic a R2: una falla de `nvme0n1` pierde hasta un día de datos y deja el cluster
+sin workers.
+- [ ] **Comprar el reemplazo.** M.2 **2280** (es la ranura que queda libre), NVMe ≥512 GB, **con DRAM** y TLC (p. ej.
+  Samsung 970 EVO Plus, WD Red SN700, Kingston KC3000). La ranura negocia PCIe Gen3 x4, así que un Gen4 no rinde más.
+  Disipador si no lo trae: el actual llegaba a 91 °C en el controlador.
+- [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
+  `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
+  los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
+- [ ] Más adelante: `nvme0n1` también es sin DRAM (MAXIO MAP1202) y registra 2398 transiciones de estrangulamiento
+  térmico. Si el disco nuevo rinde mucho mejor, cambiar este también por uno igual.
+- [ ] **Decidir qué hacer con `nvme1n1`.** El SMART está sano (13 % de desgaste, 0 errores de medio): sirve donde
+  importa poco la latencia con escrituras sostenidas. Antes de elegir, `zpool labelclear -f /dev/nvme1n1p1` y una
+  prueba aislada (`fio` con escritura aleatoria de 4K y `--fsync=1`, 10 min) para confirmar que el disco es lento por
+  sí mismo. Opciones, de más a menos útil:
+  1. **Copia fría fuera de línea**: en un gabinete USB, una tercera copia de `respaldo/k8s` que se conecta una vez al
+     mes (protege contra un borrado o un ransomware que alcance a `respaldo` y a R2).
+  2. **Reemplazar a `sdd` en `scratch`** (WD 2 TB con sectores pendientes, § 5): descargas incompletas de qBittorrent
+     con `sync=disabled`, datos reemplazables. Baja `scratch` de 2,6 TB a ~1,4 TB.
+  3. Disco de uso general en un PC o laptop, fuera del homelab.
+
 ## 5. Monitoreo — VictoriaMetrics + Grafana
 
 Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-stack. Usa PromQL y los mismos exporters y dashboards, pero ocupa ~5–10× menos RAM y disco (~0,5 GB en total contra 1,5–2,5 GB), no necesita operador, CRDs ni Helm. Desde 2026-10-16 lo aplica Flux (Kustomization `monitoring`, sin HelmRelease).

@@ -201,6 +201,48 @@ def cmd_alertas(a):
         print(f"{x['state']:8} {x['name']} desde {x.get('activeAt', '?')} [{extra}]")
 
 
+def promql(q, t=None):
+    """Consulta instantánea a VictoriaMetrics por el proxy del apiserver; devuelve [(labels, valor)]."""
+    qs = urllib.parse.urlencode({"query": q, **({"time": t} if t else {})})
+    r = json.loads(sh(["kubectl", "get", "--raw", f"/api/v1/namespaces/monitoring/services/victoria-metrics:8428/proxy/api/v1/query?{qs}",
+                       "--request-timeout=30s"], reintentos=1))["data"]["result"]
+    return [(x["metric"], float(x["value"][1])) for x in r]
+
+
+def cmd_io(a):
+    """Máximo de los últimos --ventana (o hasta --en, ISO UTC) por disco y por nodo: latencia, uso, iowait y PSI io."""
+    v, dev = a.ventana, 'device!~"dm-.*|loop.*|sr.*|zd.*"'
+    def mx(expr):
+        return f"max_over_time(({expr})[{v}:30s])"
+    disco = {
+        "esc_ms": f"rate(node_disk_write_time_seconds_total{{{dev}}}[1m]) / rate(node_disk_writes_completed_total{{{dev}}}[1m]) * 1000",
+        "lec_ms": f"rate(node_disk_read_time_seconds_total{{{dev}}}[1m]) / rate(node_disk_reads_completed_total{{{dev}}}[1m]) * 1000",
+        "uso%": f"rate(node_disk_io_time_seconds_total{{{dev}}}[1m]) * 100",
+        "esc_MB/s": f"rate(node_disk_written_bytes_total{{{dev}}}[1m]) / 1e6",
+    }
+    nodo = {
+        "iowait%": 'sum by (instance) (rate(node_cpu_seconds_total{mode="iowait"}[1m])) / count by (instance) (node_cpu_seconds_total{mode="idle"}) * 100',
+        "psi_io_full%": "rate(node_pressure_io_stalled_seconds_total[1m]) * 100",
+    }
+    filas = {}
+    for col, e in disco.items():
+        for m, val in promql(mx(e), a.en):
+            filas.setdefault(f"{m.get('instance', '?')}/{m.get('device', '?')}", {})[col] = val
+    print(f"discos (máx. {v}{' hasta ' + a.en if a.en else ''}); esc_ms > 50 con poco MB/s = disco lento")
+    for k in sorted(filas, key=lambda k: -filas[k].get("esc_ms", 0)):
+        f = filas[k]
+        if f.get("uso%", 0) < 1 and f.get("esc_MB/s", 0) < 0.1:
+            continue
+        print(f"  {k:24} " + " ".join(f"{c}={f[c]:.0f}" for c in disco if c in f))
+    filas = {}
+    for col, e in nodo.items():
+        for m, val in promql(mx(e), a.en):
+            filas.setdefault(m.get("instance", "?"), {})[col] = val
+    print("nodos")
+    for k in sorted(filas):
+        print(f"  {k:24} " + " ".join(f"{c}={filas[k][c]:.0f}" for c in nodo if c in filas[k]))
+
+
 def cmd_sops(a):
     env = {**os.environ, "SOPS_AGE_KEY_FILE": str(AGE_KEY)}
     # Sin «apply»: desde 2026-10-16 Flux descifra y aplica los *.sops.* (Component solo-flux) al mergear.
@@ -400,6 +442,8 @@ def main():
     s.add_argument("ns"); s.add_argument("name"); s.add_argument("--kind", default="deploy"); s.add_argument("--timeout", default="5m")
     sp.add_parser("flux", help="fuente vs SHA de main, Kustomizations activas (Ready y revisión), suspendidas, HelmReleases y nodo de cada pod")
     sp.add_parser("alertas", help="alertas activas de vmalert (pending/firing), una por línea; horas en UTC")
+    s = sp.add_parser("io", help="latencia/uso por disco e iowait/PSI por nodo (máximo de --ventana); --en 2026-10-17T01:36:00Z para mirar una ráfaga pasada")
+    s.add_argument("--en"); s.add_argument("--ventana", default="10m")
     s = sp.add_parser("sops", help="keys|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto (aplicar = merge; lo hace Flux)")
     s.add_argument("accion", choices=["keys", "encrypt"]); s.add_argument("archivo")
     s = sp.add_parser("ssh", help="ssh <pibot|pve|node-1..3> <comando>: LAN y si no, tailnet")
