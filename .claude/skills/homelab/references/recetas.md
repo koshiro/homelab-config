@@ -137,3 +137,5 @@ Apagar: siempre `playbook_graceful_shutdown_cluster.yml`, nunca `poweroff --forc
 3. Zvol → VM: `$H ssh pve "ls -l /dev/zvol/nvme/"` (`zdNN`); por VM: `pve_disk_read_bytes`/`pve_disk_written_bytes`.
 4. Descartar la ranura: `lspci -vv` (`LnkSta` igual a `LnkCap`) y `journalctl -k | grep -i aer`; SMART con `smartctl -a`.
 5. Así se encontró `nvme1n1` (2026-10-17, `proxmox/README.md` § Discos y pools).
+6. Para saber por qué un SSD es lento (caché, TRIM, temperatura, APST): sacarlo de uso y correr
+   `scripts/ssd/prueba.sh <by-id> --destruir` en el host con nohup (~60 min; uso en su cabecera) y `scripts/ssd/analiza.py`.

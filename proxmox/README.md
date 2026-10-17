@@ -119,6 +119,14 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 calma) contra 1–3 ms de `nvme0n1`, con el mismo enlace PCIe Gen3 x4, sin errores AER y SMART sano (13 % de desgaste,
 0 errores; controlador a 81–91 °C). Un espejo escribe al ritmo del disco más lento: los tres workers llegaban a
 50–85 % de iowait y Grafana daba `SQLITE_BUSY`. Se sacó con `zpool detach nvme nvme-NE-512_2280_9C50506007658`.
+**Prueba aislada (2026-10-17, `scripts/ssd/prueba.sh`, 60 min)**: el disco es un **KingSpec NE-512** (ficha: 3D TLC,
+hasta 2400/1700 MB/s). Tal como salió del pool (sin TRIM desde el 4-oct, `autotrim=off`), escritura secuencial 128K
+QD4 a **29 MB/s con p99 de 169 ms** y fsync con media de 4,6 ms y p99 de 45 ms. Tras `blkdiscard`, lo mismo da 1250
+MB/s con p99 de 0,8 ms, pero un llenado de 1M QD8 rinde 1260 MB/s solo durante **~120 GB de caché SLC** y después
+**~75 MB/s sostenidos** (316 GB en 45 min). Descartados: temperatura (composite estable en 53 °C; el sensor 1 marcó 91 °C
+en la fase rápida y bajó a 75 °C cuando cayó la velocidad), APST (escrituras esporádicas iguales con y sin APST,
+p99 ~15 ms) y la ranura (Gen3 x4, sin AER). Conclusión: la NAND, sin DRAM y casi llena sin TRIM, no da abasto con las
+escrituras de los txg de ZFS. Los umbrales térmicos que declara el firmware (110/255 °C) no son reales.
 Mientras no haya reemplazo, **los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica
 nocturna de syncoid a `respaldo` y restic a R2. Volver a espejo: `zpool attach nvme nvme-NXM-512_2242_0007134003512
 /dev/disk/by-id/nvme-<nuevo>` (resilver de ~192 GB) y después `zpool scrub nvme`.

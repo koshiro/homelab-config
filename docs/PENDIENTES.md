@@ -165,28 +165,35 @@ en `config.txt`).
 
 ## 4f. Pool `nvme` sin espejo: reemplazar `nvme1n1` (2026-10-17)
 
-`nvme1n1` (NE-512 2280, INNOGRIT IG5216 sin DRAM) frenaba todo el pool: 113–389 ms por escritura en ráfagas de 4–7 min
-contra 1–3 ms de `nvme0n1`. Se sacó del espejo el 2026-10-17 09:06 (detalle y cómo volver a espejo en
-`proxmox/README.md` § Discos y pools). Hasta reemplazarlo, los discos de las VMs y `nvme/k8s/*` dependen de la
+`nvme1n1` (KingSpec NE-512 2280, INNOGRIT IG5216 sin DRAM) frenaba todo el pool: 113–389 ms por escritura en ráfagas
+de 4–7 min contra 1–3 ms de `nvme0n1`. Se sacó del espejo el 2026-10-17 09:06. La prueba del mismo día
+(`scripts/ssd/prueba.sh`) mostró que **la causa es la caché SLC con una NAND muy lenta debajo, más la falta de TRIM**;
+no la temperatura, APST ni la ranura (detalle, cifras y cómo volver a espejo en `proxmox/README.md` § Discos y pools). Hasta reemplazarlo, los discos de las VMs y `nvme/k8s/*` dependen de la
 réplica nocturna a `respaldo` y de restic a R2: una falla de `nvme0n1` pierde hasta un día de datos y deja el cluster
 sin workers.
 - [ ] **Comprar el reemplazo.** M.2 **2280** (es la ranura que queda libre), NVMe ≥512 GB, **con DRAM** y TLC (p. ej.
-  Samsung 970 EVO Plus, WD Red SN700, Kingston KC3000). La ranura negocia PCIe Gen3 x4, así que un Gen4 no rinde más.
-  Disipador si no lo trae: el actual llegaba a 91 °C en el controlador.
+  Samsung 970 EVO Plus, WD Red SN700, Kingston KC3000). La cifra que importa es la **escritura sostenida tras la caché**
+  (buscarla en reseñas, no en la ficha): ≥500 MB/s; el NE-512 da ~75 MB/s y su ficha dice 1700–1800. La ranura negocia
+  PCIe Gen3 x4, así que un Gen4 no rinde más. Al instalarlo, correr `scripts/ssd/prueba.sh` antes del `zpool attach`.
+- [ ] **TRIM del pool `nvme`**: `autotrim=off` y solo el TRIM mensual de Debian (primer domingo; el último, 2026-10-04).
+  Sin TRIM, el NE-512 escribía 128K a 29 MB/s con p99 de 169 ms; tras TRIM, a 1250 MB/s con p99 de 0,8 ms. `nvme0n1`
+  también es sin DRAM: proponer `zpool set autotrim=on nvme` (o un `zpool trim` semanal) y medir con `hl.py io`.
 - [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
   `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
 - [ ] Más adelante: `nvme0n1` también es sin DRAM (MAXIO MAP1202) y registra 2398 transiciones de estrangulamiento
   térmico. Si el disco nuevo rinde mucho mejor, cambiar este también por uno igual.
-- [ ] **Decidir qué hacer con `nvme1n1`.** El SMART está sano (13 % de desgaste, 0 errores de medio): sirve donde
-  importa poco la latencia con escrituras sostenidas. Antes de elegir, `zpool labelclear -f /dev/nvme1n1p1` y una
-  prueba aislada (`fio` con escritura aleatoria de 4K y `--fsync=1`, 10 min) para confirmar que el disco es lento por
-  sí mismo. Opciones, de más a menos útil:
+- [ ] **Decidir qué hacer con `nvme1n1`.** Probado el 2026-10-17: SMART sano (13 % de desgaste, 0 errores de medio),
+  lectura buena (4300 IOPS 4K QD1, 0,2 ms) y ~120 GB de caché SLC a 1260 MB/s tras un TRIM; después cae a ~75 MB/s
+  sostenidos (rendimiento típico de QLC aunque la ficha dice TLC). Quedó vacío y con TRIM completo. No sirve para
+  discos de VMs, SLOG ni L2ARC. Opciones, de más a menos útil:
   1. **Copia fría fuera de línea**: en un gabinete USB, una tercera copia de `respaldo/k8s` que se conecta una vez al
-     mes (protege contra un borrado o un ransomware que alcance a `respaldo` y a R2).
+     mes (protege contra un borrado o un ransomware que alcance a `respaldo` y a R2). Escribe a ráfagas y descansa
+     entre copias, que es justo lo que este disco hace bien mientras la copia incremental quepa en la caché.
   2. **Reemplazar a `sdd` en `scratch`** (WD 2 TB con sectores pendientes, § 5): descargas incompletas de qBittorrent
-     con `sync=disabled`, datos reemplazables. Baja `scratch` de 2,6 TB a ~1,4 TB.
-  3. Disco de uso general en un PC o laptop, fuera del homelab.
+     con `sync=disabled` y `autotrim=on`. Ojo: node-1 llega a bajar a ~95 MB/s, más que los 75 MB/s sostenidos; sirve
+     si las descargas grandes caben en la caché. Baja `scratch` de 2,6 TB a ~1,4 TB.
+  3. Disco de uso general en un PC (biblioteca de juegos, lectura): ahí la escritura sostenida casi no importa.
 
 ## 5. Monitoreo — VictoriaMetrics + Grafana
 
