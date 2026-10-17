@@ -192,6 +192,24 @@ spec:
     secretRef:
       name: sops-age
 ---
+# Prueba 4 de la fase 6 (docs/PLAN-FLUX.md): prune en una Kustomization desechable. Temporal.
+# wait: false porque el PVC de prueba queda Pending (local-path espera un pod que lo use).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-prueba-prune
+  namespace: flux-system
+spec:
+  path: ./cluster/flux/prueba-prune
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: false
+  prune: true
+---
 # Escribe CronJobs en el namespace de cada app: sin dependsOn para que una app caída no frene los respaldos;
 # si falta un namespace (cluster nuevo), falla y reintenta cada retryInterval hasta que exista.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
