@@ -89,6 +89,14 @@ descargas/streams: avisar antes.
 `$M status` + `$M prefs` primero; históricamente la causa fue la cola de qBittorrent, no el NFS. NFS/ZFS del host:
 `proxmox/README.md`.
 
+## Plex no transcodifica, va a tirones o el log repite «Error creating directory»
+1. `$M transcode`: con reproducciones activas no corre. Esperado: hw dec `nvdec`, enc `nvenc`, pipeline completo, ≥5×
+   y segmentos de ~2 MB en disco.
+2. Sin `nvdec`/`nvenc`, o con `NVML: Unknown Error`: es la GPU caída tras un `daemon-reload` en node-1. Ver la memoria
+   *GPU se cae tras daemon-reload*: reiniciar el device-plugin y luego Plex.
+3. Con `TranscoderTempDirectory` no vacío y errores recientes: vaciarlo por la API (ver hechos.md) y volver a correr el
+   paso 1.
+
 ## qBittorrent no arranca / pod pegado
 `kubectl describe pod -n qbittorrent -l app=qbittorrent` y `kubectl logs -n qbittorrent deploy/qbittorrent -c
 setup-qbittorrent-unified`. Recreate + hostPort 6881: nunca dos réplicas.

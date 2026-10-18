@@ -67,12 +67,18 @@ curl -sS -G -H "Accept: application/json" -w "\n%{http_code}" "$U" --data-urlenc
 PLEX_SERIES = 2  # sección "Programas de TV"; Plex monta /data/media como /media
 
 
-def plex(api, **params):
-    """API de Plex desde su pod (token de Preferences.xml); params van como query."""
+def plex_raw(api, **params):
+    """(código HTTP, cuerpo en texto) de la API de Plex; para respuestas que no son JSON (m3u8)."""
     extra = [x for k, v in params.items() for x in ("--data-urlencode", f"{k}={v}")]
     out = sh(["kubectl", "exec", "-n", "plex", "deploy/plex", "-c", "plex", "--", "sh", "-c", PLEX_SH, "_",
               api.lstrip("/"), *extra], reintentos=2)
     txt, _, code = out.rpartition("\n")
+    return code, txt
+
+
+def plex(api, **params):
+    """API de Plex desde su pod (token de Preferences.xml); params van como query."""
+    code, txt = plex_raw(api, **params)
     if not code.startswith("2"):
         sys.exit(f"ERROR plex {api}: HTTP {code} {txt[:300]}")
     return json.loads(txt)["MediaContainer"] if txt.strip() else None
@@ -436,6 +442,57 @@ def c_plex(a):
             print(f"  T{n:<2} plex {t['leafCount']:>3}  sonarr {son.get(n, '-'):>3}  {t['title']}")
 
 
+PLEX_DIR = "/config/Library/Application Support/Plex Media Server"
+
+
+def c_transcode(a):
+    """Prueba de transcoding: HLS forzado de una película, segmentos en disco, nvdec/nvenc y velocidad.
+    También revisa TranscoderTempDirectory (una ruta relativa rompe las tareas de fondo) y los errores del log."""
+    if plex("status/sessions").get("size"):
+        sys.exit("hay reproducciones activas: no pruebo para no competir por la GPU")
+    sec = next(d["key"] for d in plex("library/sections")["Directory"] if d["type"] == "movie")
+    pelis = plex(f"library/sections/{sec}/all", **{"X-Plex-Container-Size": 200, "X-Plex-Container-Start": 0})
+    item = next((m for m in pelis.get("Metadata", []) if m.get("Media") and re.search(a.titulo, m["title"], re.I)
+                 and m["Media"][0].get("videoCodec") in ("hevc", "h264")), None)
+    if not item:
+        sys.exit(f"sin película h264/hevc que calce con {a.titulo!r}")
+    m = item["Media"][0]
+    print(f"{cut(item['title'], 50)}: {m.get('videoCodec')} {m.get('videoResolution')} {m.get('bitrate')} kbps "
+          f"→ h264 {a.res} {a.kbps} kbps")
+    S = "prueba-transcode"
+    P = {"path": f"/library/metadata/{item['ratingKey']}", "mediaIndex": 0, "partIndex": 0, "protocol": "hls",
+         "directPlay": 0, "directStream": 0, "videoResolution": a.res, "maxVideoBitrate": a.kbps, "offset": 600,
+         "session": S, "X-Plex-Session-Identifier": S, "X-Plex-Client-Identifier": S, "X-Plex-Product": "Plex Web",
+         "X-Plex-Platform": "Chrome", "X-Plex-Device": "Linux"}
+    try:
+        code, txt = plex_raw("video/:/transcode/universal/start.m3u8", **P)
+        if code != "200":
+            sys.exit(f"start.m3u8 HTTP {code}: {txt[:200]}")
+        sub = next((l for l in txt.splitlines() if l and not l.startswith("#")), "")
+        plex_raw("video/:/transcode/universal/" + sub.split("?")[0])  # el transcoder arranca al pedir el índice
+        time.sleep(a.segundos)
+        tx = (plex("transcode/sessions").get("TranscodeSession") or [{}])[0]
+        # `speed` queda en 0 sin un cliente que consuma; el video listo / tiempo de espera es la velocidad real
+        vel = (tx.get("maxOffsetAvailable", 0) - tx.get("minOffsetAvailable", 0)) / a.segundos
+        print(f"  video {tx.get('videoDecision')} {tx.get('sourceVideoCodec')}→{tx.get('videoCodec')}  "
+              f"audio {tx.get('audioDecision')}  subtítulos {tx.get('subtitleDecision', '-')}  "
+              f"hw dec {tx.get('transcodeHwDecoding') or 'no'} enc {tx.get('transcodeHwEncoding') or 'no'} "
+              f"pipeline completo {tx.get('transcodeHwFullPipeline')}  velocidad ≈{vel:.1f}x")
+        segs = sh(["kubectl", "exec", "-n", "plex", "deploy/plex", "-c", "plex", "--", "sh", "-c",
+                   f'find "{PLEX_DIR}/Cache/Transcode/Sessions" "$TMPDIR" -path "*plex-transcode-{S}*" -name "*.ts" '
+                   "-exec stat -c %s {} + 2>/dev/null"], check=False).split()
+        mb = sorted(int(s) / 1e6 for s in segs)
+        print(f"  segmentos en disco: {len(mb)}" + (f", {mb[0]:.1f}–{mb[-1]:.1f} MB" if mb else " (falló)"))
+    finally:
+        plex_raw("video/:/transcode/universal/stop", session=S)
+    pref = sh(["kubectl", "exec", "-n", "plex", "deploy/plex", "-c", "plex", "--", "sh", "-c",
+               f'grep -o "TranscoderTempDirectory=\\"[^\\"]*\\"" "{PLEX_DIR}/Preferences.xml"; '
+               f'grep -h "Error creating directory" "{PLEX_DIR}/Logs/"*.log | sort | tail -1 | cut -c1-24'],
+              check=False).split("\n")
+    print(f"  {pref[0] or 'TranscoderTempDirectory sin definir'} (vacío = por defecto; relativa = error)  "
+          f"último «Error creating directory»: {pref[1] if len(pref) > 1 and pref[1] else 'ninguno'}")
+
+
 def c_wait_search(a):
     """Espera a que terminen los comandos de búsqueda de Sonarr/Radarr."""
     fin = time.time() + a.timeout
@@ -784,6 +841,11 @@ def main():
     x = s.add_parser("plex", help="temporadas que Plex ve de una serie vs archivos en Sonarr (--scan reescanea)")
     x.add_argument("series", help="regex de la serie"); x.add_argument("--scan", action="store_true")
     x.set_defaults(f=c_plex)
+    x = s.add_parser("transcode", help="prueba de transcoding de Plex (GPU, segmentos, carpeta temporal, errores)")
+    x.add_argument("--titulo", default=".", help="regex de la película (por defecto la primera h264/hevc)")
+    x.add_argument("--res", default="1280x720"); x.add_argument("--kbps", type=int, default=2000)
+    x.add_argument("--segundos", type=int, default=8, help="espera antes de medir")
+    x.set_defaults(f=c_transcode)
     x = s.add_parser("wait-search", help="esperar a que terminen las búsquedas de los *arr")
     x.add_argument("--timeout", type=int, default=540); x.set_defaults(f=c_wait_search)
     x = s.add_parser("grabs", help="releases tomados en los últimos N min, por indexer")
