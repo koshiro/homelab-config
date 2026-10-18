@@ -1,0 +1,17 @@
+[Unit]
+Description=Replica horaria nvme -> replica (nvme1n1, syncoid)
+After=zfs-import.target
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+# mbuffer avisa en cada dataset si no hay HOME
+Environment=HOME=/root
+ExecStart=/usr/sbin/syncoid --recursive --skip-parent --no-sync-snap --no-privilege-elevation --exclude=nvme/k8s/victoria-metrics nvme/k8s replica/k8s
+ExecStart=/usr/sbin/syncoid --no-sync-snap --no-privilege-elevation nvme/vm-102-disk-0 replica/vm-102-disk-0
+ExecStart=/usr/sbin/syncoid --no-sync-snap --no-privilege-elevation nvme/vm-103-disk-0 replica/vm-103-disk-0
+ExecStart=/usr/sbin/syncoid --no-sync-snap --no-privilege-elevation nvme/vm-104-disk-0 replica/vm-104-disk-0
+ExecStart=/usr/sbin/syncoid --no-sync-snap --no-privilege-elevation nvme/subvol-110-disk-0 replica/subvol-110-disk-0
+# Sin estas configs (viven en pmxcfs, sobre sda) los zvols replicados no arrancan solos
+ExecStart=/usr/bin/rsync -a /etc/pve/qemu-server/102.conf /etc/pve/qemu-server/103.conf \
+  /etc/pve/qemu-server/104.conf /etc/pve/lxc/110.conf /replica/pve-config/
