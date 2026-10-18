@@ -15,10 +15,11 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 
 ## Fase 1: preparar (Claude, ~1 h)
 
-- [ ] `mt.py fw` con soporte para nightly (`nightly.meshtastic.org`) y archivo local; bajar fad52bb de las 4 placas.
-- [ ] `flota.yaml` con el diseño nuevo (sin IDs; canales y perfiles) y `mt.py provisionar <nodo>`:
+- [x] `mt.py fw` con soporte para nightly (`nightly.meshtastic.org`) y archivo local; bajar fad52bb de las 4 placas.
+- [ ] Archivar fad52bb para el Laptop y el segundo tracker (hardware por confirmar; el nightly rota a diario).
+- [x] `flota.yaml` con el diseño nuevo (sin IDs; canales y perfiles) y `mt.py provisionar <nodo>`:
       región → llaves → anotar id/pubkey en flota.yaml → canales → perfil → admin_key → respaldo.
-- [ ] Corregir `arquitectura.md`, `recetas.md` (orden admins primero) y el PR #118.
+- [x] Corregir `arquitectura.md`, `recetas.md` (orden admins primero) y el PR #118.
 
 ## Fase 2: canario (CarTracker, 15 min + 24–48 h)
 
