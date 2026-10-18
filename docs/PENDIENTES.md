@@ -179,8 +179,15 @@ sin workers.
   acumulado desde el TRIM mensual de Debian del 4-oct. Motivo: sin TRIM, el NE-512 escribía 128K a 29 MB/s con p99 de
   169 ms; tras TRIM, a 1250 MB/s con p99 de 0,8 ms, y `nvme0n1` también es sin DRAM. El TRIM manual tardó 5 min
   (10:55–11:00) con `nvme0n1` al 97 % de uso, pero escribiendo en 1 ms y con los workers en ≤5 % de iowait. El cron mensual de Debian sigue como red de seguridad.
-- [ ] Revisar `hl.py io --ventana 24h` el 2026-10-18 y una semana después: `esc_ms` de `pve/nvme0n1` en ≤5 ms y de los
-  workers bajo 50 ms, sin ráfagas de iowait.
+- [x] Revisión del 2026-10-18 (24 h desde el 17-oct 11:48): `pve/nvme0n1` con escritura máxima de 1 ms y los discos de
+  los workers con ≤16 ms (antes, 0,6–7,4 s). Sin ráfagas de iowait salvo la de node-1 descrita abajo, que no es del NVMe.
+- [ ] Repetir `hl.py io --ventana 24h` el 2026-10-25 con los mismos umbrales (`pve/nvme0n1` ≤5 ms, workers <50 ms).
+- [ ] **Pico nocturno de node-1** (2026-10-18 04:40–05:20): 30 % de iowait con su disco en 7 ms. Lo causaron ~200 MB/s
+  de lectura NFS desde `sdb` (HDD de `homelab-storage`, al 98 % de uso), justo después de una importación (escritura de
+  ~20 GB a las 04:30) y del aviso de Plex «Library section … (Programas de TV) will be updated». Plex no registró
+  detalle, pero sus tareas nocturnas fallaban con `Error creating directory "transcoding": Permission denied` (23 veces
+  en ese tramo; también en `VoiceActivityDetectionManager`). Revisar los permisos del directorio de transcodificación
+  de Plex y si ese fallo repite la lectura de archivos completos.
 - [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
   `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
