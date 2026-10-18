@@ -1,0 +1,76 @@
+# Estado deseado de la flota Meshtastic. `mt.py diff|aplicar <nodo>` compara y corrige contra esto.
+# Claves = las del CLI (`--set seccion.campo valor`), en snake_case. Orden de mezcla: comun → perfil → nodo.set.
+# Sin secretos aquí: `secreto:<clave>` se lee de ~/.config/meshtastic-fleet/secretos.yaml (chmod 600).
+# Las llaves públicas no son secreto. Decisiones y porqués: references/arquitectura.md.
+
+firmware: 2.8.1.8e6a88d          # la única 2.8 no revocada (alpha, 2026-10-01)
+
+# Nodos cuya llave pública va en security.admin_key de todos (máx. 3).
+admins: [Dnto_L1, AcevedoRoof]   # + nodo del laptop cuando se identifique
+
+comun:
+  lora.region: ANZ               # Chile: 915–928 MHz
+  lora.use_preset: true
+  lora.modem_preset: LONG_FAST   # decisión 2026-10-18 (no LONG_TURBO: -3 dB por +25 % de velocidad)
+  lora.hop_limit: 3
+  lora.tx_enabled: true
+  device.tzdef: "<-04>4<-03>,M9.1.6/24,M4.1.6/24"   # Chile continental
+  security.serial_enabled: true
+  security.is_managed: false     # no activar hasta probar admin remoto en ese nodo
+  security.packet_signature_policy: PACKET_SIGNATURE_POLICY_COMPATIBLE
+  display.units: METRIC
+
+perfiles:
+  tracker:                       # valores heredados de CarTracker (respaldo 2026-10-18)
+    device.role: TRACKER
+    position.gps_mode: ENABLED
+    position.position_broadcast_smart_enabled: true
+    position.position_broadcast_secs: 3600
+    position.broadcast_smart_minimum_distance: 10
+    position.broadcast_smart_minimum_interval_secs: 15
+    position.gps_update_interval: 60
+  base:                          # nodo fijo del techo, en la LAN por WiFi (BLE queda apagado en ESP32)
+    device.role: CLIENT_BASE
+    network.wifi_enabled: true
+    network.wifi_ssid: secreto:wifi_ssid
+    network.wifi_psk: secreto:wifi_psk
+  cliente:
+    device.role: CLIENT
+
+nodos:
+  Dnto_L1:                       # nodo personal de Daniel; administra a los demás
+    id: "!343c410f"
+    hw: SEEED_WIO_TRACKER_L1
+    pio: seeed_wio_tracker_L1   # verificar con `estado` (hay variantes eink)
+    perfil: cliente
+    owner: Dnto_L1
+    owner_short: "🤓"
+    pubkey: Dzf6Cbe2n/WfvFOab/viZUt+8izrbUGqzdO6jkFvFRs=
+  AcevedoRoof:
+    id: "!0bd84a49"
+    hw: SEEED_XIAO_S3
+    pio: seeed-xiao-s3
+    perfil: base
+    owner: AcevedoRoof
+    owner_short: "🏡"
+    pubkey: Vm36HolnnqQmXkAMqfsaO9OXIVciBEAgmHc6Zs1TRCg=
+  CarTracker:
+    id: "!de304ff9"
+    hw: HELTEC_WIRELESS_TRACKER
+    pio: heltec-wireless-tracker   # V1.1 (confirmado por pioEnv)
+    perfil: tracker
+    owner: CarTracker
+    owner_short: "🚗"
+    pubkey: /PzolJ9weLwM/aJSaEOY1nGCYWQ7rmVEf/qDj7qpX1I=
+  CatTracker:
+    id: "!3d98cbf9"
+    hw: TRACKER_T1000_E
+    pio: tracker-t1000-e
+    perfil: tracker
+    owner: CatTracker
+    owner_short: "😺"
+    pubkey: M9isJv1pM4bH2lFlqpvpFsO0YpIH40C3W/5QsJaJLWA=
+  # Pendientes de identificar (2026-10-18):
+  # - segundo tracker de mascota
+  # - nodo del laptop (¿!793a3263 "Meshtastic 3263"? oído hoy con nombre de fábrica)
+  # - nodos extra
