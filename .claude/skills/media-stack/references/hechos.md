@@ -113,3 +113,10 @@
 - Plex (2026-10-12): monta la biblioteca como `/media/series` y `/media/peliculas` (no `/data/media`); sección de series
   = 2. Sonarr **no tiene conexión a Plex**: tras renombrar o importar a mano, Plex no se entera hasta su escaneo
   periódico; `rename --apply` y `plex --scan` lo piden. GitS SAC S4 (Erai) no salía en Plex por los nombres del grupo.
+- Plex `TranscoderTempDirectory` (2026-10-18): debe quedar **vacío** (por defecto `/config/…/Cache/Transcode`, fuera del
+  respaldo). Con una ruta relativa (`transcoding`) la reproducción cae a `TMPDIR=/run/plex-temp` y sigue andando, pero
+  la detección de voz y las tareas de fondo fallan con `Error creating directory … Permission denied`: el cwd del
+  proceso es la carpeta de s6, de root. Se cambia con `PUT /:/prefs?TranscoderTempDirectory=` (vive en el PVC, no en git).
+- Transcoding de Plex por GPU (2026-10-18): `$M transcode` → nvdec + nvenc, pipeline completo, ~9× para HEVC 4K → 720p.
+  `speed` de `/transcode/sessions` queda en 0 sin cliente; la velocidad real es `maxOffsetAvailable − minOffsetAvailable`
+  sobre la espera. El transcoder no arranca con `start.m3u8`: hay que pedir el índice que esa lista enlaza.

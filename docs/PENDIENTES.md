@@ -188,6 +188,12 @@ sin workers.
   detalle, pero sus tareas nocturnas fallaban con `Error creating directory "transcoding": Permission denied` (23 veces
   en ese tramo; también en `VoiceActivityDetectionManager`). Revisar los permisos del directorio de transcodificación
   de Plex y si ese fallo repite la lectura de archivos completos.
+  - [x] 2026-10-18 18:52: causa del error. `TranscoderTempDirectory` valía `transcoding` (ruta relativa); el proceso
+    corre en `/run/s6-rc…/svc-plex` (de root), así que no podía crear la carpeta. La reproducción caía a
+    `TMPDIR=/run/plex-temp` y funcionaba; la detección de voz y otras tareas de fondo fallaban (1 069 errores en el
+    log del día). Preferencia vaciada por la API → Plex usa `/config/…/Cache/Transcode` (excluido del respaldo).
+    `media.py transcode`: HEVC 4K → H.264 720p con nvdec/nvenc y pipeline completo en GPU a ~9×, sin errores nuevos.
+  - [ ] 2026-10-19: `hl.py io --en 2026-10-19T08:00:00Z --ventana 1h` y el log de Plex: ¿volvió el pico sin el fallo?
 - [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
   `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).

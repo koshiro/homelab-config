@@ -21,6 +21,7 @@ $M grabs [--minutes 60] [-v] [--imported]   # releases tomados (o importados) re
 $M manual [--title RE] [--series RE --season N --offset K] [--apply|--clean]   # import manual Sonarr
 $M rename "<serie RE>" [--apply]       # renombrar con el formato de Sonarr (renombrado global apagado) + escaneo Plex
 $M plex "<serie RE>" [--scan]          # temporadas/episodios que ve Plex vs archivos en Sonarr; --scan reescanea
+$M transcode [--titulo RE] [--res 1280x720] [--kbps 2000]   # prueba de transcoding: GPU, velocidad, carpeta temporal
 $M grab "<consulta>" [--indexer 4] [--match RE] [--apply [--pick N]]   # Prowlarr → qBittorrent (anime sin mapeo)
 $M buscar "<serie RE>" [--season N|--ep S3E1…] [--apply [--pick S3E1=N]]   # faltantes con mapeo propio (anime)
 $M imported [--apply]              # completos, fuera de cola e importados → borrar con archivos
