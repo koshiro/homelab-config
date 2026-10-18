@@ -9,6 +9,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `systemd/*.service`, `systemd/*.timer` | `/etc/systemd/system/` |
 | `systemd/drop-ins/sanoid-notify.conf` | `/etc/systemd/system/sanoid.service.d/notify.conf` |
 | `systemd/drop-ins/syncoid-respaldo-notify.conf` | `/etc/systemd/system/syncoid-respaldo.service.d/notify.conf` |
+| `systemd/drop-ins/syncoid-replica-notify.conf` | `/etc/systemd/system/syncoid-replica.service.d/notify.conf` |
 | `systemd/drop-ins/qemu-slice-sin-swap.conf` | `/etc/systemd/system.control/qemu.slice.d/50-MemorySwapMax.conf` (lo escribe `systemctl set-property qemu.slice MemorySwapMax=0`; en caliente) |
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
@@ -31,15 +32,18 @@ Configuración que se aparta de los valores por defecto de Proxmox (`qm config <
 
 | VM | Nombre | `cpu` | `cores` | `memory` | Disco | Notas |
 |---|---|---|---|---|---|---|
-| 102 | `k3s-node-1` | `host` | 6 (antes 8, 2026-10-10) | 24 GB | 100 GB | GPU RTX 3070 (`hostpci`): con passthrough la RAM queda fija entera en el host, sin balloon. Con 8 vCPU usaba los 8 hilos del host y le quitaba CPU a nfsd, ZFS y las otras VMs |
-| 103 | `k3s-node-2` | `host` (aplicado 2026-10-10) | 4 | 8 GB | 50 GB | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
-| 104 | `k3s-node-3` | `host` (aplicado 2026-10-10) | 6 | 12 GB (antes 16, bajada 2026-10-10) | 50 GB | Igual que 103 |
+| 102 | `k3s-node-1` | `host` | 6 (antes 8, 2026-10-10) | 24 GB | 150 GB | GPU RTX 3070 (`hostpci`): con passthrough la RAM queda fija entera en el host, sin balloon. Con 8 vCPU usaba los 8 hilos del host y le quitaba CPU a nfsd, ZFS y las otras VMs |
+| 103 | `k3s-node-2` | `host` (aplicado 2026-10-10) | 4 | 8 GB | 80 GB | Antes sin `cpu:` → `kvm64`, sin x86-64-v2 |
+| 104 | `k3s-node-3` | `host` (aplicado 2026-10-10) | 6 | 12 GB (antes 16, bajada 2026-10-10) | 80 GB | Igual que 103 |
 
 Las tres usan `scsihw: virtio-scsi-single` (con `virtio-scsi-pci` el `iothread=1` del disco no tiene efecto) y
 `scsi0: …,iothread=1,discard=on,ssd=1`, para que el `fstrim.timer` semanal del invitado devuelva espacio al zvol (sin
 `discard` el zvol de node-1 ocupaba 81 GB para un disco de 80). Todas tienen `agent: 1` con `qemu-guest-agent`
 instalado en el invitado. Los discos se agrandan en caliente: `qm resize <vmid> scsi0 +NG` y en el invitado
-`growpart /dev/sda 1 && resize2fs /dev/sda1` (2026-10-10: node-1 80→100 GB, node-2/3 30→50 GB).
+`growpart /dev/sda 1 && resize2fs /dev/sda1` (2026-10-10: node-1 80→100 GB, node-2/3 30→50 GB; 2026-10-18: node-1 →150 GB, node-2/3 →80 GB).
+**Zvols sin `refreservation` desde el 2026-10-18** (`zfs set refreservation=none`): con reserva completa, cada
+snapshot de sanoid cobraba de nuevo todo lo referenciado (~86 GB) al pool. La suma de `volsize` (310 GB) más
+`nvme/k8s` sigue bajo los 461 GB útiles, así que no hay sobreasignación; el margen se vigila con `zfs list nvme`.
 
 Evaluado y descartado (2026-10-10): **CPU pinning / `isolcpus` / `iothreadpin`**. El host tiene 4 núcleos (8 hilos) para
 16 vCPU, y ZFS, nfsd y el LXC `nas` necesitan esos mismos núcleos: aislar núcleos les quitaría CPU, y el disco local de
@@ -110,7 +114,7 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 |---|---|
 | `sda` SSD SATA GIGABYTE 240 GB | Arranque: `sda1-3` (BIOS, EFI, LVM `pve` de 112 GB). `sda4` (32 GiB, etiqueta `zfs-slog-homelab`): SLOG de `homelab-storage`. Quedan ~78 GiB sin particionar. Respaldo de la GPT previa: `/root/sda-gpt-backup-20261010.bin` |
 | `nvme0n1` NXM-512 2242 (512 GB, MAXIO MAP1202 sin DRAM) | Pool `nvme` (raíz, **un solo disco desde 2026-10-17**) |
-| `nvme1n1` NE-512 2280 (512 GB, INNOGRIT IG5216 sin DRAM) | **Fuera de uso** (sacado del espejo `nvme` el 2026-10-17); reemplazo y destino en `docs/PENDIENTES.md` § 4f |
+| `nvme1n1` NE-512 2280 (512 GB, INNOGRIT IG5216 sin DRAM) | Pool `replica` (desde 2026-10-18): réplica horaria de `nvme` (syncoid). Sacado del espejo `nvme` el 2026-10-17 por lento; ver abajo y `docs/PENDIENTES.md` § 4f |
 | `sdb` Seagate 12 TB | Pool `homelab-storage` (un solo disco) |
 | `sde` WD 3 TB | Pool `respaldo` (réplica syncoid) |
 | `sdc` WD 1 TB (2,5") + `sdd` WD 2 TB (~10 años de uso) | Pool `scratch` (stripe, 2,6 TB, sin redundancia ni snapshots). `scratch/qbittorrent` (`recordsize=16K`, `sync=disabled`): descargas incompletas de qBittorrent vía NFS. Si muere un disco: recrear el pool y volver a descargar |
@@ -133,6 +137,19 @@ espejo hereda la propiedad.
 Mientras no haya reemplazo, **los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica
 nocturna de syncoid a `respaldo` y restic a R2. Volver a espejo: `zpool attach nvme nvme-NXM-512_2242_0007134003512
 /dev/disk/by-id/nvme-<nuevo>` (resilver de ~192 GB) y después `zpool scrub nvme`.
+
+**Pool `replica` en `nvme1n1` (2026-10-18)**: en vez de volver al espejo (cada escritura esperaría al NE-512, que
+tras ~120 GB de caché SLC cae a 75 MB/s), recibe cada hora el incremental de `nvme` por syncoid: unos pocos GB que
+caben en la caché, sin afectar la latencia de producción. Retiene 24 hourly y 7 daily. Hasta ahora los discos de las
+VMs no tenían ninguna copia. Si muere `nvme0n1` (pérdida ≤1 h), se arranca desde la réplica sin copiar nada: crear
+el storage `pvesm add zfspool replica --pool replica --content images,rootdir`, copiar
+`/replica/pve-config/*.conf` a `/etc/pve/qemu-server/` (y `110.conf` a `/etc/pve/lxc/`) cambiando `nvme:` por
+`replica:` en los discos, y arrancar las VMs (los cloudinit no se replican: `qm cloudinit update <vmid>` los
+regenera). Creado con `zpool create -o ashift=12 -o autotrim=on -O compression=on
+-O atime=off -O xattr=sa -O mountpoint=/replica -O canmount=off replica /dev/disk/by-id/nvme-NE-512_2280_9C50506007658`
+más `zfs create replica/k8s` (destino de syncoid con `--skip-parent`) y `zfs create -o canmount=on
+replica/pve-config`, y `zfs-import@replica.service`. Cuando llegue el disco con DRAM, el espejo de `nvme` lo usa a él y este disco sigue
+como réplica o pasa a copia fría.
 
 **SLOG (2026-10-10)**: el export NFS es `sync` y cada COMMIT esperaba al ZIL en el mismo HDD de 12 TB (COMMIT ~1,2 s, WRITE ~91 ms en el cliente). Con el ZIL en `sda4` bajó a ~200 ms y ~20 ms. Es un SSD de consumo sin PLP y sin espejo: si falla solo, ZFS sigue sin él; se pierden datos únicamente si falla junto con una caída del host. Quitarlo: `zpool remove homelab-storage <id>-part4`.
 
@@ -169,7 +186,8 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 | Hora | Tarea |
 |---|---|
 | cada 5 min | `textfile-metrics.sh`: pools ZFS, datasets y SMART → `/var/lib/prometheus/node-exporter/homelab.prom` |
-| cada 15 min | sanoid: snapshots de `nvme/k8s/*` y poda de `respaldo/k8s/*` |
+| cada 15 min | sanoid: snapshots de `nvme/k8s/*` y de los discos de las VMs 102–104 y del LXC 110; poda de `respaldo/k8s/*` y `replica/*` |
+| :20 cada hora | syncoid `nvme/k8s` (sin `victoria-metrics`), `nvme/vm-10{2,3,4}-disk-0` y `nvme/subvol-110-disk-0` → pool `replica` (nvme1n1); copia las configs de las VMs/LXC a `/replica/pve-config` |
 | 02:40–02:48 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path, hostPath o en `homelab-storage` (qBittorrent, `user/` de ComfyUI) → `nvme/k8s/backups/apps/<app>` |
 | 03:15 | (k8s) dump Postgres de Immich → `nvme/k8s/backups/postgres` (5 días) |
 | 03:30 | syncoid `nvme/k8s` → `respaldo/k8s` (excepto `victoria-metrics`: métricas, se pueden perder) y rsync de ComfyUI sin modelos (`user`, `input`, `output`, `swarmui/Data`) → `respaldo/comfyui` (snapshots sanoid) |

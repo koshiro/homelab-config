@@ -193,7 +193,10 @@ sin workers.
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
 - [ ] Más adelante: `nvme0n1` también es sin DRAM (MAXIO MAP1202) y registra 2398 transiciones de estrangulamiento
   térmico. Si el disco nuevo rinde mucho mejor, cambiar este también por uno igual.
-- [ ] **Decidir qué hacer con `nvme1n1`.** Probado el 2026-10-17: SMART sano (13 % de desgaste, 0 errores de medio),
+- [x] **Decidido (2026-10-18): pool `replica`**, réplica horaria por syncoid de `nvme/k8s`, los discos de las VMs
+  102–104 y el LXC 110 (`proxmox/README.md` § Discos y pools). Volver al espejo se descartó: tras la caché SLC
+  cada escritura del pool esperaría a los 75 MB/s del NE-512, y un resilver (133 GB) ya la supera. Contexto:
+  Probado el 2026-10-17: SMART sano (13 % de desgaste, 0 errores de medio),
   lectura buena (4300 IOPS 4K QD1, 0,2 ms) y ~120 GB de caché SLC a 1260 MB/s tras un TRIM; después cae a ~75 MB/s
   sostenidos (rendimiento típico de QLC aunque la ficha dice TLC). Quedó vacío y con TRIM completo. No sirve para
   discos de VMs, SLOG ni L2ARC. Opciones, de más a menos útil:
