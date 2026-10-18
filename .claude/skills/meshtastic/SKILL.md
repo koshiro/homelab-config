@@ -16,6 +16,9 @@ $T estado [--port X|--host IP]     # firmware, rol, preset, canales (sin PSK), a
 $T respaldo [--port X|--host IP]   # .yaml + .cfg (con llave privada) en ~/.config/meshtastic-fleet/backups (600)
 $T diff <nodo> [--dest !id]        # nodo vs flota.yaml + el comando `meshtastic` que lo corrige
 $T aplicar <nodo> [--dest !id] [--apply]   # canales → --set (una transacción) → dueño; dry-run por defecto
+$T provisionar <nodo> [--apply]   # recién flasheado: región → llaves → id/pubkey a flota.yaml → aplicar → respaldo
+$T secretos [--generar-canal]     # qué secretos faltan (sin valores); crea nombre + PSK del canal privado
+$T fw <nodo> [--solo-bajar]       # baja y archiva (md5) el firmware fijado, nightly o release; imprime pasos
 $T upstream [--marcar]             # releases nuevas de firmware, CLI (master y PyPI) y MeshMonitor
 meshtastic --port X --info | --get lora | --set k v | --dest !id --set k v | --export-config f.cfg
 ```
@@ -24,10 +27,10 @@ meshtastic --port X --info | --get lora | --set k v | --dest !id --set k v | --e
 
 | Tarea | Primero |
 |-------|---------|
+| **Plan en curso (reinstalación limpia)** | `references/plan.md`: primera fase sin marcar |
 | ¿Qué tiene / cómo está un nodo? | `$T estado`; remoto: `$T diff <nodo> --dest !id` |
 | Cambiar un ajuste en uno o todos | editar `flota.yaml` → `$T diff` → `$T aplicar --apply`; regla de orden abajo |
-| Flashear, actualizar o full erase | receta *reflasheo* en `references/recetas.md` (respaldo antes, siempre) |
-| Nodo nuevo en la flota | receta *alta de nodo* |
+| Flashear, nodo nuevo o tras un reset | receta *instalación limpia* en `references/recetas.md` |
 | Firmware 2.8: qué cambió, trampas | `references/firmware.md` |
 | Flags del CLI, admin remoto, sesión PKC | `references/cli.md` |
 | Por qué está armado así (roles, canales, admin, homelab) | `references/arquitectura.md` |
@@ -36,15 +39,16 @@ meshtastic --port X --info | --get lora | --set k v | --dest !id --set k v | --e
 
 ## Reglas que evitan romper la malla
 
-- **Respaldo antes de tocar**: `$T respaldo`. El `.cfg` trae la llave privada: restaurarla conserva el número de
-  nodo (2.8 lo deriva de la llave pública) y la confianza de `admin_key` en los demás nodos.
+- **Respaldo antes de tocar**: `$T respaldo`. Las instalaciones son limpias (llaves nuevas = ID nuevo), pero el `.cfg`
+  con la llave privada permite volver atrás.
 - **Cambios de radio (preset, región, slot, canal primario) en remoto: del más lejano al más cercano, el nodo
   local al final.** Si cambias primero el local, pierdes a los demás. Probar con un solo nodo antes de la flota.
 - Nunca `security.is_managed true` sin haber probado admin remoto en ese nodo (bloqueo total). Nunca
   `security.packet_signature_policy STRICT` mientras quede un nodo 2.7 o STM32WL.
 - Nada de `--factory-reset-device` ni full erase sin respaldo `.cfg` del nodo. `--factory-reset` (config) conserva
   las llaves.
-- Ningún nodo en 2.8.0 (revocada). Builds de desarrollo (hash fuera de las releases) → reflashear la release.
+- Toda la flota en el build de `flota.yaml:firmware` (nightly fijado). Ningún nodo en 2.8.0 (revocada). El nightly
+  se reemplaza a diario: archivar con `$T fw --solo-bajar` antes de cambiar el fijado.
 - PSK, WiFi y llaves privadas: solo en `~/.config/meshtastic-fleet/` (600). Nunca en el repo, el chat ni la salida;
   `--info` y `--export-config` imprimen la llave privada: filtrar con `grep -v -i -e private -e psk`.
 - Si el clasificador bloquea: detenerse, dar el comando exacto y por qué, y esperar (regla global del usuario).

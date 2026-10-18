@@ -2,64 +2,66 @@
 
 `T=~/.claude/skills/meshtastic/mt.py`
 
-## Reflasheo de un nodo (full erase, conservando identidad)
+## Instalación limpia de un nodo (la receta base)
 
-1. Conectar por USB → `$T puertos` → `$T estado --port <p>` (confirmar nodo y `pio`).
-2. `$T respaldo --port <p>` (deja `.yaml` y `.cfg` con la llave privada).
-3. `$T fw <nodo>` → descarga, verifica md5 e imprime los pasos de su MCU.
-4. Flashear según lo impreso:
-   - ESP32-S3: `./device-install.sh -p <p> -f firmware-<pio>-<ver>.factory.bin` (borra todo). Pedir confirmación.
-   - nRF52: `--enter-dfu` → copiar el `factory_erase` de la SoftDevice de `INFO_UF2.TXT` → DFU otra vez → copiar `.uf2`.
-5. Restaurar: `meshtastic --port <p> --configure <respaldo>.yaml` (trae `security.private_key`, región y canales).
-6. `$T estado` → el id debe ser el mismo de antes (`crc32(pubkey)`). Si cambió, la llave no se restauró: repetir 5.
-7. `$T diff <nodo>` → `$T aplicar <nodo> --apply` para quedar igual a `flota.yaml`.
-8. Desde otro nodo: `$T estado` debe oírlo (puede tardar hasta un NodeInfo; forzar con `--sendtext` o reinicio).
+1. Conectar por USB → `$T puertos` → `$T estado --port <p>` (confirmar placa y `pio`).
+2. `$T respaldo --port <p>` (red de seguridad; no se restaura).
+3. `$T fw <nodo>` → archivo verificado + pasos de su MCU. Flashear (pedir confirmación: borra todo):
+   - ESP32-S3: `cd <dir> && ./device-install.sh -p <p> -f firmware-<pio>-<ver>.factory.bin`.
+   - nRF52: `--enter-dfu` → copiar el `factory_erase` de la SoftDevice de `INFO_UF2.TXT` → DFU otra vez → `.uf2`.
+4. `$T provisionar <nodo> --port <p>` (dry-run) → `--apply`: región → llaves → id/pubkey a `flota.yaml` → canales
+   (`--seturl` con lora deseada) → `--set` → dueño → respaldo.
+5. `$T diff <nodo>` debe decir «coincide». Desde otro nodo, `$T estado` debe oírlo.
+6. Commit del `flota.yaml` con el id/pubkey nuevos.
 
-Sin respaldo posible (nodo que no arranca): flashear, configurar desde `flota.yaml` con `aplicar`, y luego agregar
-su llave nueva en `flota.yaml` (pubkey, id) y en `admin_key` de los demás si es admin.
+Orden en la flota: **admins primero** (Dnto_L1, Laptop, AcevedoRoof): el resto nace con sus llaves en `admin_key`.
+Un nodo provisionado antes que los admins: `$T aplicar <nodo> --apply` cuando existan.
 
 Actualizar sin borrar (ESP32 por WiFi): `meshtastic --host <ip> --ota-update <firmware-<pio>-<ver>.bin>`.
 
-## Reflashear toda la flota a una versión
+## Tras un reset o percance
 
-1. `$T upstream` y leer las notas; actualizar `firmware:` en `flota.yaml`.
-2. Orden: primero un nodo de prueba accesible por USB (CarTracker), verificar 24 h; luego trackers, Dnto_L1, laptop
-   y al final AcevedoRoof (es la puerta de entrada del homelab).
-3. Mientras convivan versiones: firma `COMPATIBLE`, sin `use_aead`.
+- No admin: flashear si hace falta y `$T provisionar <nodo> --apply`. Nada más.
+- Admin: igual, y después agregar su llave nueva a los demás desde otro admin:
+  `$T aplicar <nodo> --dest '!id' --apply` por cada uno (la llave vieja queda; quitarla con
+  `meshtastic --dest '!id' --set security.admin_key 0` + las válidas, **en un solo comando**).
+
+## Cambiar de firmware fijado
+
+1. Aviso de la vigilancia o `$T upstream` → estudiar commits/notas → anotar en `firmware.md`.
+2. `firmware:` en `flota.yaml` → `$T fw <nodo> --solo-bajar` para todas las placas (el nightly desaparece al día
+   siguiente: archivar ya).
+3. Canario (CarTracker) 24–48 h → resto. ESP32 con WiFi: OTA sin borrar.
 
 ## Cambio de radio en toda la flota (preset, región, slot, nombre del canal primario)
 
 1. Editar `flota.yaml`.
 2. Por remoto, **del nodo más lejano al más cercano**: `$T aplicar <nodo> --dest '!id' --apply`. Cada uno deja de
-   oírse al aplicar: no esperar ACK de los siguientes pasos.
+   oírse al aplicar.
 3. El nodo conectado al final. Los que no se alcanzaron: por USB.
-4. Recordar: un preset que la región no permite se rechaza entero por admin remoto.
+4. Un preset que la región no permite se rechaza entero por admin remoto.
 
-## Alta de nodo nuevo
+## Canal privado (rotar PSK)
 
-1. Flashear `firmware` de `flota.yaml` (receta de arriba, paso 3–4).
-2. Por USB: `meshtastic --set lora.region ANZ` (genera llaves) → `$T estado` → anotar `id`, `hw`, `pio`, `pubkey`
-   en `flota.yaml` con su perfil.
-3. `meshtastic --seturl "$(canal_url de secretos.yaml)"` y `$T aplicar <nodo> --apply`.
-4. Si será admin: agregarlo a `admins` y `aplicar` en todos los demás. En AcevedoRoof: `--set-favorite-node '!id'`.
-5. `$T respaldo`.
+1. `$T secretos --generar-canal --forzar` (nueva PSK de 32 B).
+2. Cada nodo por USB/TCP directo: `$T aplicar <nodo> --apply` (los canales no se comparan en remoto). Mientras
+   tanto, los nodos ya rotados no se entienden con los pendientes.
 
 ## Administrar un nodo remoto
 
-1. Conectar a un nodo cuya llave esté en el `admin_key` del destino (Dnto_L1, AcevedoRoof o laptop).
+1. Conectar a un admin (Dnto_L1, Laptop o AcevedoRoof por TCP).
 2. `$T diff <nodo> --dest '!id'` (pide la config por radio: 10–60 s por sección).
 3. `$T aplicar <nodo> --dest '!id' --apply`, o `meshtastic --dest '!id' --set …`.
-4. Error de sesión/timeout: acercar o subir `--timeout`; el CLI renueva la passkey de sesión solo.
+4. Telemetría bajo demanda: `meshtastic --request-telemetry --dest '!id'`; posición: `--request-position`.
 
-## Nodo del techo al WiFi (paso previo a MeshMonitor)
+## Nodo del techo al WiFi
 
-1. Reservar IP en el router para la MAC WiFi del XIAO S3 (`--info` → `macaddr`).
-2. `secretos.yaml`: `wifi_ssid`, `wifi_psk` (≥8 caracteres).
-3. `$T aplicar AcevedoRoof --apply` (perfil `base` activa WiFi; BLE se apaga).
-4. `meshtastic --host <ip> --info` debe responder. Anotar la IP en `hechos.md`.
+1. `secretos.yaml`: `wifi_ssid`, `wifi_psk` (≥8 caracteres). Reserva DHCP para la MAC WiFi del XIAO.
+2. Va dentro de `provisionar AcevedoRoof` (perfil `base`). BLE se apaga.
+3. `meshtastic --host <ip> --info` debe responder. Anotar la IP en `hechos.md`.
 
 ## Revisar novedades
 
-1. `$T upstream` → para cada NUEVA: leer notas (GitHub release / blog).
-2. Anotar en `firmware.md` lo que cambia **para esta flota**; si hay CLI nuevo con protobufs, reinstalar (cli.md).
+1. `$T upstream` → para cada NUEVA: leer notas (GitHub release / blog) o commits (nightly).
+2. Anotar en `firmware.md` lo que cambia **para esta flota**; CLI con protobufs nuevos → reinstalar (cli.md).
 3. `$T upstream --marcar`.

@@ -221,12 +221,10 @@ def comparar(a, nombre):
                 node.requestConfig(localonly_pb2.LocalConfig.DESCRIPTOR.fields_by_name["security"])
             nodo_id = a.dest
             user = (iface.nodes or {}).get(a.dest, {}).get("user", {})
-            url = None
         else:
             node = iface.localNode
             user = iface.getMyNodeInfo()["user"]
             nodo_id = user["id"]
-            url = node.getURL()
         if n.get("id") and n["id"] != nodo_id:
             sys.exit(f"Conectado a {nodo_id}, pero flota.yaml dice que {nombre} es {n['id']}. Nada que comparar.")
         sets, diffs = [], []
@@ -252,12 +250,75 @@ def comparar(a, nombre):
             diffs.append(f"owner_short: {user.get('shortName')!r} → {n['owner_short']!r}")
             owner += ["--set-owner-short", n["owner_short"]]
         canal = []
-        if url is not None and sec.get("canal_url") and url != sec["canal_url"]:
-            diffs.append("canales: la URL no coincide con secretos.yaml:canal_url")
-            canal = ["--seturl", sec["canal_url"]]
+        if a.dest:
+            print("(canales: no se comparan en remoto; solo por USB/TCP directo)", file=sys.stderr)
+        else:
+            canal = comparar_canales(node, claves, sec, diffs)
         return diffs, sets, owner, canal
     finally:
         iface.close()
+
+
+def canales_deseados(sec):
+    """ChannelSettings de flota.yaml:canales, con secretos resueltos."""
+    from meshtastic.protobuf import channel_pb2
+    out = []
+    for c in yaml_load(FLOTA).get("canales", []):
+        s = channel_pb2.ChannelSettings()
+        s.name = resolver(c.get("nombre", ""), sec)
+        psk = resolver(c.get("psk", "default"), sec)
+        s.psk = b"\x01" if psk == "default" else base64.b64decode(psk)
+        s.use_aead = bool(c.get("aead", False))
+        s.module_settings.position_precision = int(c.get("precision", 0))
+        out.append(s)
+    return out
+
+
+def poner_campo(msg, campo, valor):
+    fd = msg.DESCRIPTOR.fields_by_name[campo]
+    if fd.enum_type is not None and isinstance(valor, str):
+        valor = fd.enum_type.values_by_name[valor].number
+    setattr(msg, campo, valor)
+
+
+def comparar_canales(node, claves, sec, diffs):
+    """Agrega a diffs lo que difiere y devuelve los grupos de argumentos del CLI que lo corrigen."""
+    from meshtastic.protobuf import apponly_pb2
+    quiero = canales_deseados(sec)
+    if not quiero:
+        return []
+    tengo = {c.index: c for c in (node.channels or []) if c.role}
+    distinto = False
+    for i, s in enumerate(quiero):
+        c = tengo.get(i)
+        if c is None:
+            diffs.append(f"canal {i}: falta")
+            distinto = True
+            continue
+        for campo, a_, b_ in (("nombre", c.settings.name, s.name), ("psk", c.settings.psk, s.psk),
+                              ("aead", c.settings.use_aead, s.use_aead),
+                              ("precision", c.settings.module_settings.position_precision,
+                               s.module_settings.position_precision),
+                              ("rol", c.role, 1 if i == 0 else 2)):
+            if a_ != b_:
+                ver = (lambda v: "***") if campo == "psk" or (campo == "nombre" and i > 0) else repr
+                diffs.append(f"canal {i} {campo}: {ver(a_)} → {ver(b_)}")
+                distinto = True
+    sobran = sorted((i for i in tengo if i >= len(quiero)), reverse=True)
+    for i in sobran:
+        diffs.append(f"canal {i} '{tengo[i].settings.name}': sobra")
+    grupos = []
+    if distinto:
+        cs = apponly_pb2.ChannelSet()
+        cs.settings.extend(quiero)
+        cs.lora_config.CopyFrom(node.localConfig.lora)   # --seturl también escribe lora: llevar la deseada
+        for k, v in claves.items():
+            if k.startswith("lora."):
+                poner_campo(cs.lora_config, k.split(".", 1)[1], v)
+        b64 = base64.urlsafe_b64encode(cs.SerializeToString()).decode().rstrip("=")
+        grupos.append(["--seturl", f"https://meshtastic.org/e/#{b64}"])
+    grupos += [["--ch-index", str(i), "--ch-del"] for i in sobran]   # de mayor a menor: borrar corre los índices
+    return grupos
 
 
 def mostrar_cmd(partes):
@@ -276,7 +337,7 @@ def cmd_diff(a):
     print(f"{a.nodo}: {len(diffs)} diferencia(s)")
     for d in diffs:
         print(f"  {d}")
-    for grupo in (sets, owner, canal):
+    for grupo in canal + [sets, owner]:
         if grupo:
             print("  $ meshtastic " + mostrar_cmd(args_conexion(a) + grupo))
 
@@ -289,7 +350,7 @@ def cmd_aplicar(a):
     for d in diffs:
         print(f"  {d}")
     # Canales primero (la URL trae lora), luego --set (una transacción), al final el dueño.
-    for grupo in (canal, sets, owner):
+    for grupo in canal + [sets, owner]:
         if not grupo:
             continue
         cmd = [CLI, "--timeout", str(a.timeout)] + args_conexion(a) + grupo
@@ -302,42 +363,159 @@ def cmd_aplicar(a):
         print("(dry-run: agrega --apply)")
 
 
+def cmd_secretos(a):
+    """Muestra qué secretos existen (sin valores) y, con --generar-canal, crea nombre y PSK del canal privado."""
+    import yaml
+    PRIVADO.mkdir(parents=True, exist_ok=True)
+    os.chmod(PRIVADO, 0o700)
+    sec = secretos()
+    if a.generar_canal:
+        if "canal_privado_psk" in sec and not a.forzar:
+            sys.exit("Ya hay canal_privado_psk: cambiarla obliga a reprovisionar toda la flota (usa --forzar).")
+        sec["canal_privado_nombre"] = a.nombre
+        sec["canal_privado_psk"] = base64.b64encode(os.urandom(32)).decode()
+        SECRETOS.write_text("# Secretos de la flota Meshtastic (chmod 600). Ver flota.yaml `secreto:<clave>`.\n"
+                            + yaml.safe_dump(sec, allow_unicode=True))
+        os.chmod(SECRETOS, 0o600)
+        print(f"Canal privado '{a.nombre}' con PSK nueva de 32 B guardado en {SECRETOS}")
+    usados = sorted(set(l.split("secreto:")[1].split()[0] for l in FLOTA.read_text().splitlines() if "secreto:" in l
+                        and not l.lstrip().startswith("#")))
+    for k in usados:
+        print(f"  {k:22} {'ok' if k in sec else 'FALTA'}")
+    for k in sorted(set(sec) - set(usados)):
+        print(f"  {k:22} (no usado por flota.yaml)")
+
+
+def anotar_nodo(nombre, nodo_id, pubkey):
+    """Escribe id y pubkey en el bloque del nodo en flota.yaml sin tocar el resto (conserva comentarios)."""
+    lineas = FLOTA.read_text().splitlines(keepends=True)
+    try:
+        ini = next(i for i, l in enumerate(lineas) if l.rstrip().split("#")[0].rstrip() == f"  {nombre}:")
+    except StopIteration:
+        sys.exit(f"No encontré '  {nombre}:' en flota.yaml")
+    fin = next((i for i in range(ini + 1, len(lineas)) if not lineas[i].startswith("    ")), len(lineas))
+    bloque = [l for l in lineas[ini + 1:fin] if not l.lstrip().startswith(("id:", "pubkey:"))]
+    nuevo = [f'    id: "{nodo_id}"\n', f"    pubkey: {pubkey}\n"]
+    FLOTA.write_text("".join(lineas[:ini + 1] + nuevo + bloque + lineas[fin:]))
+
+
+def cmd_provisionar(a):
+    """Nodo recién flasheado (USB/TCP directo): región → llaves → id/pubkey en flota.yaml → aplicar → respaldo."""
+    import time
+    f = yaml_load(FLOTA)
+    n = f["nodos"].get(a.nodo) or sys.exit(f"Nodo '{a.nodo}' no está en flota.yaml")
+    _, claves, _, _ = deseado(a.nodo)   # falla temprano si falta un secreto
+    iface = conectar(a)
+    try:
+        fw = getattr(iface.metadata, "firmware_version", "?")
+        if not fw.startswith(f["firmware"]):
+            print(f"AVISO: el nodo tiene fw {fw}; flota.yaml fija {f['firmware']} (`$T fw {a.nodo}`)")
+        lc = iface.localNode.localConfig
+        region = leer_campo(lc, iface.localNode.moduleConfig, "lora.region")
+        if region == "UNSET":
+            print(f"región UNSET → {claves['lora.region']} (genera las llaves)")
+            if not a.apply:
+                print("(dry-run: agrega --apply)")
+                return
+            poner_campo(lc.lora, "region", claves["lora.region"])
+            iface.localNode.writeConfig("lora")
+    finally:
+        iface.close()
+    pk = ""
+    for _ in range(18):   # el nodo puede reiniciar al fijar la región
+        time.sleep(5)
+        try:
+            iface = conectar(a)
+        except Exception:
+            continue
+        try:
+            pk = base64.b64encode(iface.localNode.localConfig.security.public_key).decode()
+            nodo_id = iface.getMyNodeInfo()["user"]["id"]
+        finally:
+            iface.close()
+        if pk:
+            break
+    if not pk:
+        sys.exit("El nodo no generó llave pública en 90 s: revisar con `$T estado`.")
+    previo = n.get("pubkey")
+    if previo != pk:
+        if a.apply:
+            anotar_nodo(a.nodo, nodo_id, pk)
+        print(f"{a.nodo}: id {nodo_id} pubkey {pk[:12]}… {'anotados en flota.yaml' if a.apply else '(dry-run)'}")
+        if previo and a.nodo in f.get("admins", []):
+            print(f"AVISO: {a.nodo} es admin y su llave cambió → `$T aplicar <nodo> --dest '!id' --apply` en los demás")
+    cmd_aplicar(a)
+    if a.apply:
+        time.sleep(10)   # deja reiniciar tras los cambios
+        cmd_respaldo(a)
+
+
+def pedir(url):
+    # Los hosts de firmware (Cloudflare) responden 403 al User-Agent por defecto de urllib.
+    return urllib.request.Request(url, headers={"User-Agent": "curl/8 mt.py"})
+
+
 def descargar(url, destino):
     if not destino.exists():
         destino.parent.mkdir(parents=True, exist_ok=True)
         print(f"descargando {url}")
         tmp = destino.with_suffix(".part")
-        urllib.request.urlretrieve(url, tmp)
+        with urllib.request.urlopen(pedir(url), timeout=120) as r:
+            tmp.write_bytes(r.read())
         tmp.rename(destino)
     return destino
 
 
+NIGHTLY = "https://nightly.meshtastic.org"
+ERASE_NRF52 = ["Meshtastic_nRF52_factory_erase_v3_S140_6.1.0.uf2", "Meshtastic_nRF52_factory_erase_v3_S140_7.3.0.uf2"]
+
+
+def base_firmware(ver):
+    """URL de los archivos sueltos de una versión: el nightly vive plano en su host y solo el actual existe."""
+    try:
+        with urllib.request.urlopen(pedir(f"{NIGHTLY}/index.json"), timeout=20) as r:
+            if json.load(r).get("version") == ver:
+                return NIGHTLY
+    except Exception:
+        pass
+    return f"https://release.meshtastic.org/{ver}"
+
+
 def cmd_fw(a):
-    """Prepara (descarga, extrae, verifica md5) los archivos de un nodo e imprime cómo flashear. No flashea."""
+    """Descarga y archiva (md5 verificado) los archivos de flasheo de un nodo e imprime los pasos. No flashea."""
     import hashlib
-    import zipfile
     f = yaml_load(FLOTA)
     ver = a.version or f["firmware"]
     n = f["nodos"].get(a.nodo) or sys.exit(f"Nodo '{a.nodo}' no está en flota.yaml")
     pio = n.get("pio") or sys.exit(f"{a.nodo} no tiene `pio` en flota.yaml (sale como pioEnv en `estado`)")
     base = Path.home() / ".cache" / "meshtastic-fw" / ver
-    url = f"https://github.com/meshtastic/firmware/releases/download/v{ver}"
-    targets = json.loads(descargar(f"{url}/firmware-{ver}.json", base / "firmware.json").read_text())["targets"]
-    arch = next((t["platform"] for t in targets if t["board"] == pio), None) or sys.exit(f"{pio} no está en {ver}")
-    z = zipfile.ZipFile(descargar(f"{url}/firmware-{arch}-{ver}.zip", base / f"firmware-{arch}.zip"))
     out = base / pio
-    out.mkdir(exist_ok=True)
-    meta = json.loads(z.read(f"firmware-{pio}-{ver}.mt.json"))
-    nombres = [x for x in meta["files"] if not x["name"].endswith((".elf", ".hex"))]
-    extra = ["device-install.sh"] if arch.startswith("esp32") else \
-        [m for m in z.namelist() if m.startswith("Meshtastic_nRF52_factory_erase")]
-    for x in nombres + [{"name": e} for e in extra]:
-        dato = z.read(x["name"])
-        if x.get("md5") and hashlib.md5(dato).hexdigest() != x["md5"]:
-            sys.exit(f"md5 no coincide: {x['name']}")
-        (out / x["name"]).write_bytes(dato)
-    os.chmod(out / "device-install.sh", 0o755) if arch.startswith("esp32") else None
-    print(f"{a.nodo}: {meta.get('displayName', pio)} ({arch}) {ver} → {out} (md5 verificado)")
+    url = base_firmware(ver)
+
+    def bajar(nombre, destino, md5=None):
+        try:
+            descargar(f"{url}/{nombre}", destino)
+        except Exception as e:
+            sys.exit(f"No se pudo bajar {nombre} de {url} ({e}). Un nightly reemplazado solo queda en el archivo "
+                     f"local o en los artefactos de GitHub Actions del commit (`gh run download`).")
+        if md5 and hashlib.md5(destino.read_bytes()).hexdigest() != md5:
+            destino.unlink()
+            sys.exit(f"md5 no coincide: {nombre}")
+        return destino
+
+    targets = json.loads(bajar(f"firmware-{ver}.json", base / "firmware.json").read_text())["targets"]
+    arch = next((t["platform"] for t in targets if t["board"] == pio), None) or sys.exit(f"{pio} no está en {ver}")
+    meta = json.loads(bajar(f"firmware-{pio}-{ver}.mt.json", out / f"firmware-{pio}-{ver}.mt.json").read_text())
+    for x in meta["files"]:
+        if not x["name"].endswith((".elf", ".hex")):
+            bajar(x["name"], out / x["name"], x.get("md5"))
+    for e in (["device-install.sh"] if arch.startswith("esp32") else ERASE_NRF52):
+        bajar(e, out / e)
+    if arch.startswith("esp32"):
+        os.chmod(out / "device-install.sh", 0o755)
+    print(f"{a.nodo}: {meta.get('displayName', pio)} ({arch}) {ver} desde {url} → {out} (md5 verificado)")
+    if a.solo_bajar:
+        return
     if arch.startswith("esp32"):
         print("Full erase + flash (borra llaves y config; restaurar el .cfg después):")
         print(f"  1. $T respaldo --port <puerto>")
@@ -349,7 +527,7 @@ def cmd_fw(a):
         print("  1. $T respaldo --port <puerto>")
         print("  2. meshtastic --port <puerto> --enter-dfu   (o doble clic en reset; T1000-E: botón al conectar USB)")
         print("  3. Ver la SoftDevice en INFO_UF2.TXT de la unidad y copiar el erase que coincida:")
-        for e in extra:
+        for e in ERASE_NRF52:
             print(f"       cp {out / e} /Volumes/<unidad>/")
         print("  4. Volver a entrar en DFU y copiar el firmware:")
         print(f"       cp {out}/firmware-{pio}-{ver}.uf2 /Volumes/<unidad>/")
@@ -421,14 +599,24 @@ def main():
     sp = con(sub.add_parser("aplicar", help="lleva un nodo al estado de flota.yaml (dry-run salvo --apply)"), dest=True)
     sp.add_argument("nodo")
     sp.add_argument("--apply", action="store_true")
+    sp = con(sub.add_parser("provisionar", help="nodo recién flasheado → estado de flota.yaml (dry-run salvo --apply)"))
+    sp.add_argument("nodo")
+    sp.add_argument("--apply", action="store_true")
+    sp.set_defaults(dest=None)
+    sp = sub.add_parser("secretos", help="qué secretos faltan; --generar-canal crea el canal privado")
+    sp.add_argument("--generar-canal", action="store_true")
+    sp.add_argument("--nombre", default="DNTGPS", help="nombre del canal privado (no afecta la frecuencia)")
+    sp.add_argument("--forzar", action="store_true")
     sp = sub.add_parser("fw", help="descarga y verifica el firmware de un nodo e imprime los pasos de flasheo")
     sp.add_argument("nodo")
     sp.add_argument("--version", help="por defecto: `firmware` de flota.yaml")
+    sp.add_argument("--solo-bajar", action="store_true", help="archivar sin imprimir los pasos")
     sp = sub.add_parser("upstream", help="releases nuevas de firmware, CLI y MeshMonitor desde la última revisión")
     sp.add_argument("--marcar", action="store_true", help="registrar lo listado como revisado")
     a = p.parse_args()
     {"puertos": cmd_puertos, "estado": cmd_estado, "respaldo": cmd_respaldo, "diff": cmd_diff,
-     "aplicar": cmd_aplicar, "fw": cmd_fw, "upstream": cmd_upstream}[a.cmd](a)
+     "aplicar": cmd_aplicar, "provisionar": cmd_provisionar, "secretos": cmd_secretos, "fw": cmd_fw,
+     "upstream": cmd_upstream}[a.cmd](a)
 
 
 if __name__ == "__main__":
