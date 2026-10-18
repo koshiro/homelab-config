@@ -55,14 +55,20 @@ perfiles:
 # id y pubkey los escribe `mt.py provisionar` (las llaves nacen en el nodo). owner ≤24 bytes (emoji = 4).
 nodos:
   Dnto_L1:                       # nodo personal de Daniel; administra a los demás
+    id: "!185e9038"
+    pubkey: itL0Olq6ahmKafz5ZhnAeRndFaHqLOXrJ4RIQ7fQAgg=
     hw: SEEED_WIO_TRACKER_L1
     pio: seeed_wio_tracker_L1   # verificar con `estado` (hay variantes eink)
     perfil: cliente
     owner: Dnto_L1
     owner_short: "🤓"
-  Laptop:                        # hardware por confirmar
+  Laptop:
+    id: "!0404f6d2"
+    pubkey: 2cccCt7uFl5yd9degLIQGwahrT7inJ3skswVoEhjc18=
+    hw: SEEED_XIAO_S3
+    pio: seeed-xiao-s3
     perfil: cliente
-    owner: Dnto_Laptop
+    owner: LoraLaptop
     owner_short: "💻"
   AcevedoRoof:
     hw: SEEED_XIAO_S3
@@ -71,11 +77,17 @@ nodos:
     owner: AcevedoRoof
     owner_short: "🏡"
   CarTracker:
+    id: "!ddb5828c"
+    pubkey: n2wKYmRLRiLNfVOMYtvB+RzzDBsnppDfu5lfYWdBjFc=
     hw: HELTEC_WIRELESS_TRACKER
     pio: heltec-wireless-tracker   # V1.1 (confirmado por pioEnv)
     perfil: tracker
     owner: CarTracker
     owner_short: "🚗"
+    set:
+      # Batería baja (<3,1 V, sin USB) → deep sleep por sds_secs. El Heltec no despierta al conectar el cargador:
+      # con 300 s revisa cada 5 min y, si ya está cargando, vuelve a transmitir. (2026-10-18)
+      power.sds_secs: 300
   CatTracker:
     hw: TRACKER_T1000_E
     pio: tracker-t1000-e

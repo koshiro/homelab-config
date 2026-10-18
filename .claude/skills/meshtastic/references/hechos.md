@@ -14,12 +14,26 @@
   errores de enumeración en el kernel. (2026-10-18)
 - Slots en ANZ con LONG_FAST: 52; malla pública ("LongFast") = slot 20 (~919,875 MHz); el viejo primario `DNTGPS`
   = slot 38. Hash djb2 del nombre del primario % 52. (2026-10-18)
-- `!793a3263` "Meshtastic 3263": nodo ajeno oído de viaje; no es de la flota.
+- `!793a3263` "Meshtastic 3263" era el propio Dnto_L1 tras un reset (antes de ponerle nombre), no un nodo ajeno.
+- Puertos en la Mac (2026-10-18, pueden cambiar): Laptop `/dev/cu.usbmodem101`, Dnto_L1 `/dev/cu.usbmodem11201`,
+  CarTracker `/dev/cu.usbmodem11301`. Identificar siempre con `$T estado --port`.
+- Wio Tracker L1: bootloader UF2 0.9.2, SoftDevice S140 7.3.0, unidad `TRACKER L1`. El erase v3 termina solo y
+  vuelve a la unidad UF2 (~10 s). (2026-10-18)
+- CarTracker (Heltec Wireless Tracker V1.1) se dormía para siempre con batería baja: el firmware entra en deep sleep
+  por `power.sds_secs` (si es 0 o UINT32_MAX ≈ 50 días) y la placa no tiene pin que la despierte al cargar. Con
+  `power.sds_secs 300` se revisa cada 5 min (`Power.cpp` `updateLowVoltageCounter`: <3,1 V, 10 lecturas, sin USB).
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
 ## Trampas (`error → forma correcta`)
+
+- `cp firmware.uf2 /Volumes/<UF2>/` → «fcopyfile failed: Input/output error»: inofensivo, el nodo reinicia antes de
+  que macOS cierre la copia. Verificar con `$T estado` que el fw cambió.
+- `aplicar` en ESP32 recién cambiado de canales/lora → el paso siguiente falla porque el nodo reinicia → `aplicar`
+  reintenta una vez a los 20 s.
+- Un admin con su propia llave en `admin_key` no sirve y gasta un cupo → mt.py la excluye.
+- `--dest` + `requestConfig` → el CLI imprime cada sección recibida (llaves incluidas) → mt.py silencia stdout.
 
 - `timeout 40 meshtastic …` → no existe `timeout` en macOS: usar `meshtastic --timeout 40`.
 - `pipx install …` → «pipx needs uv>=0.9.17» → `pipx install --backend pip …`.

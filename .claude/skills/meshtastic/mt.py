@@ -139,7 +139,7 @@ def deseado(nombre):
     admins = []
     for ref in f.get("admins", []):
         pk = nodos.get(ref, {}).get("pubkey")
-        if pk:
+        if pk and ref != nombre:   # la propia llave en admin_key no sirve y gasta uno de los 3 cupos
             admins.append(pk)
     return n, claves, admins, sec
 
@@ -206,19 +206,17 @@ def comparar(a, nombre):
     iface = conectar(a)
     try:
         if a.dest:
+            import contextlib
+            import io
             node = iface.getNode(a.dest, requestChannels=False, timeout=a.timeout)
             from meshtastic.protobuf import localonly_pb2
-            vistos = set()
-            for k in claves:
-                sec_name = k.split(".")[0]
-                if sec_name in vistos:
-                    continue
-                vistos.add(sec_name)
+            secciones = {k.split(".")[0] for k in claves} | ({"security"} if admins else set())
+            for sec_name in sorted(secciones):
                 lf = localonly_pb2.LocalConfig.DESCRIPTOR.fields_by_name.get(sec_name)
                 mf = localonly_pb2.LocalModuleConfig.DESCRIPTOR.fields_by_name.get(sec_name)
-                node.requestConfig(lf or mf)
-            if admins:
-                node.requestConfig(localonly_pb2.LocalConfig.DESCRIPTOR.fields_by_name["security"])
+                print(f"pidiendo {sec_name} por radio…", file=sys.stderr)
+                with contextlib.redirect_stdout(io.StringIO()):   # el CLI imprime cada sección recibida
+                    node.requestConfig(lf or mf)
             nodo_id = a.dest
             user = (iface.nodes or {}).get(a.dest, {}).get("user", {})
         else:
@@ -239,7 +237,7 @@ def comparar(a, nombre):
             if pk not in actuales:
                 diffs.append(f"security.admin_key: falta {pk[:12]}…")
                 sets += ["--set", "security.admin_key", f"base64:{pk}"]
-        sobran = actuales - set(admins)
+        sobran = actuales - set(admins) - {n.get("pubkey")}
         if sobran:
             diffs.append(f"security.admin_key: sobran {[s[:12] + '…' for s in sobran]} (no se quitan solas)")
         owner = []
@@ -357,6 +355,11 @@ def cmd_aplicar(a):
         print("$ " + mostrar_cmd(cmd))
         if a.apply:
             r = subprocess.run(cmd)
+            if r.returncode:   # un ESP32 suele reiniciar tras cambiar canales/lora y corta el paso siguiente
+                import time
+                print("falló; reintento en 20 s (el nodo puede estar reiniciando)")
+                time.sleep(20)
+                r = subprocess.run(cmd)
             if r.returncode:
                 sys.exit(f"Falló (código {r.returncode}); los pasos siguientes no se ejecutaron.")
     if not a.apply:

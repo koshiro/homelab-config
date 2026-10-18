@@ -16,25 +16,24 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 ## Fase 1: preparar (Claude, ~1 h)
 
 - [x] `mt.py fw` con soporte para nightly (`nightly.meshtastic.org`) y archivo local; bajar fad52bb de las 4 placas.
-- [ ] Archivar fad52bb para el Laptop y el segundo tracker (hardware por confirmar; el nightly rota a diario).
+- [x] Archivar fad52bb para el Laptop (XIAO S3, mismo archivo que el techo).
+- [ ] Archivar el firmware del segundo tracker (hardware por confirmar).
 - [x] `flota.yaml` con el diseño nuevo (sin IDs; canales y perfiles) y `mt.py provisionar <nodo>`:
       región → llaves → anotar id/pubkey en flota.yaml → canales → perfil → admin_key → respaldo.
 - [x] Corregir `arquitectura.md`, `recetas.md` (orden admins primero) y el PR #118.
 
-## Fase 2: canario (CarTracker, 15 min + 24–48 h)
+## Fase 2–3: nodos en mano (cambio de orden 2026-10-18: el techo va al final para tener la lista completa de favoritos)
 
-- [ ] Flashear limpio + `provisionar CarTracker` (sin admin_key todavía: se agregan en la fase 3).
-- [ ] Verificar: GPS, posición solo por el canal privado, nodos públicos visibles, batería, estabilidad USB.
+- [x] Dnto_L1 `!185e9038`, Laptop `!0404f6d2`, CarTracker `!ddb5828c` (con `power.sds_secs 300`) en 2.8.2.fad52bb,
+      provisionados y coincidiendo con flota.yaml. Canal privado AEAD probado (mensajes en canal 1) y admin remoto
+      PKC probado (Laptop → CarTracker por radio).
+- [ ] CarTracker 24–48 h en uso: GPS, posición por el canal privado, que despierte al cargar tras batería baja.
 
-## Fase 3: admins (Dnto_L1, laptop, AcevedoRoof; ~45 min)
+## Fase 4: resto y techo
 
-- [ ] Flashear y provisionar los tres; sus pubkeys quedan en `flota.yaml` → `admins`.
-- [ ] AcevedoRoof: bajarlo del techo una vez (full erase por USB), WiFi + reserva DHCP, de vuelta arriba.
-- [ ] `aplicar` en CarTracker para agregarle los 3 admin_key.
-
-## Fase 4: resto (CatTracker, segundo tracker, extras; ~15 min c/u)
-
-- [ ] Flashear y provisionar cada uno (ya nacen con admin_key).
+- [ ] CatTracker, segundo tracker y extras: flashear y provisionar (nacen con admin_key de Dnto_L1 y Laptop).
+- [ ] AcevedoRoof al final: bajarlo una vez (full erase por USB), provisionar (WiFi), reserva DHCP, de vuelta arriba.
+- [ ] Agregar la llave del techo a todos: `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
 
 ## Fase 5: ajuste (~30 min)
 
