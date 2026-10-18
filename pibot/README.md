@@ -13,6 +13,11 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 ## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
 
+**2026-10-18: prueba de 2000 MHz con `over_voltage=6` y fuente nueva.** Activado en `config.txt` (respaldo
+`/boot/firmware/config.txt.bak-pre-oc2000-20261018`, 1500 MHz) y pibot apagada para cambiar la fuente. Al encender:
+`kubectl uncordon pibot` y correr `pibot/vtest.sh oc2000`; si aparece el bit 0 (bajo voltaje) bajo carga, volver a
+1800/`over_voltage=2` o a 1500 de serie.
+
 `config.txt` tenía `over_voltage=9`, `arm_freq=2147` y `gpu_freq=750`. Con eso la entrada de 5 V caía:
 `vcgencmd get_throttled` = `0x50005` (bajo voltaje y throttling activos, incluso en reposo) y el firmware dejaba la
 CPU en **600 MHz**. Cambiar la fuente y el cable no lo arregló; lo que no aguanta la corriente es la entrada de la
