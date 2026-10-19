@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+  namespace: mqtt
+  labels:
+    app: mosquitto
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # ServiceLB usa el hostPort 8883: nunca dos pods a la vez en el mismo nodo
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      securityContext:
+        runAsUser: 1883
+        runAsGroup: 1883
+        fsGroup: 1883
+        runAsNonRoot: true
+      initContainers:
+        - name: passwd
+          image: eclipse-mosquitto:2.0.22
+          command: ["/bin/sh", "-c", "cp /secret/passwd /mosquitto/work/passwd && chmod 600 /mosquitto/work/passwd && mosquitto_passwd -U /mosquitto/work/passwd"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: secret
+              mountPath: /secret
+              readOnly: true
+            - name: work
+              mountPath: /mosquitto/work
+      containers:
+        - name: mosquitto
+          image: eclipse-mosquitto:2.0.22
+          command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+          ports:
+            - name: mqtts
+              containerPort: 8883
+          readinessProbe:
+            tcpSocket: {port: mqtts}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: mqtts}
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config
+              readOnly: true
+            - name: certs
+              mountPath: /mosquitto/certs
+              readOnly: true
+            - name: work
+              mountPath: /mosquitto/work
+        # Mantiene mqtt.danielriquelme.cl (DNS only, sin proxy) apuntando a la IP pública de la casa.
+        - name: cloudflare-ddns
+          image: favonia/cloudflare-ddns:1.17.1
+          resources:
+            limits: {memory: 64Mi, cpu: 50m}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mqtt
+                  key: CF_API_TOKEN
+            - name: DOMAINS
+              value: "mqtt.danielriquelme.cl"
+            - name: PROXIED
+              value: "false"
+            - name: IP6_PROVIDER
+              value: "none"
+            - name: DELETE_ON_STOP
+              value: "false"
+      volumes:
+        - name: config
+          configMap:
+            name: mosquitto
+            defaultMode: 0440
+        - name: certs
+          secret:
+            secretName: mqtt
+            defaultMode: 0440
+            items:
+              - {key: tls.crt, path: tls.crt}
+              - {key: tls.key, path: tls.key}
+        - name: secret
+          secret:
+            secretName: mqtt
+            defaultMode: 0440
+            items:
+              - {key: passwd, path: passwd}
+        - name: work
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi

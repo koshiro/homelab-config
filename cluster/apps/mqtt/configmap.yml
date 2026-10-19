@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto
+  namespace: mqtt
+data:
+  mosquitto.conf: |
+    persistence false
+    log_dest stdout
+    log_type error
+    log_type warning
+    log_type notice
+    log_type information
+    connection_messages true
+    allow_anonymous false
+    # passwd en claro viene del Secret; el initContainer lo copia y lo convierte a hash (mosquitto_passwd -U)
+    password_file /mosquitto/work/passwd
+    acl_file /mosquitto/config/acl
+    # Solo TLS. El firmware Meshtastic usa setInsecure(): cifra, no valida el certificado (autofirmado sirve).
+    listener 8883
+    certfile /mosquitto/certs/tls.crt
+    keyfile /mosquitto/certs/tls.key
+  acl: |
+    # Un usuario por nodo gateway; todos bajo la raíz msh/
+    user roof
+    topic readwrite msh/#
+    user temuco
+    topic readwrite msh/#

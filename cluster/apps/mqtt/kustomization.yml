@@ -1,0 +1,14 @@
+# Broker MQTT (Mosquitto) para la flota Meshtastic: une la malla de la casa (AcevedoRoof) con nodos remotos por
+# internet (p. ej. el solar de Temuco). Ver README.md de esta carpeta y la skill meshtastic.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mqtt
+resources:
+  - namespace.yml
+  - configmap.yml
+  - deployment.yml
+  - service.yml
+  - networkpolicy.yml
+components:
+  - ../../components/proteger-datos
+# secret.sops.yaml (passwd, tls.crt, tls.key, CF_API_TOKEN) entra por solo-flux/ y lo descifra Flux.
