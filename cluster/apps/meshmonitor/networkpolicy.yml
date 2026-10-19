@@ -19,6 +19,13 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - {protocol: TCP, port: 3001}
+    # API REST desde el bot de Telegram de la flota
+    - from:
+        - podSelector:
+            matchLabels:
+              app: meshmonitor-bot
+      ports:
+        - {protocol: TCP, port: 3001}
     # Nodo virtual desde la LAN, los pods (ServiceLB) y el tailnet
     - from:
         - ipBlock: {cidr: 192.168.1.0/24}
