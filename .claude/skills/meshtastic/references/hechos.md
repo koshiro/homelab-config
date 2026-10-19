@@ -33,6 +33,13 @@
 
 ## Trampas (`error → forma correcta`)
 
+- **NUNCA `meshtastic --dest … --set <seccion2>` con más de una sección**: el CLI solo pide la primera sección y escribe
+  las demás desde cero. 2026-10-19 dejó `admin_key` = [solo el techo] y `serial_enabled false` en 5 nodos (NAK
+  `ADMIN_PUBLIC_KEY_UNAUTHORIZED` al Dnto_L1 después). Forma correcta: `mt.py aplicar <nodo> --dest` (API: lee todas
+  las secciones, aborta si falta una). Recuperación: por el admin que quedó (el techo por TCP).
+- Admin remoto (`addContactURL`, `setFavorite`, `writeConfig`) no espera confirmación: «ok» = enviado. Verificar
+  leyendo de vuelta (`aplicar … --dest` sin `--apply`).
+
 - CLI por USB colgado o «multiple access on port» → la app Meshtastic de macOS tiene tomado el puerto (`lsof /dev/cu.usbmodemXXX`): cerrarla o desconectarla del nodo. No matarla sin avisar. (2026-10-18)
 - `aplicar --dest` contra un nodo apagado o fuera de alcance se queda esperando indefinidamente → confirmar antes con `estado` que se oye (hace < 15 min).
 

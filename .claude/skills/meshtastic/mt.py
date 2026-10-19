@@ -343,7 +343,74 @@ def cmd_diff(a):
             print("  $ meshtastic " + mostrar_cmd(args_conexion(a) + grupo))
 
 
+def aplicar_remoto(a):
+    """--dest por la API, no por `meshtastic --dest --set`: el CLI solo pide la primera sección que toca y escribe las
+    demás desde cero (2026-10-19 dejó admin_key = [solo el techo] y serial_enabled false en 5 nodos). Aquí se leen
+    todas las secciones, se aborta si alguna no llegó, y se escribe la sección completa con los cambios."""
+    import contextlib
+    import io
+    import threading
+    from meshtastic.protobuf import localonly_pb2
+    n, claves, admins, _ = deseado(a.nodo)
+    if n.get("id") and n["id"] != a.dest:
+        sys.exit(f"--dest {a.dest} no es {a.nodo} ({n['id']} en flota.yaml)")
+
+    def con_limite(fn, *args, t=120):
+        th = threading.Thread(target=fn, args=args, daemon=True)
+        th.start()
+        th.join(t)
+        return not th.is_alive()
+
+    iface = conectar(a)
+    try:
+        node = iface.getNode(a.dest, requestChannels=False, timeout=a.timeout)
+        secciones = sorted({k.split(".")[0] for k in claves} | {"security"})
+        for s in secciones:
+            fd = (localonly_pb2.LocalConfig.DESCRIPTOR.fields_by_name.get(s)
+                  or localonly_pb2.LocalModuleConfig.DESCRIPTOR.fields_by_name.get(s))
+            raiz = node.localConfig if s in node.localConfig.DESCRIPTOR.fields_by_name else node.moduleConfig
+            with contextlib.redirect_stdout(io.StringIO()):
+                llego = con_limite(node.requestConfig, fd)
+            if not llego or not raiz.HasField(s):
+                sys.exit(f"{a.nodo}: no llegó la sección {s} por radio; no se escribe nada (¿nodo apagado o sin permiso?)")
+        cambiadas, diffs = set(), []
+        for k, v in claves.items():
+            s, campo = k.split(".", 1)
+            raiz = node.localConfig if s in node.localConfig.DESCRIPTOR.fields_by_name else node.moduleConfig
+            actual = leer_campo(node.localConfig, node.moduleConfig, k)
+            if norm(actual) != norm(v):
+                diffs.append(f"{k}: {'***' if 'psk' in k or 'password' in k else repr(actual)} → "
+                             f"{'***' if 'psk' in k or 'password' in k else repr(v)}")
+                poner_campo(getattr(raiz, s), campo, v)
+                cambiadas.add(s)
+        quiero = [base64.b64decode(pk) for pk in admins]
+        tengo = [x for x in node.localConfig.security.admin_key if x]
+        if set(tengo) != set(quiero):
+            diffs.append(f"security.admin_key: {[base64.b64encode(x).decode()[:12] for x in tengo]} → "
+                         f"{[pk[:12] for pk in admins]}")
+            del node.localConfig.security.admin_key[:]
+            node.localConfig.security.admin_key.extend(quiero)
+            cambiadas.add("security")
+        print(f"{a.nodo}: {len(diffs)} diferencia(s)" if diffs else f"{a.nodo}: coincide con flota.yaml")
+        for d in diffs:
+            print(f"  {d}")
+        if not cambiadas:
+            return
+        if not a.apply:
+            print("(dry-run: agrega --apply)")
+            return
+        con_limite(node.beginSettingsTransaction)
+        for s in sorted(cambiadas):
+            print(f"  escribiendo {s}")
+            con_limite(node.writeConfig, s)
+        con_limite(node.commitSettingsTransaction)
+    finally:
+        iface.close()
+
+
 def cmd_aplicar(a):
+    if a.dest:
+        return aplicar_remoto(a)
     diffs, sets, owner, canal = comparar(a, a.nodo)
     if not diffs:
         print(f"{a.nodo}: nada que aplicar")
