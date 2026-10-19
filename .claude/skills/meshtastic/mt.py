@@ -251,14 +251,14 @@ def comparar(a, nombre):
         if a.dest:
             print("(canales: no se comparan en remoto; solo por USB/TCP directo)", file=sys.stderr)
         else:
-            canal = comparar_canales(node, claves, sec, diffs)
+            canal = comparar_canales(node, claves, sec, diffs, bool(n.get("gateway")))
         return diffs, sets, owner, canal
     finally:
         iface.close()
 
 
-def canales_deseados(sec):
-    """ChannelSettings de flota.yaml:canales, con secretos resueltos."""
+def canales_deseados(sec, gateway=False):
+    """ChannelSettings de flota.yaml:canales, con secretos resueltos; uplink/downlink solo en gateways MQTT."""
     from meshtastic.protobuf import channel_pb2
     out = []
     for c in yaml_load(FLOTA).get("canales", []):
@@ -268,6 +268,7 @@ def canales_deseados(sec):
         s.psk = b"\x01" if psk == "default" else base64.b64decode(psk)
         s.use_aead = bool(c.get("aead", False))
         s.module_settings.position_precision = int(c.get("precision", 0))
+        s.uplink_enabled = s.downlink_enabled = bool(c.get("mqtt") and gateway)
         out.append(s)
     return out
 
@@ -279,10 +280,10 @@ def poner_campo(msg, campo, valor):
     setattr(msg, campo, valor)
 
 
-def comparar_canales(node, claves, sec, diffs):
+def comparar_canales(node, claves, sec, diffs, gateway=False):
     """Agrega a diffs lo que difiere y devuelve los grupos de argumentos del CLI que lo corrigen."""
     from meshtastic.protobuf import apponly_pb2
-    quiero = canales_deseados(sec)
+    quiero = canales_deseados(sec, gateway)
     if not quiero:
         return []
     tengo = {c.index: c for c in (node.channels or []) if c.role}
@@ -295,6 +296,8 @@ def comparar_canales(node, claves, sec, diffs):
             continue
         for campo, a_, b_ in (("nombre", c.settings.name, s.name), ("psk", c.settings.psk, s.psk),
                               ("aead", c.settings.use_aead, s.use_aead),
+                              ("uplink", c.settings.uplink_enabled, s.uplink_enabled),
+                              ("downlink", c.settings.downlink_enabled, s.downlink_enabled),
                               ("precision", c.settings.module_settings.position_precision,
                                s.module_settings.position_precision),
                               ("rol", c.role, 1 if i == 0 else 2)):

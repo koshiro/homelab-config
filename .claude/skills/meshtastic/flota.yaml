@@ -17,6 +17,7 @@ canales:
     psk: secreto:canal_privado_psk   # 32 B en base64
     aead: true
     precision: 32
+    mqtt: true                   # uplink/downlink solo en los nodos con `gateway: true`
 
 comun:
   lora.region: ANZ               # Chile: 915–928 MHz
@@ -32,6 +33,7 @@ comun:
   telemetry.device_telemetry_enabled: false   # saldría por el canal público; se pide por DM
   mqtt.enabled: false
   mqtt.map_reporting_enabled: false
+  lora.config_ok_to_mqtt: true   # un gateway con broker público (Temuco) solo sube paquetes ajenos con este bit
   display.units: METRIC
 
 perfiles:
@@ -54,6 +56,12 @@ perfiles:
     network.wifi_enabled: true
     network.wifi_ssid: secreto:wifi_ssid
     network.wifi_psk: secreto:wifi_psk
+    # MQTT: broker del homelab (cluster/apps/mqtt). Usuario, clave y dirección van en cada nodo.
+    mqtt.enabled: true
+    mqtt.tls_enabled: true           # puerto 8883; el firmware no valida el certificado (autofirmado)
+    mqtt.encryption_enabled: true    # sube los paquetes cifrados (el canal privado sigue con AEAD)
+    mqtt.json_enabled: false
+    mqtt.root: msh/acevedo
   cliente:
     device.role: CLIENT
 
@@ -81,6 +89,11 @@ nodos:
     hw: SEEED_XIAO_S3
     pio: seeed-xiao-s3
     perfil: base
+    gateway: true
+    set:
+      mqtt.address: 192.168.1.15     # IP privada: el firmware sube también los paquetes de otros nodos
+      mqtt.username: roof
+      mqtt.password: secreto:mqtt_pass_roof
     owner: AcevedoRoof
     owner_short: "🏡"
   CarTracker:

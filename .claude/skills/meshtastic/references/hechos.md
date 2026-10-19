@@ -24,11 +24,17 @@
   `power.sds_secs 300` se revisa cada 5 min (`Power.cpp` `updateLowVoltageCounter`: <3,1 V, 10 lecturas, sin USB).
 - AcevedoRoof: 192.168.1.105 (WiFi `WiFi_Mesh-532670`), MAC 80:b5:4e:f1:0d:fc, TCP 4403 abierto a la LAN; alcanzable
   desde pve y los workers k3s. (2026-10-18)
+- Broker MQTT: `cluster/apps/mqtt` (PR #123). LAN `192.168.1.15:8883`, internet `mqtt.danielriquelme.cl:8883`, TLS
+  autofirmado (copia en `~/.config/meshtastic-fleet/mqtt-ca.crt`), claves en `secretos.yaml` (`mqtt_pass_*`).
+  Firmware (MQTT.cpp): `setInsecure()`; con broker de IP privada sube paquetes ajenos sin `ok_to_mqtt`. (2026-10-18)
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
 ## Trampas (`error → forma correcta`)
+
+- CLI por USB colgado o «multiple access on port» → la app Meshtastic de macOS tiene tomado el puerto (`lsof /dev/cu.usbmodemXXX`): cerrarla o desconectarla del nodo. No matarla sin avisar. (2026-10-18)
+- `aplicar --dest` contra un nodo apagado o fuera de alcance se queda esperando indefinidamente → confirmar antes con `estado` que se oye (hace < 15 min).
 
 - esptool corta a mitad del borrado ("No more data to read") → el ESP32 queda sin firmware: pantalla apagada y solo el LED de carga. No está roto: `esptool --port <p> chip-id` lo confirma y se vuelve a flashear. (2026-10-18)
 

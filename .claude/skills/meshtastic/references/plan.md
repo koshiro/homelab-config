@@ -36,7 +36,8 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 - [x] Extras: BlackHeltecV3 `!6de158c2`, OrangeHeltecV3 `!583acc8e` (Heltec V3).
 - [x] AcevedoRoof `!918d5bf9` (venía en la 2.8.0 **revocada**) reinstalado con WiFi: 192.168.1.105, MAC 80:b5:4e:f1:0d:fc.
       TCP 4403 accesible desde la Mac, pve y k3s-node-1. Contactos con llave de los 7 nodos cargados (`mt.py favoritos`).
-- [ ] Reserva DHCP de 192.168.1.105 en el router (usuario). Verificar ★ de favoritos con el techo arriba.
+- [x] Favoritos verificados en el techo (7). Ya oye ~25 nodos de la malla pública de Santiago.
+- [ ] Reserva DHCP de 192.168.1.105 en el router (usuario).
 - [ ] Agregar la llave del techo a todos (Laptop ya la tiene): `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
 
 ## Fase 5: ajuste (~30 min)
@@ -44,6 +45,15 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 - [ ] Favoritos en AcevedoRoof (toda la flota). Firma `BALANCED` en todos.
 - [ ] Probar admin remoto: Mac → TCP techo → `--dest` a un tracker.
 - [ ] Respaldo de todos.
+
+## Fase 5b: MQTT (PR #123, decidido 2026-10-18 para unir un nodo solar con WiFi en Temuco)
+
+- [x] Broker Mosquitto en k3s (`cluster/apps/mqtt`): TLS 8883, usuarios `roof`/`temuco`, DDNS `mqtt.danielriquelme.cl`.
+- [ ] Merge del PR #123 y verificar el pod.
+- [ ] Router (usuario): WAN TCP 8883 → 192.168.1.15:8883 (ver `cluster/apps/mqtt/README.md`).
+- [ ] `aplicar AcevedoRoof --host 192.168.1.105 --apply` (MQTT + uplink/downlink del canal privado) y ver tráfico en
+      `mosquitto_sub`. `config_ok_to_mqtt` al resto de la flota con `aplicar` (USB o remoto).
+- [ ] Nodo de Temuco: perfil `base` con `gateway: true`, `mqtt.address mqtt.danielriquelme.cl`, usuario `temuco`.
 
 ## Fase 6: homelab (1–2 h, PR)
 
