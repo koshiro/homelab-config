@@ -536,6 +536,39 @@ def cmd_fw(a):
         print(f"       cp {out}/firmware-{pio}-{ver}.uf2 /Volumes/<unidad>/")
 
 
+def url_contacto(n):
+    """URL de contacto (SharedContact) armada desde flota.yaml: id, nombres, hw, rol y llave pública."""
+    from meshtastic.protobuf import admin_pb2, config_pb2, mesh_pb2
+    c = admin_pb2.SharedContact()
+    c.node_num = int(n["id"].lstrip("!"), 16)
+    c.user.id = n["id"]
+    c.user.long_name = n.get("owner", "")
+    c.user.short_name = n.get("owner_short", "")
+    if n.get("hw"):
+        c.user.hw_model = mesh_pb2.HardwareModel.Value(n["hw"])
+    rol = {"tracker": "TRACKER", "base": "CLIENT_BASE"}.get(n.get("perfil"), "CLIENT")
+    c.user.role = config_pb2.Config.DeviceConfig.Role.Value(rol)
+    c.user.public_key = base64.b64decode(n["pubkey"])
+    c.manually_verified = True
+    return "https://meshtastic.org/v/#" + base64.urlsafe_b64encode(c.SerializeToString()).decode().rstrip("=")
+
+
+def cmd_favoritos(a):
+    """Carga como contacto (con llave) y marca favorito a cada nodo de la flota en <nodo> (para CLIENT_BASE)."""
+    f = yaml_load(FLOTA)
+    otros = {k: v for k, v in f["nodos"].items() if k != a.nodo and v.get("id") and v.get("pubkey")}
+    for nombre, n in otros.items():
+        cmd = [CLI, "--timeout", str(a.timeout)] + args_conexion(a)
+        for paso in (["--add-contact", url_contacto(n)], ["--set-favorite-node", n["id"]]):
+            print(f"$ meshtastic {' '.join(args_conexion(a))} {paso[0]} {nombre if paso[0] == '--add-contact' else n['id']}")
+            if a.apply:
+                r = subprocess.run(cmd + paso, capture_output=True, text=True)
+                if r.returncode:
+                    print(f"  falló: {(r.stderr or r.stdout).strip()[-200:]}")
+    if not a.apply:
+        print("(dry-run: agrega --apply)")
+
+
 def unidad_uf2(timeout):
     import time
     fin = time.time() + timeout
@@ -671,6 +704,10 @@ def main():
     sp.add_argument("nodo")
     sp.add_argument("--apply", action="store_true")
     sp.set_defaults(dest=None)
+    sp = con(sub.add_parser("favoritos", help="contactos + favoritos de toda la flota en un nodo (dry-run salvo --apply)"),
+             dest=True)
+    sp.add_argument("nodo")
+    sp.add_argument("--apply", action="store_true")
     sp = con(sub.add_parser("flashear", help="full erase + firmware fijado por USB (dry-run salvo --apply)"))
     sp.add_argument("nodo")
     sp.add_argument("--apply", action="store_true")
@@ -686,7 +723,7 @@ def main():
     sp.add_argument("--marcar", action="store_true", help="registrar lo listado como revisado")
     a = p.parse_args()
     {"puertos": cmd_puertos, "estado": cmd_estado, "respaldo": cmd_respaldo, "diff": cmd_diff,
-     "aplicar": cmd_aplicar, "provisionar": cmd_provisionar, "flashear": cmd_flashear, "secretos": cmd_secretos, "fw": cmd_fw,
+     "aplicar": cmd_aplicar, "provisionar": cmd_provisionar, "flashear": cmd_flashear, "favoritos": cmd_favoritos, "secretos": cmd_secretos, "fw": cmd_fw,
      "upstream": cmd_upstream}[a.cmd](a)
 
 

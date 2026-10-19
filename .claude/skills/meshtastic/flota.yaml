@@ -76,6 +76,8 @@ nodos:
     owner: LoraLaptop
     owner_short: "💻"
   AcevedoRoof:
+    id: "!918d5bf9"
+    pubkey: TXOhwzLpnv4zJif1sRHxnsKmyrFlK4je7VSiNgPhajk=
     hw: SEEED_XIAO_S3
     pio: seeed-xiao-s3
     perfil: base

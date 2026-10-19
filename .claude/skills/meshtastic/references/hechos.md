@@ -22,6 +22,8 @@
 - CarTracker (Heltec Wireless Tracker V1.1) se dormía para siempre con batería baja: el firmware entra en deep sleep
   por `power.sds_secs` (si es 0 o UINT32_MAX ≈ 50 días) y la placa no tiene pin que la despierte al cargar. Con
   `power.sds_secs 300` se revisa cada 5 min (`Power.cpp` `updateLowVoltageCounter`: <3,1 V, 10 lecturas, sin USB).
+- AcevedoRoof: 192.168.1.105 (WiFi `WiFi_Mesh-532670`), MAC 80:b5:4e:f1:0d:fc, TCP 4403 abierto a la LAN; alcanzable
+  desde pve y los workers k3s. (2026-10-18)
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.

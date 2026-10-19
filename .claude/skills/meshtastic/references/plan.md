@@ -34,8 +34,10 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 - [x] CatTracker `!1e945bee` y AkiraGPS `!66f2bcce` (T1000-E) en 2.8.2.fad52bb, provisionados.
 - [x] T1000-E despierta de System OFF al conectar el USB → trackers con `is_power_saving false`.
 - [x] Extras: BlackHeltecV3 `!6de158c2`, OrangeHeltecV3 `!583acc8e` (Heltec V3).
-- [ ] AcevedoRoof al final: bajarlo una vez (full erase por USB), provisionar (WiFi), reserva DHCP, de vuelta arriba.
-- [ ] Agregar la llave del techo a todos: `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
+- [x] AcevedoRoof `!918d5bf9` (venía en la 2.8.0 **revocada**) reinstalado con WiFi: 192.168.1.105, MAC 80:b5:4e:f1:0d:fc.
+      TCP 4403 accesible desde la Mac, pve y k3s-node-1. Contactos con llave de los 7 nodos cargados (`mt.py favoritos`).
+- [ ] Reserva DHCP de 192.168.1.105 en el router (usuario). Verificar ★ de favoritos con el techo arriba.
+- [ ] Agregar la llave del techo a todos (Laptop ya la tiene): `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
 
 ## Fase 5: ajuste (~30 min)
 
