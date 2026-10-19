@@ -42,7 +42,9 @@ perfiles:
     device.rebroadcast_mode: NONE    # no retransmite tráfico público (batería y aire)
     position.gps_mode: ENABLED
     position.position_broadcast_smart_enabled: true
-    position.position_broadcast_secs: 3600
+    # También fija el reintento del GPS: tras una búsqueda fallida (indoor) el firmware espera position_broadcast_secs
+    # (tope 1 h) y luego busca ≤5 min; la primera búsqueda tras encender dura ≤ este valor (tope 15 min). (2026-10-19)
+    position.position_broadcast_secs: 900
     position.broadcast_smart_minimum_distance: 10
     position.broadcast_smart_minimum_interval_secs: 15
     position.gps_update_interval: 60

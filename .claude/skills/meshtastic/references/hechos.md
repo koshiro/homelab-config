@@ -34,6 +34,11 @@
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
+- GPS de los T1000-E (AG3335, fw 2.8.2.fad52bb): entre fixes queda en backup con VRTC (#11889) y conserva efemérides →
+  hot start. Sin softsleep. Primera búsqueda tras encender o reactivar el GPS: hasta `position_broadcast_secs` (tope
+  15 min). Si falla: espera `position_broadcast_secs` (tope 1 h) y reintenta ≤5 min. Triple clic = GPS off/on;
+  al reactivarlo (`enable()` → `scheduling.reset()`) busca de inmediato sin backoff. Indoor no hay fix. (2026-10-19)
+
 ## Trampas (`error → forma correcta`)
 
 - Por el nodo virtual de MeshMonitor el firmware sale como `2.8.2.fad52bb-MM4.17.0`, sin `pio`, y el canal 0 como
