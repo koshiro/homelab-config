@@ -9,6 +9,7 @@ resources:
   - deployment.yml
   - service.yml
   - ingress.yml
+  - middleware.yml
   - networkpolicy.yml
 components:
   - ../../components/proteger-datos

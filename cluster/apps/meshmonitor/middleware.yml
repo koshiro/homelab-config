@@ -1,0 +1,11 @@
+# Cloudflare termina TLS y Traefik (sin forwardedHeaders.trustedIPs) reenvía X-Forwarded-Proto: http. Con
+# COOKIE_SECURE la app no emite la cookie de sesión → login falla con «CSRF token mismatch». Se fija https.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-proto
+  namespace: meshmonitor
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
