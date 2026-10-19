@@ -33,6 +33,9 @@
 
 ## Trampas (`error → forma correcta`)
 
+- Laptop (XIAO S3) deja de contestar la API por USB tras varias operaciones admin seguidas («Timed out waiting for
+  connection completion») → `esptool --port <p> --after hard-reset chip-id` lo reinicia sin borrar nada. (2026-10-19)
+
 - Heltec Wireless Tracker: `Failed to connect … No serial data received` tras un flasheo cortado → bootloader a mano
   (mantener USER/BOOT, pulsar RST, soltar BOOT), flashear, y después **RST solo**: el reset por RTS lo deja en modo
   descarga. (2026-10-19)
