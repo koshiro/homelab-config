@@ -11,6 +11,12 @@ resources:
   - ingress.yml
   - middleware.yml
   - networkpolicy.yml
+  - bot/deployment.yml
+configMapGenerator:
+  # Bot de Telegram de la flota (/donde, /flota)
+  - name: meshmonitor-bot
+    files:
+      - bot/bot.py
 components:
   - ../../components/proteger-datos
-# secret.sops.yaml (SESSION_SECRET) entra por solo-flux/ y lo descifra Flux.
+# secret.sops.yaml (SESSION_SECRET) y bot/secret.sops.yaml entran por solo-flux/ y los descifra Flux.
