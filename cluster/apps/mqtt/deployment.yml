@@ -37,6 +37,8 @@ spec:
               readOnly: true
             - name: work
               mountPath: /mosquitto/work
+            - name: tmp                # mosquitto_passwd -U escribe un temporal en /tmp (raíz de solo lectura)
+              mountPath: /tmp
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2.0.22
@@ -112,6 +114,10 @@ spec:
             items:
               - {key: passwd, path: passwd}
         - name: work
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: tmp
           emptyDir:
             medium: Memory
             sizeLimit: 1Mi
