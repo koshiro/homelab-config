@@ -41,6 +41,7 @@ export KUBECONFIG=~/.kube/config-homelab
 |---|---|---|---|---|
 | Immich | `immich` | `immich.danielriquelme.cl` | NFS Proxmox `nvme/k8s/immich` + CNPG | ✅ |
 | Minecraft | `minecraft` | `minecraft.danielriquelme.cl` (Java 25565 / Bedrock 19132, LoadBalancer + DDNS) | NFS Proxmox `nvme/k8s/minecraft` | ✅ proxy Velocity + Geyser, servidores Paper `principal`, `spiral2`, `spiral3`, bot de whitelist ([LOBBY.md](cluster/apps/minecraft/LOBBY.md)) |
+| MQTT (Meshtastic) | `mqtt` | `mqtt.danielriquelme.cl:8883` (TLS, LoadBalancer + DDNS; router WAN 8883 → 192.168.1.15) | — (sin estado) | ✅ Mosquitto para unir mallas Meshtastic por internet ([README](cluster/apps/mqtt/README.md)) |
 | Pingvin | `pingvin` | `pingvin.danielriquelme.cl` | NFS Proxmox `nvme/k8s/pingvin` | ✅ |
 | Plex | `plex` | `plex.danielriquelme.cl` · NodePort 32400 | config local-path + media NFS `homelab-storage/k8s-media-library` | ✅ |
 | Sonarr, Radarr, Prowlarr, Bazarr | ns propio | `<app>.danielriquelme.cl` | config local-path + media NFS `k8s-media-library` | ✅ |

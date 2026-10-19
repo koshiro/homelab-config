@@ -366,3 +366,25 @@ spec:
   timeout: 5m
   wait: true
   prune: false
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: mqtt
+  namespace: flux-system
+spec:
+  path: ./cluster/apps/mqtt
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 5m
+  wait: true
+  prune: false
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
