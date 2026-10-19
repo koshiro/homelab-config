@@ -31,7 +31,9 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 
 ## Fase 4: resto y techo
 
-- [ ] CatTracker, segundo tracker y extras: flashear y provisionar (nacen con admin_key de Dnto_L1 y Laptop).
+- [x] CatTracker `!1e945bee` y AkiraGPS `!66f2bcce` (T1000-E) en 2.8.2.fad52bb, provisionados.
+- [ ] Prueba: ¿el T1000-E despierta de System OFF al conectar el USB? Decide `is_power_saving` de los trackers de mascotas.
+- [ ] Nodos extra.
 - [ ] AcevedoRoof al final: bajarlo una vez (full erase por USB), provisionar (WiFi), reserva DHCP, de vuelta arriba.
 - [ ] Agregar la llave del techo a todos: `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
 

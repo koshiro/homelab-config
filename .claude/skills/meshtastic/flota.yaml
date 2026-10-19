@@ -44,6 +44,10 @@ perfiles:
     position.broadcast_smart_minimum_distance: 10
     position.broadcast_smart_minimum_interval_secs: 15
     position.gps_update_interval: 60
+    # Batería baja (<3,1 V, sin USB) → deep sleep de sds_secs. Ni el Heltec ni el T1000-E despiertan solos al cargar:
+    # con 300 s revisan cada 5 min y, si ya cargan, vuelven a transmitir. En nRF52 solo aplica con is_power_saving
+    # (sin él entra en System OFF y despierta con el botón o, si el hardware lo hace, con el USB). (2026-10-18)
+    power.sds_secs: 300
   base:                          # nodo fijo del techo, en la LAN por WiFi (BLE queda apagado en ESP32)
     device.role: CLIENT_BASE
     network.wifi_enabled: true
@@ -84,14 +88,20 @@ nodos:
     perfil: tracker
     owner: CarTracker
     owner_short: "🚗"
-    set:
-      # Batería baja (<3,1 V, sin USB) → deep sleep por sds_secs. El Heltec no despierta al conectar el cargador:
-      # con 300 s revisa cada 5 min y, si ya está cargando, vuelve a transmitir. (2026-10-18)
-      power.sds_secs: 300
   CatTracker:
+    id: "!1e945bee"
+    pubkey: tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM=
     hw: TRACKER_T1000_E
     pio: tracker-t1000-e
     perfil: tracker
     owner: CatTracker
     owner_short: "😺"
-  # Por agregar: segundo tracker de mascota (hardware por confirmar) y nodos extra.
+  AkiraGPS:                      # tracker del perro
+    id: "!66f2bcce"
+    pubkey: c7xvNwWSgvjkxR9AK/M0QVB6xRadldUJKRnGgrb2HmM=
+    hw: TRACKER_T1000_E
+    pio: tracker-t1000-e
+    perfil: tracker
+    owner: AkiraGPS
+    owner_short: "🐕"
+  # Por agregar: nodos extra.

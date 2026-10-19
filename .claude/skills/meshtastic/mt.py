@@ -536,6 +536,71 @@ def cmd_fw(a):
         print(f"       cp {out}/firmware-{pio}-{ver}.uf2 /Volumes/<unidad>/")
 
 
+def unidad_uf2(timeout):
+    import time
+    fin = time.time() + timeout
+    while time.time() < fin:
+        for v in os.listdir("/Volumes"):
+            if os.path.exists(f"/Volumes/{v}/INFO_UF2.TXT"):
+                return Path("/Volumes") / v
+        time.sleep(1)
+    return None
+
+
+def toque_1200(puerto):
+    """Abrir el CDC a 1200 bps hace que el bootloader Adafruit (o la app de borrado) entre en modo UF2."""
+    import serial
+    import time
+    try:
+        s = serial.Serial(puerto, 1200)
+        time.sleep(0.5)   # cerrar de inmediato no siempre lo dispara
+        s.close()
+    except Exception as e:
+        print(f"toque 1200 bps en {puerto}: {e}")
+
+
+def cmd_flashear(a):
+    """Full erase + firmware fijado. ESP32: device-install.sh. nRF52: DFU → erase → (toque 1200) → UF2. Borra todo."""
+    import time
+    a.solo_bajar, a.version = True, None
+    cmd_fw(a)   # asegura archivos verificados
+    f = yaml_load(FLOTA)
+    ver, pio = f["firmware"], f["nodos"][a.nodo]["pio"]
+    out = Path.home() / ".cache" / "meshtastic-fw" / ver / pio
+    puerto = resolver_puerto(a)
+    esp32 = (out / "device-install.sh").exists()
+    print(f"{a.nodo} en {puerto}: full erase + {ver} ({'esp32' if esp32 else 'nrf52'})")
+    if not a.apply:
+        print("(dry-run: agrega --apply; borra llaves y configuración. Antes: `$T respaldo`)")
+        return
+    if esp32:
+        r = subprocess.run(["./device-install.sh", "-p", puerto, "-f", f"firmware-{pio}-{ver}.factory.bin"], cwd=out)
+        sys.exit(r.returncode) if r.returncode else print("flasheado")
+        return
+    subprocess.run([CLI, "--port", puerto, "--timeout", "30", "--enter-dfu"], capture_output=True)
+    vol = unidad_uf2(30) or sys.exit("No apareció la unidad UF2 (entrar en DFU a mano: doble reset o botón al conectar)")
+    sd = next((l.split(":", 1)[1].strip() for l in (vol / "INFO_UF2.TXT").read_text().splitlines()
+               if l.startswith("SoftDevice")), "")
+    erase = next((e for e in ERASE_NRF52 if sd.replace(" ", "_") in e), None) or sys.exit(f"SoftDevice desconocida: {sd}")
+    print(f"unidad {vol.name}, SoftDevice {sd} → {erase}")
+    subprocess.run(["cp", "-X", str(out / erase), str(vol)], capture_output=True)
+    fin = time.time() + 15
+    while vol.exists() and time.time() < fin:
+        time.sleep(1)
+    time.sleep(10)   # la app de borrado tarda unos segundos
+    vol = unidad_uf2(20)
+    if not vol:   # el T1000-E queda en la app de borrado sin disco: el toque 1200 lo pasa a UF2
+        toque_1200(puerto)
+        vol = unidad_uf2(20) or sys.exit("No volvió la unidad UF2 tras el borrado (entrar en DFU a mano)")
+    print(f"borrado; copiando firmware a {vol.name}")
+    subprocess.run(["cp", "-X", str(out / f"firmware-{pio}-{ver}.uf2"), str(vol)], capture_output=True)  # el error de fcopyfile es normal
+    fin = time.time() + 40
+    while time.time() < fin and not (not vol.exists() and os.path.exists(puerto)):
+        time.sleep(1)
+    time.sleep(3)
+    print("flasheado" if os.path.exists(puerto) else f"el puerto {puerto} no volvió: revisar `$T puertos`")
+
+
 def gh(url):
     req = urllib.request.Request(url, headers={"User-Agent": "mt.py", "Accept": "application/vnd.github+json"})
     tok = os.environ.get("GITHUB_TOKEN")
@@ -606,6 +671,9 @@ def main():
     sp.add_argument("nodo")
     sp.add_argument("--apply", action="store_true")
     sp.set_defaults(dest=None)
+    sp = con(sub.add_parser("flashear", help="full erase + firmware fijado por USB (dry-run salvo --apply)"))
+    sp.add_argument("nodo")
+    sp.add_argument("--apply", action="store_true")
     sp = sub.add_parser("secretos", help="qué secretos faltan; --generar-canal crea el canal privado")
     sp.add_argument("--generar-canal", action="store_true")
     sp.add_argument("--nombre", default="DNTGPS", help="nombre del canal privado (no afecta la frecuencia)")
@@ -618,7 +686,7 @@ def main():
     sp.add_argument("--marcar", action="store_true", help="registrar lo listado como revisado")
     a = p.parse_args()
     {"puertos": cmd_puertos, "estado": cmd_estado, "respaldo": cmd_respaldo, "diff": cmd_diff,
-     "aplicar": cmd_aplicar, "provisionar": cmd_provisionar, "secretos": cmd_secretos, "fw": cmd_fw,
+     "aplicar": cmd_aplicar, "provisionar": cmd_provisionar, "flashear": cmd_flashear, "secretos": cmd_secretos, "fw": cmd_fw,
      "upstream": cmd_upstream}[a.cmd](a)
 
 
