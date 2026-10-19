@@ -32,8 +32,8 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 ## Fase 4: resto y techo
 
 - [x] CatTracker `!1e945bee` y AkiraGPS `!66f2bcce` (T1000-E) en 2.8.2.fad52bb, provisionados.
-- [ ] Prueba: ¿el T1000-E despierta de System OFF al conectar el USB? Decide `is_power_saving` de los trackers de mascotas.
-- [ ] Nodos extra.
+- [x] T1000-E despierta de System OFF al conectar el USB → trackers con `is_power_saving false`.
+- [x] Extras: BlackHeltecV3 `!6de158c2`, OrangeHeltecV3 `!583acc8e` (Heltec V3).
 - [ ] AcevedoRoof al final: bajarlo una vez (full erase por USB), provisionar (WiFi), reserva DHCP, de vuelta arriba.
 - [ ] Agregar la llave del techo a todos: `aplicar <nodo> --dest '!id' --apply` desde Dnto_L1 o Laptop.
 

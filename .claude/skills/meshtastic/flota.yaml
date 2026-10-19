@@ -113,9 +113,11 @@ nodos:
     perfil: cliente
     owner: BlackHeltecV3
     owner_short: "BH3"
-  HeltecV3b:                     # extra (nombre provisional)
+  OrangeHeltecV3:                # extra
+    id: "!583acc8e"
+    pubkey: e7gErtxZXiAHDuLDKiMapSo1b+fnYsWxlQUmisnLbiU=
     hw: HELTEC_V3
     pio: heltec-v3
     perfil: cliente
-    owner: HeltecV3b
-    owner_short: "H3b"
+    owner: OrangeHeltecV3
+    owner_short: "OH3"
