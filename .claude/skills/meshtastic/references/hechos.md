@@ -38,6 +38,8 @@
   hot start. Sin softsleep. Primera búsqueda tras encender o reactivar el GPS: hasta `position_broadcast_secs` (tope
   15 min). Si falla: espera `position_broadcast_secs` (tope 1 h) y reintenta ≤5 min. Triple clic = GPS off/on;
   al reactivarlo (`enable()` → `scheduling.reset()`) busca de inmediato sin backoff. Indoor no hay fix. (2026-10-19)
+  CatTracker apareció con `gps_mode DISABLED` (triple clic accidental en el collar): si un tracker no da fix,
+  revisar primero `diff --dest`. (2026-10-19)
 
 ## Trampas (`error → forma correcta`)
 
