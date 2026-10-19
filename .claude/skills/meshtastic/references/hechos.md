@@ -28,6 +28,8 @@
 
 ## Trampas (`error → forma correcta`)
 
+- Dos Heltec V3 (CP2102) a la vez: tras flashear uno, el otro perdió su `/dev/cu.usbserial-*` aunque el CP2102 seguía enumerado (mismo número de serie) → conectar uno por vez o reconectar el que falta. (2026-10-18)
+
 - T1000-E tras el erase v3 queda como `T1000_E_BOOT` sin disco; a veces un toque a 1200 bps lo pasa a UF2 y a veces no → botón apretado al conectar el cable (LED) y copiar el `.uf2` (mt.py flashear lo intenta solo). Al reconectar, los puertos pueden intercambiarse: identificar con `estado`. (2026-10-18)
 
 - `cp firmware.uf2 /Volumes/<UF2>/` → «fcopyfile failed: Input/output error»: inofensivo, el nodo reinicia antes de

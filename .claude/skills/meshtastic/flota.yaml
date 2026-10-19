@@ -48,6 +48,7 @@ perfiles:
     # con 300 s revisan cada 5 min y, si ya cargan, vuelven a transmitir. En nRF52 solo aplica con is_power_saving
     # (sin él entra en System OFF y despierta con el botón o, si el hardware lo hace, con el USB). (2026-10-18)
     power.sds_secs: 300
+    power.is_power_saving: false   # T1000-E despierta de System OFF al conectar USB (probado 2026-10-18)
   base:                          # nodo fijo del techo, en la LAN por WiFi (BLE queda apagado en ESP32)
     device.role: CLIENT_BASE
     network.wifi_enabled: true
@@ -104,4 +105,17 @@ nodos:
     perfil: tracker
     owner: AkiraGPS
     owner_short: "🐕"
-  # Por agregar: nodos extra.
+  BlackHeltecV3:                 # extra
+    id: "!6de158c2"
+    pubkey: 5urJZ4Jx3P/jlVzyRRFA43pA1qM8YUqU7Ak/eys8YFg=
+    hw: HELTEC_V3
+    pio: heltec-v3
+    perfil: cliente
+    owner: BlackHeltecV3
+    owner_short: "BH3"
+  HeltecV3b:                     # extra (nombre provisional)
+    hw: HELTEC_V3
+    pio: heltec-v3
+    perfil: cliente
+    owner: HeltecV3b
+    owner_short: "H3b"
