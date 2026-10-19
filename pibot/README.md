@@ -13,6 +13,22 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 
 ## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
 
+**2026-10-18: prueba de 2000 MHz con `over_voltage=6` y fuente nueva.** Activado en `config.txt` (respaldo
+`/boot/firmware/config.txt.bak-pre-oc2000-20261018`, 1500 MHz) y pibot apagada para cambiar la fuente. Al encender:
+`kubectl uncordon pibot` y correr `pibot/vtest.sh oc2000`; si aparece el bit 0 (bajo voltaje) bajo carga, volver a
+1800/`over_voltage=2` o a 1500 de serie. **Resultado: aguanta.** `vtest.sh oc2000` con 765 muestras (reposo, carga, reposo) dio 0 con bajo
+voltaje y 0 con throttling, `0x0` al terminar, 1,02 V y 43 °C al arrancar; 7z 4 hilos 5648 (vs 5354 a 1800 MHz),
+sha256 ~697 MB/s. Queda a 2000 MHz.
+
+**2026-10-18: 2300 MHz con `over_voltage=8` no arranca.** Probado con `tryboot` (`tryboot.txt` + `sudo reboot '0 tryboot'`):
+sin red tras ~7 min; desenchufar y enchufar volvió solo a `config.txt` (2000 MHz), sin USB. Usar siempre `tryboot`
+para probar OC. A 2000 MHz la carga ya llega a 75,4 °C (el firmware frena a 80 °C) con el ventilador a 3,3 V: subir
+más requiere ventilador a 5 V controlado por GPIO (`dtoverlay=gpio-fan`). 2100 MHz funcionó antes con el ventilador a 5 V.
+
+**2026-10-18: 2100 MHz (`over_voltage=6`, ventilador a 5 V) se descarta por temperatura.** Arranca bien, pero
+`vtest.sh oc2100` llegó a 85,7 °C bajo carga, con throttling en 11 muestras (`0xe0006`) y sha256 en ~613 MB/s, peor que
+a 2000. Sin bajo voltaje. **Queda en 2000 MHz.** El techo actual es la refrigeración, no la fuente.
+
 `config.txt` tenía `over_voltage=9`, `arm_freq=2147` y `gpu_freq=750`. Con eso la entrada de 5 V caía:
 `vcgencmd get_throttled` = `0x50005` (bajo voltaje y throttling activos, incluso en reposo) y el firmware dejaba la
 CPU en **600 MHz**. Cambiar la fuente y el cable no lo arregló; lo que no aguanta la corriente es la entrada de la

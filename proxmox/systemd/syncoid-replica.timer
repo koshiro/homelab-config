@@ -1,0 +1,7 @@
+[Unit]
+Description=Replica horaria nvme -> replica (despues de los snapshots hourly de sanoid)
+[Timer]
+OnCalendar=*-*-* *:20:00
+Persistent=true
+[Install]
+WantedBy=timers.target

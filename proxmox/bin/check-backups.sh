@@ -23,13 +23,18 @@ chk "WAL Postgres en Garage" "$(find /nvme/k8s/garage/data -type f -printf "%T@\
 # webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
          minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie cyano grafana \
-         qbittorrent comfyui canon-mp250-cups; do
+         qbittorrent comfyui canon-mp250-cups meshmonitor; do
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 chk "réplica respaldo/comfyui" "$(newest_snap respaldo/comfyui)" 26
 for d in immich minecraft minecraft-spiral2 minecraft-spiral3 pingvin backups webs claude-remote garage; do
   chk "sanoid nvme/k8s/$d"   "$(newest_snap "nvme/k8s/$d")" 2
   chk "réplica respaldo/$d"  "$(newest_snap "respaldo/k8s/$d")" 26
+  chk "réplica horaria $d"   "$(newest_snap "replica/k8s/$d")" 3
+done
+# Réplica horaria en nvme1n1 (syncoid-replica.timer): discos de las VMs y root del LXC nas
+for v in vm-102-disk-0 vm-103-disk-0 vm-104-disk-0 subvol-110-disk-0; do
+  chk "réplica horaria $v"   "$(newest_snap "replica/$v")" 3
 done
 
 set -a; . /root/.secrets/restic-r2.env; set +a
@@ -42,7 +47,7 @@ chk "offsite R2 (restic)" "$r" 26
 for p in $(zpool list -H -o name); do
   h=$(zpool list -H -o health "$p"); [ "$h" = ONLINE ] || fails+=("pool $p: $h")
 done
-for p in nvme respaldo; do zpool list "$p" >/dev/null 2>&1 || fails+=("pool $p: no importado"); done
+for p in nvme respaldo replica; do zpool list "$p" >/dev/null 2>&1 || fails+=("pool $p: no importado"); done
 
 # Dead-man's switch del monitor externo (cloudflare/monitor): avisa si este script deja de correr
 if [ -z "${DRY_RUN:-}" ] && [ -r /root/.secrets/monitor.env ]; then

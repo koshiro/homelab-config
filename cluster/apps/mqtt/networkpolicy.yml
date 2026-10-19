@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mosquitto
+  namespace: mqtt
+spec:
+  podSelector:
+    matchLabels:
+      app: mosquitto
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # MQTT con TLS desde cualquier origen (LAN e internet por el reenvío del router; sin "from": "from: []" da drift)
+    - ports:
+        - {protocol: TCP, port: 8883}
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # cloudflare-ddns: API de Cloudflare y detección de la IP pública
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {protocol: TCP, port: 443}
