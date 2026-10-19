@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshmonitor
+  namespace: meshmonitor
+spec:
+  type: ClusterIP
+  selector:
+    app: meshmonitor
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+---
+# Nodo virtual (protocolo Meshtastic TCP, sin autenticación): ServiceLB lo publica en la IP de cada nodo k3s, solo
+# LAN/tailnet (el router no lo reenvía). `meshtastic --host 192.168.1.15:4404`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshmonitor-vnode
+  namespace: meshmonitor
+spec:
+  type: LoadBalancer
+  selector:
+    app: meshmonitor
+  ports:
+    - name: vnode
+      port: 4404
+      targetPort: vnode
+      protocol: TCP

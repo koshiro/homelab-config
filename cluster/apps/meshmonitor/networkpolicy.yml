@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: meshmonitor
+  namespace: meshmonitor
+spec:
+  podSelector:
+    matchLabels:
+      app: meshmonitor
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Web solo desde Traefik
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {protocol: TCP, port: 3001}
+    # Nodo virtual desde la LAN, los pods (ServiceLB) y el tailnet
+    - from:
+        - ipBlock: {cidr: 192.168.1.0/24}
+        - ipBlock: {cidr: 10.42.0.0/16}
+        - ipBlock: {cidr: 100.64.0.0/10}
+      ports:
+        - {protocol: TCP, port: 4404}
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # API TCP de los nodos Meshtastic con red (hoy AcevedoRoof 192.168.1.105)
+    - to:
+        - ipBlock: {cidr: 192.168.1.0/24}
+      ports:
+        - {protocol: TCP, port: 4403}
+    # Teselas de mapa, avisos, etc.
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {protocol: TCP, port: 443}
