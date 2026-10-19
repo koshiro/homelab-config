@@ -1,0 +1,15 @@
+# MeshMonitor: panel web de la flota Meshtastic (fuente TCP al nodo del techo AcevedoRoof) y nodo virtual 4404 para
+# que el CLI y las apps compartan esa única conexión. Ver README.md y la skill meshtastic.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: meshmonitor
+resources:
+  - namespace.yml
+  - pvc.yml
+  - deployment.yml
+  - service.yml
+  - ingress.yml
+  - networkpolicy.yml
+components:
+  - ../../components/proteger-datos
+# secret.sops.yaml (SESSION_SECRET) entra por solo-flux/ y lo descifra Flux.

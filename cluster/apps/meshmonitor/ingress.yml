@@ -1,0 +1,21 @@
+# Público por el comodín del túnel; protegido por la app de Cloudflare Access «Homelab admin» (OTP).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: meshmonitor
+  namespace: meshmonitor
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: meshmonitor.danielriquelme.cl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: meshmonitor
+                port:
+                  number: 3001

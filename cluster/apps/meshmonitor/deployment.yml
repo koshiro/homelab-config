@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meshmonitor
+  namespace: meshmonitor
+  labels:
+    app: meshmonitor
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # SQLite en PVC RWO y el nodo atiende un solo cliente TCP
+  selector:
+    matchLabels:
+      app: meshmonitor
+  template:
+    metadata:
+      labels:
+        app: meshmonitor
+    spec:
+      securityContext:
+        runAsUser: 1000         # con usuario fijo el entrypoint no intenta chown/su-exec
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: meshmonitor
+          image: ghcr.io/yeraze/meshmonitor:4.17.0
+          ports:
+            - name: http
+              containerPort: 3001
+            - name: vnode           # nodo virtual: se activa en la UI (Sources → Edit → Virtual Node, puerto 4404)
+              containerPort: 4404
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3001"
+            - name: TZ
+              value: America/Santiago
+            # Solo siembra la primera fuente en el primer arranque (AcevedoRoof por WiFi)
+            - name: MESHTASTIC_NODE_IP
+              value: "192.168.1.105"
+            - name: MESHTASTIC_TCP_PORT
+              value: "4403"
+            - name: TRUST_PROXY
+              value: "1"
+            - name: COOKIE_SECURE
+              value: "true"
+            - name: ALLOWED_ORIGINS
+              value: https://meshmonitor.danielriquelme.cl
+            - name: VERSION_CHECK_DISABLED
+              value: "true"         # las versiones las vigila la skill meshtastic (`mt.py upstream`)
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: meshmonitor
+                  key: SESSION_SECRET
+          readinessProbe:
+            httpGet: {path: /api/health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/health, port: http}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 50m, memory: 192Mi}
+            limits: {memory: 768Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: meshmonitor-data
