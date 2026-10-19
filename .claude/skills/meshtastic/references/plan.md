@@ -52,10 +52,10 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 ## Fase 5b: MQTT (PR #123, decidido 2026-10-18 para unir un nodo solar con WiFi en Temuco)
 
 - [x] Broker Mosquitto en k3s (`cluster/apps/mqtt`): TLS 8883, usuarios `roof`/`temuco`, DDNS `mqtt.danielriquelme.cl`.
-- [ ] Merge del PR #123 y verificar el pod.
-- [ ] Router (usuario): WAN TCP 8883 → 192.168.1.15:8883 (ver `cluster/apps/mqtt/README.md`).
-- [ ] `aplicar AcevedoRoof --host 192.168.1.105 --apply` (MQTT + uplink/downlink del canal privado) y ver tráfico en
-      `mosquitto_sub`. `config_ok_to_mqtt` al resto de la flota con `aplicar` (USB o remoto).
+- [x] PR #123 + fix #124 mergeados; pod arriba; DNS `mqtt.danielriquelme.cl` → IP pública (DDNS); anónimo rechazado.
+- [x] Router: WAN 8883 → 192.168.1.15:8883 (usuario, 2026-10-19).
+- [x] AcevedoRoof gateway MQTT: mensajes del canal privado llegan al broker por la IP pública
+      (`msh/acevedo/2/e/DNTGPS/!918d5bf9`). `config_ok_to_mqtt` en toda la flota.
 - [ ] Nodo de Temuco: perfil `base` con `gateway: true`, `mqtt.address mqtt.danielriquelme.cl`, usuario `temuco`.
 
 ## Fase 6: homelab (1–2 h, PR)

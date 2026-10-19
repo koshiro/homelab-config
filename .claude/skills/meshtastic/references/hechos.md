@@ -33,6 +33,11 @@
 
 ## Trampas (`error → forma correcta`)
 
+- `meshtastic --host <techo> --set mqtt.…` → «Writing mqtt configuration» pero no se guarda: el CLI cierra el TCP antes
+  de que el firmware valide (prueba de conexión al broker) y guarde → `mt.py aplicar --host` escribe por la API y
+  espera 15 s antes de cerrar. (2026-10-19)
+- Mosquitto con `readOnlyRootFilesystem`: `mosquitto_passwd -U` necesita `/tmp` escribible (PR #124).
+
 - Laptop (XIAO S3) deja de contestar la API por USB tras varias operaciones admin seguidas («Timed out waiting for
   connection completion») → `esptool --port <p> --after hard-reset chip-id` lo reinicia sin borrar nada. (2026-10-19)
 

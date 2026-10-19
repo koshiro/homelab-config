@@ -352,7 +352,7 @@ def aplicar_remoto(a):
     import threading
     from meshtastic.protobuf import localonly_pb2
     n, claves, admins, _ = deseado(a.nodo)
-    if n.get("id") and n["id"] != a.dest:
+    if a.dest and n.get("id") and n["id"] != a.dest:
         sys.exit(f"--dest {a.dest} no es {a.nodo} ({n['id']} en flota.yaml)")
 
     def con_limite(fn, *args, t=120):
@@ -363,9 +363,9 @@ def aplicar_remoto(a):
 
     iface = conectar(a)
     try:
-        node = iface.getNode(a.dest, requestChannels=False, timeout=a.timeout)
+        node = iface.getNode(a.dest, requestChannels=False, timeout=a.timeout) if a.dest else iface.localNode
         secciones = sorted({k.split(".")[0] for k in claves} | {"security"})
-        for s in secciones:
+        for s in (secciones if a.dest else []):   # local (TCP): la config completa ya llegó al conectar
             fd = (localonly_pb2.LocalConfig.DESCRIPTOR.fields_by_name.get(s)
                   or localonly_pb2.LocalModuleConfig.DESCRIPTOR.fields_by_name.get(s))
             raiz = node.localConfig if s in node.localConfig.DESCRIPTOR.fields_by_name else node.moduleConfig
@@ -404,6 +404,8 @@ def aplicar_remoto(a):
             print(f"  escribiendo {s}")
             con_limite(node.writeConfig, s)
         con_limite(node.commitSettingsTransaction)
+        import time
+        time.sleep(15)   # por TCP: si se cierra de inmediato, el nodo no alcanza a validar/guardar (p. ej. MQTT)
     finally:
         iface.close()
 
@@ -412,6 +414,10 @@ def cmd_aplicar(a):
     if a.dest:
         return aplicar_remoto(a)
     diffs, sets, owner, canal = comparar(a, a.nodo)
+    if a.host and sets:   # TCP: el CLI cierra antes de que el nodo guarde (MQTT se perdía); la config va por la API
+        sets = []
+        if a.apply:
+            aplicar_remoto(a)
     if not diffs:
         print(f"{a.nodo}: nada que aplicar")
         return
