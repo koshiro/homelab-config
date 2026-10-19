@@ -25,6 +25,10 @@ sin red tras ~7 min; desenchufar y enchufar volvió solo a `config.txt` (2000 MH
 para probar OC. A 2000 MHz la carga ya llega a 75,4 °C (el firmware frena a 80 °C) con el ventilador a 3,3 V: subir
 más requiere ventilador a 5 V controlado por GPIO (`dtoverlay=gpio-fan`). 2100 MHz funcionó antes con el ventilador a 5 V.
 
+**2026-10-18: 2100 MHz (`over_voltage=6`, ventilador a 5 V) se descarta por temperatura.** Arranca bien, pero
+`vtest.sh oc2100` llegó a 85,7 °C bajo carga, con throttling en 11 muestras (`0xe0006`) y sha256 en ~613 MB/s, peor que
+a 2000. Sin bajo voltaje. **Queda en 2000 MHz.** El techo actual es la refrigeración, no la fuente.
+
 `config.txt` tenía `over_voltage=9`, `arm_freq=2147` y `gpu_freq=750`. Con eso la entrada de 5 V caía:
 `vcgencmd get_throttled` = `0x50005` (bajo voltaje y throttling activos, incluso en reposo) y el firmware dejaba la
 CPU en **600 MHz**. Cambiar la fuente y el cable no lo arregló; lo que no aguanta la corriente es la entrada de la
