@@ -97,13 +97,19 @@ nodos:
     owner: AcevedoRoof
     owner_short: "🏡"
   CarTracker:
-    id: "!ddb5828c"
-    pubkey: n2wKYmRLRiLNfVOMYtvB+RzzDBsnppDfu5lfYWdBjFc=
+    id: "!de7ae27e"
+    pubkey: lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc=
     hw: HELTEC_WIRELESS_TRACKER
     pio: heltec-wireless-tracker   # V1.1 (confirmado por pioEnv)
     perfil: tracker
     owner: CarTracker
     owner_short: "🚗"
+    set:
+      # 12 V solo con contacto: con el auto apagado vive de la batería (~10 h con la config base). Ahorro sin perder
+      # el seguimiento en movimiento (is_power_saving dormiría también en marcha y lo dejaría sordo). (2026-10-19)
+      bluetooth.enabled: false           # se administra por USB/radio; el BLE anunciando gasta todo el tiempo
+      position.gps_update_interval: 120  # GPS cada 2 min (smart broadcast sigue mandando al moverse)
+      display.screen_on_secs: 10
   CatTracker:
     id: "!1e945bee"
     pubkey: tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM=

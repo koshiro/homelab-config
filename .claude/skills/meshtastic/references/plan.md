@@ -40,8 +40,8 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 - [ ] Reserva DHCP de 192.168.1.105 en el router (usuario).
 - [x] Llave del techo + `ok_to_mqtt` + favoritos de la flota: Dnto_L1, Laptop (USB); CatTracker, AkiraGPS, BlackHeltecV3,
       OrangeHeltecV3 (radio, verificados con Dnto_L1 tras reparar el daño del CLI `--dest --set`, 2026-10-19).
-- [ ] CarTracker: no responde por radio; probablemente con `admin_key` = [techo] y `serial_enabled false` → revisar
-      cuando esté al alcance (`aplicar CarTracker --host 192.168.1.105 --dest '!ddb5828c'`) o reflashear por USB.
+- [x] CarTracker reinstalado por USB (2026-10-19) → `!de7ae27e`, con ahorro de batería (BLE off, GPS 120 s, pantalla 10 s).
+      Tuvo que entrar a bootloader a mano (BOOT+RST) y salir con RST.
 
 ## Fase 5: ajuste (~30 min)
 

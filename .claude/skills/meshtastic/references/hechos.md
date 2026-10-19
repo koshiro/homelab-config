@@ -33,6 +33,10 @@
 
 ## Trampas (`error → forma correcta`)
 
+- Heltec Wireless Tracker: `Failed to connect … No serial data received` tras un flasheo cortado → bootloader a mano
+  (mantener USER/BOOT, pulsar RST, soltar BOOT), flashear, y después **RST solo**: el reset por RTS lo deja en modo
+  descarga. (2026-10-19)
+
 - **NUNCA `meshtastic --dest … --set <seccion2>` con más de una sección**: el CLI solo pide la primera sección y escribe
   las demás desde cero. 2026-10-19 dejó `admin_key` = [solo el techo] y `serial_enabled false` en 5 nodos (NAK
   `ADMIN_PUBLIC_KEY_UNAUTHORIZED` al Dnto_L1 después). Forma correcta: `mt.py aplicar <nodo> --dest` (API: lee todas
