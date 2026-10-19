@@ -20,6 +20,11 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 voltaje y 0 con throttling, `0x0` al terminar, 1,02 V y 43 °C al arrancar; 7z 4 hilos 5648 (vs 5354 a 1800 MHz),
 sha256 ~697 MB/s. Queda a 2000 MHz.
 
+**2026-10-18: 2300 MHz con `over_voltage=8` no arranca.** Probado con `tryboot` (`tryboot.txt` + `sudo reboot '0 tryboot'`):
+sin red tras ~7 min; desenchufar y enchufar volvió solo a `config.txt` (2000 MHz), sin USB. Usar siempre `tryboot`
+para probar OC. A 2000 MHz la carga ya llega a 75,4 °C (el firmware frena a 80 °C) con el ventilador a 3,3 V: subir
+más requiere ventilador a 5 V controlado por GPIO (`dtoverlay=gpio-fan`). 2100 MHz funcionó antes con el ventilador a 5 V.
+
 `config.txt` tenía `over_voltage=9`, `arm_freq=2147` y `gpu_freq=750`. Con eso la entrada de 5 V caía:
 `vcgencmd get_throttled` = `0x50005` (bajo voltaje y throttling activos, incluso en reposo) y el firmware dejaba la
 CPU en **600 MHz**. Cambiar la fuente y el cable no lo arregló; lo que no aguanta la corriente es la entrada de la
