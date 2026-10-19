@@ -1,5 +1,19 @@
 # Plan: reinstalación limpia de la flota (acordado 2026-10-18)
 
+## Pendientes (al 2026-10-19) — empezar por aquí
+
+| # | Qué | Quién | Cuándo / condición | Cómo |
+|---|-----|-------|--------------------|------|
+| 1 | Copiar `proxmox/bin/check-backups.sh` a pve | Claude | después del primer respaldo de MeshMonitor (2026-10-20 02:47) | verificar `nvme/k8s/backups/apps/meshmonitor/.last-backup`; luego copiar a `/usr/local/sbin/` de pve (receta *respaldo* de la skill homelab) |
+| 2 | Firma `BALANCED` en toda la flota | Claude | CarTracker 24–48 h estable (desde 2026-10-19) | `comun.security.packet_signature_policy: PACKET_SIGNATURE_POLICY_BALANCED` en flota.yaml → `aplicar` por USB/TCP o `--dest` (API) a cada nodo |
+| 3 | Revisión semanal de firmware + aviso Telegram (fase 7) | Claude | ~1 h, PR | CronJob en k3s; ver Fase 7 abajo |
+| 4 | Nodo solar de Temuco | Daniel + Claude | cuando exista el hardware | perfil `base`, `gateway: true`, `mqtt.address mqtt.danielriquelme.cl`, usuario `temuco` (clave en secretos.yaml) |
+| 5 | Reservas DHCP en el router: techo 192.168.1.105 (MAC 80:b5:4e:f1:0d:fc) y pibot 192.168.1.15 | Daniel (o Claude con la skill `zte-router`) | cuando se pueda | si cambia la IP del techo, cambia la fuente «Default» de MeshMonitor y `flota.yaml` |
+| 6 | Confirmar favoritos por radio en CatTracker, AkiraGPS, Heltecs | Claude | cuando estén encendidos | se enviaron sin confirmación; leer NodeDB por USB o `--dest` |
+| 7 | Seguimiento del nightly: #12180 (CLIENT_BASE favoritos) sin merge al 2026-10-19 | Claude | revisión semanal | si entra en develop, evaluar actualizar el techo |
+| 8 | Respaldo cifrado (SOPS) de `~/.config/meshtastic-fleet/` | Claude | opcional | hoy solo vive en la Mac (backups .cfg con llaves privadas, secretos.yaml) |
+
+
 Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pasos sin marcar.
 
 ## Decisiones (2026-10-18)
