@@ -63,7 +63,8 @@ def resolver_puerto(a):
 def conectar(a):
     if a.host:
         from meshtastic.tcp_interface import TCPInterface
-        return TCPInterface(hostname=a.host, timeout=a.timeout)
+        host, _, puerto = a.host.partition(":")   # 192.168.1.15:4404 = nodo virtual de MeshMonitor
+        return TCPInterface(hostname=host, portNumber=int(puerto or 4403), timeout=a.timeout)
     from meshtastic.serial_interface import SerialInterface
     return SerialInterface(devPath=resolver_puerto(a), timeout=a.timeout)
 
@@ -294,7 +295,10 @@ def comparar_canales(node, claves, sec, diffs, gateway=False):
             diffs.append(f"canal {i}: falta")
             distinto = True
             continue
-        for campo, a_, b_ in (("nombre", c.settings.name, s.name), ("psk", c.settings.psk, s.psk),
+        nombre_actual = c.settings.name
+        if i == 0 and not s.name and nombre_actual == "LongFast":   # el nodo virtual de MeshMonitor rellena el nombre
+            nombre_actual = ""
+        for campo, a_, b_ in (("nombre", nombre_actual, s.name), ("psk", c.settings.psk, s.psk),
                               ("aead", c.settings.use_aead, s.use_aead),
                               ("uplink", c.settings.uplink_enabled, s.uplink_enabled),
                               ("downlink", c.settings.downlink_enabled, s.downlink_enabled),

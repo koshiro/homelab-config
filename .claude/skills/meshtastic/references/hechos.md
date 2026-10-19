@@ -36,6 +36,11 @@
 
 ## Trampas (`error → forma correcta`)
 
+- Por el nodo virtual de MeshMonitor el firmware sale como `2.8.2.fad52bb-MM4.17.0`, sin `pio`, y el canal 0 como
+  `LongFast` (no "") → mt.py lo trata como igual; no aplicar el `--seturl` que salga solo por eso.
+- App web tras Cloudflare + Traefik con cookies `Secure` → login falla (CSRF mismatch): Traefik reenvía
+  `X-Forwarded-Proto: http` → Middleware `customRequestHeaders X-Forwarded-Proto: https` (PR #126).
+
 - `meshtastic --host <techo> --set mqtt.…` → «Writing mqtt configuration» pero no se guarda: el CLI cierra el TCP antes
   de que el firmware valide (prueba de conexión al broker) y guarde → `mt.py aplicar --host` escribe por la API y
   espera 15 s antes de cerrar. (2026-10-19)
