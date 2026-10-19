@@ -60,8 +60,10 @@ Estado: marcar `[x]` al cerrar cada paso. La fase en curso es la primera con pas
 
 ## Fase 6: homelab (1–2 h, PR)
 
-- [ ] MeshMonitor en k3s (Flux, contrato de apps), fuente TCP al techo, nodo virtual solo LAN/tailnet,
-      UI tras Cloudflare Access.
+- [x] MeshMonitor 4.17.0 en k3s (PR #125, `cluster/apps/meshmonitor`): conectado al techo, web
+      `meshmonitor.danielriquelme.cl` tras Cloudflare Access «Homelab admin», respaldo SQLite 02:47.
+- [ ] Usuario en la UI: cambiar la clave `admin`/`changeme`; activar el nodo virtual 4404 con «Allow admin commands».
+- [ ] Probar `meshtastic --host 192.168.1.15:4404 --nodes` y pasar `mt.py`/CLI del techo a ese puerto.
 
 ## Fase 7: vigilancia (~1 h, PR)
 

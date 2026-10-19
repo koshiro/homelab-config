@@ -27,6 +27,9 @@
 - Broker MQTT: `cluster/apps/mqtt` (PR #123). LAN `192.168.1.15:8883`, internet `mqtt.danielriquelme.cl:8883`, TLS
   autofirmado (copia en `~/.config/meshtastic-fleet/mqtt-ca.crt`), claves en `secretos.yaml` (`mqtt_pass_*`).
   Firmware (MQTT.cpp): `setInsecure()`; con broker de IP privada sube paquetes ajenos sin `ok_to_mqtt`. (2026-10-18)
+- MeshMonitor (2026-10-19): `cluster/apps/meshmonitor`, conectado a AcevedoRoof 4403. Con él arriba, **no** conectar el CLI a
+  `192.168.1.105:4403` (el ESP32 atiende un cliente TCP y desconecta a MeshMonitor): usar el nodo virtual
+  `192.168.1.15:4404` (cuando esté activo en la UI). Web tras Cloudflare Access.
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
