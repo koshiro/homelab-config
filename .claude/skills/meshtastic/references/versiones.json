@@ -1,0 +1,33 @@
+{
+ "firmware_vistas": [
+  "v2.7.22.96dd647",
+  "v2.7.23.b246bcd",
+  "v2.7.24.472b14c",
+  "v2.7.25.104df5f",
+  "v2.7.26.54e0d8d",
+  "v2.8.0.47db0e3",
+  "v2.8.0.7239fe8",
+  "v2.8.1.8e6a88d"
+ ],
+ "cli_commits_vistos": [
+  "0a1835760c2437314a2d3544bbdd8b6fead559bc",
+  "63b61a2b090b24f7b7abe8a578454c306ea51fa0",
+  "77c29654201d3d868b5ce64a6b66e68e13e30459",
+  "ab4d43f39c750ae8753506e82342d238f2a89da9",
+  "be366660828b5a54469e703209a10aa954927791",
+  "28922933274911f2f7e3d91eed9d658b84c8e8ba",
+  "efb6d1c0e9d042dc2b1bb78836d09cb6166c5eec",
+  "0539a9600fc6c15eda398494ffb0309322cfb089",
+  "445e17ddc06c9886daf0744269adcee6db08324b",
+  "33840e2cee544ff13766fbe1fbe53578fdb34b32"
+ ],
+ "cli_pypi": "2.7.11",
+ "meshmonitor_vistas": [
+  "v4.17.0",
+  "v4.17.1-rc3",
+  "v4.17.1-rc4",
+  "v4.17.1-rc5",
+  "v4.17.1-rc6"
+ ],
+ "revisado": "2026-10-18"
+}

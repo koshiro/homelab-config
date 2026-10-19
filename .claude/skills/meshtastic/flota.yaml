@@ -1,0 +1,144 @@
+# Estado deseado de la flota Meshtastic. `mt.py diff|aplicar|provisionar <nodo>` compara y corrige contra esto.
+# Claves = las del CLI (`--set seccion.campo valor`), en snake_case. Orden de mezcla: comun → perfil → nodo.set.
+# Sin secretos aquí: `secreto:<clave>` se lee de ~/.config/meshtastic-fleet/secretos.yaml (chmod 600).
+# Las llaves públicas no son secreto. Decisiones y porqués: references/arquitectura.md y references/plan.md.
+
+firmware: 2.8.2.fad52bb          # nightly de develop (2026-10-17) fijado; archivo en ~/.cache/meshtastic-fw
+
+# Nodos cuya llave pública va en security.admin_key de todos (máx. 3). Se provisionan primero.
+admins: [Dnto_L1, Laptop, AcevedoRoof]
+
+# Canales en orden de índice. La posición sale por el de índice más bajo con precision > 0.
+canales:
+  - nombre: ""                   # primario público: frecuencia de la malla pública (slot 20 en ANZ)
+    psk: default                 # AQ==
+    precision: 0
+  - nombre: secreto:canal_privado_nombre
+    psk: secreto:canal_privado_psk   # 32 B en base64
+    aead: true
+    precision: 32
+    mqtt: true                   # uplink/downlink solo en los nodos con `gateway: true`
+
+comun:
+  lora.region: ANZ               # Chile: 915–928 MHz
+  lora.use_preset: true
+  lora.modem_preset: LONG_FAST   # el de la malla pública; LONG_TURBO descartado (−3 dB)
+  lora.channel_num: 0            # 0 = slot por hash del nombre del primario
+  lora.hop_limit: 3
+  lora.tx_enabled: true
+  device.tzdef: "<-04>4<-03>,M9.1.6/24,M4.1.6/24"   # Chile continental
+  security.serial_enabled: true
+  security.is_managed: false     # no activar hasta probar admin remoto en ese nodo
+  security.packet_signature_policy: PACKET_SIGNATURE_POLICY_COMPATIBLE   # BALANCED en la fase 5
+  telemetry.device_telemetry_enabled: false   # saldría por el canal público; se pide por DM
+  mqtt.enabled: false
+  mqtt.map_reporting_enabled: false
+  lora.config_ok_to_mqtt: true   # un gateway con broker público (Temuco) solo sube paquetes ajenos con este bit
+  display.units: METRIC
+
+perfiles:
+  tracker:
+    device.role: TRACKER
+    device.rebroadcast_mode: NONE    # no retransmite tráfico público (batería y aire)
+    position.gps_mode: ENABLED
+    position.position_broadcast_smart_enabled: true
+    position.position_broadcast_secs: 3600
+    position.broadcast_smart_minimum_distance: 10
+    position.broadcast_smart_minimum_interval_secs: 15
+    position.gps_update_interval: 60
+    # Batería baja (<3,1 V, sin USB) → deep sleep de sds_secs. Ni el Heltec ni el T1000-E despiertan solos al cargar:
+    # con 300 s revisan cada 5 min y, si ya cargan, vuelven a transmitir. En nRF52 solo aplica con is_power_saving
+    # (sin él entra en System OFF y despierta con el botón o, si el hardware lo hace, con el USB). (2026-10-18)
+    power.sds_secs: 300
+    power.is_power_saving: false   # T1000-E despierta de System OFF al conectar USB (probado 2026-10-18)
+  base:                          # nodo fijo del techo, en la LAN por WiFi (BLE queda apagado en ESP32)
+    device.role: CLIENT_BASE
+    network.wifi_enabled: true
+    network.wifi_ssid: secreto:wifi_ssid
+    network.wifi_psk: secreto:wifi_psk
+    # MQTT: broker del homelab (cluster/apps/mqtt). Usuario, clave y dirección van en cada nodo.
+    mqtt.enabled: true
+    mqtt.tls_enabled: true           # puerto 8883; el firmware no valida el certificado (autofirmado)
+    mqtt.encryption_enabled: true    # sube los paquetes cifrados (el canal privado sigue con AEAD)
+    mqtt.json_enabled: false
+    mqtt.root: msh/acevedo
+  cliente:
+    device.role: CLIENT
+
+# id y pubkey los escribe `mt.py provisionar` (las llaves nacen en el nodo). owner ≤24 bytes (emoji = 4).
+nodos:
+  Dnto_L1:                       # nodo personal de Daniel; administra a los demás
+    id: "!185e9038"
+    pubkey: itL0Olq6ahmKafz5ZhnAeRndFaHqLOXrJ4RIQ7fQAgg=
+    hw: SEEED_WIO_TRACKER_L1
+    pio: seeed_wio_tracker_L1   # verificar con `estado` (hay variantes eink)
+    perfil: cliente
+    owner: Dnto_L1
+    owner_short: "🤓"
+  Laptop:
+    id: "!0404f6d2"
+    pubkey: 2cccCt7uFl5yd9degLIQGwahrT7inJ3skswVoEhjc18=
+    hw: SEEED_XIAO_S3
+    pio: seeed-xiao-s3
+    perfil: cliente
+    owner: LoraLaptop
+    owner_short: "💻"
+  AcevedoRoof:
+    id: "!918d5bf9"
+    pubkey: TXOhwzLpnv4zJif1sRHxnsKmyrFlK4je7VSiNgPhajk=
+    hw: SEEED_XIAO_S3
+    pio: seeed-xiao-s3
+    perfil: base
+    gateway: true
+    set:
+      mqtt.address: 192.168.1.15     # IP privada: el firmware sube también los paquetes de otros nodos
+      mqtt.username: roof
+      mqtt.password: secreto:mqtt_pass_roof
+    owner: AcevedoRoof
+    owner_short: "🏡"
+  CarTracker:
+    id: "!de7ae27e"
+    pubkey: lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc=
+    hw: HELTEC_WIRELESS_TRACKER
+    pio: heltec-wireless-tracker   # V1.1 (confirmado por pioEnv)
+    perfil: tracker
+    owner: CarTracker
+    owner_short: "🚗"
+    set:
+      # 12 V solo con contacto: con el auto apagado vive de la batería (~10 h con la config base). Ahorro sin perder
+      # el seguimiento en movimiento (is_power_saving dormiría también en marcha y lo dejaría sordo). (2026-10-19)
+      bluetooth.enabled: false           # se administra por USB/radio; el BLE anunciando gasta todo el tiempo
+      position.gps_update_interval: 120  # GPS cada 2 min (smart broadcast sigue mandando al moverse)
+      display.screen_on_secs: 10
+  CatTracker:
+    id: "!1e945bee"
+    pubkey: tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM=
+    hw: TRACKER_T1000_E
+    pio: tracker-t1000-e
+    perfil: tracker
+    owner: CatTracker
+    owner_short: "😺"
+  AkiraGPS:                      # tracker del perro
+    id: "!66f2bcce"
+    pubkey: c7xvNwWSgvjkxR9AK/M0QVB6xRadldUJKRnGgrb2HmM=
+    hw: TRACKER_T1000_E
+    pio: tracker-t1000-e
+    perfil: tracker
+    owner: AkiraGPS
+    owner_short: "🐕"
+  BlackHeltecV3:                 # extra
+    id: "!6de158c2"
+    pubkey: 5urJZ4Jx3P/jlVzyRRFA43pA1qM8YUqU7Ak/eys8YFg=
+    hw: HELTEC_V3
+    pio: heltec-v3
+    perfil: cliente
+    owner: BlackHeltecV3
+    owner_short: "BH3"
+  OrangeHeltecV3:                # extra
+    id: "!583acc8e"
+    pubkey: e7gErtxZXiAHDuLDKiMapSo1b+fnYsWxlQUmisnLbiU=
+    hw: HELTEC_V3
+    pio: heltec-v3
+    perfil: cliente
+    owner: OrangeHeltecV3
+    owner_short: "OH3"
