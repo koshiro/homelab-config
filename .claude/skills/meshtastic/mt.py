@@ -558,18 +558,33 @@ def url_contacto(n):
 
 def cmd_favoritos(a):
     """Carga como contacto (con llave) y marca favorito a cada nodo de la flota en <nodo> (para CLIENT_BASE)."""
+    # Una sola conexión (14 invocaciones del CLI tardan minutos por radio) y límite por operación.
+    import threading
+    import time
     f = yaml_load(FLOTA)
     otros = {k: v for k, v in f["nodos"].items() if k != a.nodo and v.get("id") and v.get("pubkey")}
-    for nombre, n in otros.items():
-        cmd = [CLI, "--timeout", str(a.timeout)] + args_conexion(a)
-        for paso in (["--add-contact", url_contacto(n)], ["--set-favorite-node", n["id"]]):
-            print(f"$ meshtastic {' '.join(args_conexion(a))} {paso[0]} {nombre if paso[0] == '--add-contact' else n['id']}")
-            if a.apply:
-                r = subprocess.run(cmd + paso, capture_output=True, text=True)
-                if r.returncode:
-                    print(f"  falló: {(r.stderr or r.stdout).strip()[-200:]}")
+    print(f"{a.nodo}: {len(otros)} contactos + favoritos{' por radio vía ' + a.dest if a.dest else ''}")
     if not a.apply:
-        print("(dry-run: agrega --apply)")
+        print("  " + ", ".join(otros) + "\n(dry-run: agrega --apply)")
+        return
+
+    def con_limite(fn, *args, t=60):
+        th = threading.Thread(target=fn, args=args, daemon=True)
+        th.start()
+        th.join(t)
+        return not th.is_alive()
+
+    iface = conectar(a)
+    try:
+        node = iface.getNode(a.dest, requestChannels=False, timeout=a.timeout) if a.dest else iface.localNode
+        for nombre, n in otros.items():
+            ok = con_limite(node.addContactURL, url_contacto(n)) and con_limite(node.setFavorite, n["id"])
+            print(f"  {nombre:15} {'ok' if ok else 'SIN RESPUESTA (se detiene)'}")
+            if not ok:
+                return
+            time.sleep(2 if a.dest else 0.5)   # no saturar el aire ni el nodo
+    finally:
+        iface.close()
 
 
 def unidad_uf2(timeout):
