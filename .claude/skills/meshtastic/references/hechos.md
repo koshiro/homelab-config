@@ -36,6 +36,10 @@
 
 ## Trampas (`error → forma correcta`)
 
+- nRF52 con batería <3,1 V: solo TRACKER/TAK_TRACKER/SENSOR + `is_power_saving` duermen con timer y reinician (`cpuDeepSleep`); cualquier otro rol entra en System OFF y despierta solo con botón o LPCOMP. El T114 tiene LPCOMP desactivado (#8801) → un repetidor solar no revive. `is_power_saving` no hace nada más en nRF52. SolarT114 usa el build `~/.cache/meshtastic-fw/2.8.2.fad52bb-solar` (fad52bb + `low-voltage-shutdown.patch`, `PLATFORMIO_BUILD_FLAGS=-DMESHTASTIC_DISABLE_LOW_VOLTAGE_SHUTDOWN pio run -e heltec-mesh-node-t114`): al cambiar el nightly fijado hay que recompilarlo. (2026-10-20)
+- GPS con `gps_update_interval` largo: búsqueda máx. 15 min; con o sin fix, la siguiente es tras el intervalo completo (el reintento por falla solo alarga). T114: `position.gps_en_gpio 21` (VEXT) hace que HARDSLEEP corte la alimentación del L76K. (2026-10-20)
+- T114 (unidad `HT-n5262`, bootloader 0.9.0, S140 6.1.1 → erase `S140_6.1.0`): el erase no vuelve solo a UF2 → toque 1200 bps. Tras `provisionar`, un `--reboot` mostró la config perdida (owner y `--set` sin persistir; `bluetooth.enabled false` y admin keys nunca quedaron) → `aplicar --apply` otra vez, reiniciar y `diff` para confirmar que persiste. Causa sin verificar. (2026-10-20)
+
 - XIAO nRF52840 kit (unidad `XIAO-SENSE`, bootloader 0.6.1, S140 7.3.0): tras `--enter-dfu` la unidad tarda >20 s en montar; el erase v3 no vuelve solo a UF2 → toque 1200 bps. Si queda mudo (sin API, sin consola, sin UF2 ni DFU serial): doble toque al reset. (2026-10-19)
 - `seeed_xiao_nrf52840_kit` fija `GPS_BAUDRATE 9600` en el variant → el probe solo prueba 9600. Para diagnosticar un GPS ajeno: compilar fad52bb sin ese define (pio en `~/.platformio/penv/bin/pio`, ~4 min). 0 bytes en todas las velocidades = la línea TX del GPS no llega a D7 (cableado), no es baud. (2026-10-19)
 - `provisionar --apply` en nRF52: el respaldo final fallaba con «No such file or directory: /dev/cu.usbmodem…» porque el nodo reinicia → ahora reintenta 6×10 s. (2026-10-19)

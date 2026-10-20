@@ -40,6 +40,7 @@ la malla pública en caso de emergencia.
 | CarTracker, CatTracker, 2.º tracker | TRACKER | NONE | prioriza su posición; no gasta batería ni aire retransmitiendo tráfico público |
 | AcevedoRoof | CLIENT_BASE | ALL | base personal con energía fija: siempre retransmite a sus **favoritos** (toda la flota) y el resto como CLIENT |
 | Dnto_L1, laptop | CLIENT | ALL | móviles; aportan a la malla pública |
+| SolarT114 | CLIENT | ALL | repetidor solar; firmware sin apagado por batería baja (System OFF no revive en el T114) |
 
 No usar ROUTER/REPEATER: la documentación lo desaconseja salvo en sitios estratégicos.
 
