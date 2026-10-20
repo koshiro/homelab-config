@@ -529,8 +529,15 @@ def cmd_provisionar(a):
             print(f"AVISO: {a.nodo} es admin y su llave cambió → `$T aplicar <nodo> --dest '!id' --apply` en los demás")
     cmd_aplicar(a)
     if a.apply:
-        time.sleep(10)   # deja reiniciar tras los cambios
-        cmd_respaldo(a)
+        # Tras los cambios el nodo reinicia y el puerto USB desaparece unos segundos: reintentar el respaldo.
+        for intento in range(6):
+            time.sleep(10)
+            try:
+                cmd_respaldo(a)
+                break
+            except Exception as e:
+                if intento == 5:
+                    print(f"Respaldo pendiente ({e}): `$T respaldo` cuando el nodo vuelva.")
 
 
 def pedir(url):

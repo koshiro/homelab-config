@@ -142,3 +142,34 @@ nodos:
     perfil: cliente
     owner: OrangeHeltecV3
     owner_short: "OH3"
+  XiaoNRF:                       # extra: XIAO nRF52840 Sense + Wio-SX1262, sin GPS (ATGM336H sin señal en D7); va con celular por BLE
+    id: "!bb9ee08f"
+    pubkey: BQcrcg0uq+hLlOomoEdvxFLxt00mnTQ77gUiQr0ApXA=
+    hw: XIAO_NRF52_KIT
+    pio: seeed_xiao_nrf52840_kit
+    perfil: cliente
+    owner: XiaoNRF
+    owner_short: "XNR"
+    set:
+      position.gps_mode: NOT_PRESENT   # la posición la da el celular conectado
+  SolarT114:                     # repetidor solar: Heltec T114 v2.0 sin pantalla, GPS L76K
+    id: "!ba6e56de"
+    pubkey: gvFbAZi3c+9LPzF9DC/FmppkByMn3SLkB+xXXsjIm1s=
+    # Firmware PROPIO: nightly fijado + -DMESHTASTIC_DISABLE_LOW_VOLTAGE_SHUTDOWN. En nRF52 un CLIENT con batería
+    # <3,1 V entra en System OFF y el T114 no tiene despertar por voltaje (LPCOMP desactivado, #8801): no revive con
+    # el sol. Sin ese apagado cae por brownout y arranca solo al recargar. Build en
+    # ~/.cache/meshtastic-fw/2.8.2.fad52bb-solar (ver hechos.md). (2026-10-20)
+    hw: HELTEC_MESH_NODE_T114
+    pio: heltec-mesh-node-t114
+    perfil: cliente                  # CLIENT con rebroadcast ALL: retransmite la malla
+    owner: SolarT114
+    owner_short: "SOL"
+    set:
+      bluetooth.enabled: false             # se administra por USB o PKC; el BLE anunciando gasta siempre
+      device.led_heartbeat_disabled: true
+      device.node_info_broadcast_secs: 43200
+      position.gps_mode: ENABLED
+      position.gps_en_gpio: 21             # VEXT: en HARDSLEEP corta la alimentación del L76K (sin pantalla no alimenta nada más)
+      position.gps_update_interval: 86400  # fix al encender y luego 1 vez al día (no hay acelerómetro para detectar movimiento)
+      position.position_broadcast_smart_enabled: false
+      position.position_broadcast_secs: 43200
