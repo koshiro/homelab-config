@@ -36,6 +36,10 @@
 
 ## Trampas (`error → forma correcta`)
 
+- XIAO nRF52840 kit (unidad `XIAO-SENSE`, bootloader 0.6.1, S140 7.3.0): tras `--enter-dfu` la unidad tarda >20 s en montar; el erase v3 no vuelve solo a UF2 → toque 1200 bps. Si queda mudo (sin API, sin consola, sin UF2 ni DFU serial): doble toque al reset. (2026-10-19)
+- `seeed_xiao_nrf52840_kit` fija `GPS_BAUDRATE 9600` en el variant → el probe solo prueba 9600. Para diagnosticar un GPS ajeno: compilar fad52bb sin ese define (pio en `~/.platformio/penv/bin/pio`, ~4 min). 0 bytes en todas las velocidades = la línea TX del GPS no llega a D7 (cableado), no es baud. (2026-10-19)
+- `provisionar --apply` en nRF52: el respaldo final fallaba con «No such file or directory: /dev/cu.usbmodem…» porque el nodo reinicia → ahora reintenta 6×10 s. (2026-10-19)
+
 - Por el nodo virtual de MeshMonitor el firmware sale como `2.8.2.fad52bb-MM4.17.0`, sin `pio`, y el canal 0 como
   `LongFast` (no "") → mt.py lo trata como igual; no aplicar el `--seturl` que salga solo por eso.
 - App web tras Cloudflare + Traefik con cookies `Secure` → login falla (CSRF mismatch): Traefik reenvía

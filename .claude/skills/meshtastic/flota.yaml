@@ -142,3 +142,13 @@ nodos:
     perfil: cliente
     owner: OrangeHeltecV3
     owner_short: "OH3"
+  XiaoNRF:                       # extra: XIAO nRF52840 Sense + Wio-SX1262, sin GPS (ATGM336H sin señal en D7); va con celular por BLE
+    id: "!bb9ee08f"
+    pubkey: BQcrcg0uq+hLlOomoEdvxFLxt00mnTQ77gUiQr0ApXA=
+    hw: XIAO_NRF52_KIT
+    pio: seeed_xiao_nrf52840_kit
+    perfil: cliente
+    owner: XiaoNRF
+    owner_short: "XNR"
+    set:
+      position.gps_mode: NOT_PRESENT   # la posición la da el celular conectado
