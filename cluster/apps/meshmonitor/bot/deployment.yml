@@ -1,0 +1,64 @@
+# Bot de Telegram de la flota (ver bot.py): /donde y /flota con lo que MeshMonitor oye por AcevedoRoof.
+# Bot propio (no el de Alertmanager/whitelist): getUpdates no admite dos consumidores con el mismo token.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meshmonitor-bot
+  namespace: meshmonitor
+  labels:
+    app: meshmonitor-bot
+spec:
+  replicas: 1   # una sola instancia: getUpdates de Telegram no admite consumidores concurrentes
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: meshmonitor-bot
+  template:
+    metadata:
+      labels:
+        app: meshmonitor-bot
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bot
+          image: python:3.14-alpine
+          command: ["python3", "-u", "/app/bot.py"]
+          env:
+            - name: MM_URL
+              value: http://meshmonitor:3001
+            # Flota de la skill meshtastic (flota.yaml). tracker: true = sale en /donde sin argumento.
+            - name: NODOS
+              value: >-
+                [{"id": "!66f2bcce", "alias": ["akira", "perro", "AkiraGPS"], "tracker": true},
+                 {"id": "!1e945bee", "alias": ["gato", "cat", "CatTracker"], "tracker": true},
+                 {"id": "!de7ae27e", "alias": ["auto", "car", "CarTracker"], "tracker": true},
+                 {"id": "!185e9038", "alias": ["dnto", "l1", "Dnto_L1"]},
+                 {"id": "!0404f6d2", "alias": ["laptop"]},
+                 {"id": "!918d5bf9", "alias": ["techo", "roof", "AcevedoRoof"]},
+                 {"id": "!6de158c2", "alias": ["black", "BlackHeltecV3"]},
+                 {"id": "!583acc8e", "alias": ["orange", "OrangeHeltecV3"]}]
+          envFrom:
+            - secretRef:
+                name: meshmonitor-bot   # TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, MM_TOKEN
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 96Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: app
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: app
+          configMap:
+            name: meshmonitor-bot

@@ -70,4 +70,6 @@ No usar ROUTER/REPEATER: la documentación lo desaconseja salvo en sitios estrat
   4404 no sale de LAN/tailnet. AEAD lo descifra desde v4.17.1-rc6.
 - Contrato de apps del homelab: skill **homelab**, receta *app nueva*.
 - MQTT no hace falta (MeshMonitor lee por TCP). `map_reporting` apagado.
+- Bot de Telegram `meshmonitor-bot` (`cluster/apps/meshmonitor/bot`): `/donde` y `/flota` desde la API REST de
+  MeshMonitor (token de API). Bot propio: el de Alertmanager comparte token con el de la whitelist de Minecraft.
 - Aviso semanal de firmware: CronJob en k3s → Telegram con el bot de Alertmanager (plan, fase 7).
