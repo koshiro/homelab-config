@@ -9,6 +9,16 @@
 - CLI desde fuente: `~/.local/src/meshtastic-python` (master 0a183576, protobufs 2.8.1), venv
   `~/.local/pipx/venvs/meshtastic`. (2026-10-18)
 - Repo viejo con experimentos MQTT/bridge: `~/git/meashtastic-router` (2025, no usado por la flota actual).
+- **SolarT114** `!ba6e56de` (short SOL): nodo fijo **solar**, `HELTEC_MESH_NODE_T114` (nRF52840), rol CLIENT, **sin
+  MQTT**. Provisionado ~2026-10-19, con admin keys. Lo oye directo el techo (hops 0, snr ~6.8). Agregado a
+  `flota.yaml` el 2026-10-20 (id+pubkey sacados de la base de nodos del techo vía `--host 192.168.1.15:4404 --info`,
+  porque el nodo es remoto y no estaba por USB). Distinto del "Nodo solar de Temuco" (Fase 4, con MQTT).
+- **Medir energía en el T114**: de fábrica solo reporta **voltaje de batería** y `battery_level` % estimado (device
+  metrics); NO mide capacidad (mAh/Wh) ni la potencia del panel. Para eso hay que sumarle un sensor I²C de power
+  (INA219/226/260/3221). **INA3221 (3 canales)** es el ideal: un canal al panel y otro a la batería → V+I de cada
+  uno = potencia del panel y consumo. MAX17048 (fuel gauge) mejora el SoC pero no mide el panel. Meshtastic lo expone
+  como telemetría *Power*. Daniel va a encargar un INA3221 (2026-10-20). Falta: `telemetry.device_telemetry_enabled`
+  está en `false` en toda la flota (se pide por DM); habilitar power metrics en este nodo cuando llegue el sensor.
 - CarTracker por USB en la Mac aparece como `/dev/cu.usbmodem101`. (2026-10-18)
 - El cable USB largo de AcevedoRoof a pve es **solo de energía**: en pve no enumera nada (solo el NanoKVM) ni hay
   errores de enumeración en el kernel. (2026-10-18)

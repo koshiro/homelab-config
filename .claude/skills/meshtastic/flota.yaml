@@ -126,6 +126,14 @@ nodos:
     perfil: tracker
     owner: AkiraGPS
     owner_short: "🐕"
+  SolarT114:                     # nodo fijo solar remoto, sin MQTT (oído directo por el techo 2026-10-20)
+    id: "!ba6e56de"
+    pubkey: gvFbAZi3c+9LPzF9DC/FmppkByMn3SLkB+xXXsjIm1s=
+    hw: HELTEC_MESH_NODE_T114
+    pio: heltec-mesh-node-t114   # verificar con `estado`
+    perfil: cliente              # CLIENT en la malla; solar, no gateway. Candidato a INA3221 → power metrics
+    owner: SolarT114
+    owner_short: "SOL"
   BlackHeltecV3:                 # extra
     id: "!6de158c2"
     pubkey: 5urJZ4Jx3P/jlVzyRRFA43pA1qM8YUqU7Ak/eys8YFg=
