@@ -15,7 +15,11 @@ NPCS = [
     ("spiral2", "ENDERMAN", -1185.5, 37.5, -1096.5, -7, 3.3, "PARKOUR SPIRAL 2", "light_purple", "¡Sube la espiral!", [("send_to_server", "spiral2")]),
     ("spiral3", "STRAY", -1181.5, 37, -1095.5, 23, 2.4, "PARKOUR SPIRAL 3", "aqua", "La espiral gigante", [("send_to_server", "spiral3")]),
     ("minijuegos", "ZOMBIE", -1179.5, 37.5, -1092.5, 51, 2.4, "MINIJUEGOS", "dark_purple", "Block Shuffle y más", [("console_command", "mvtp {player} w:minijuegos")]),
-    ("familiar", "VILLAGER", -1176.5, 37, -1090.5, 76, 2.4, "MUNDO FAMILIAR", "blue", "Supervivencia", [("console_command", "mvtp {player} w:world")]),
+    # EL CONEJO (mundo familiar nuevo, semilla 5327173214429367666): al frente, en la plaza central del spawn (y 38),
+    # el primer NPC que se ve al entrar. Mundo `el_conejo` (survival/hard como `world`), alias "El Conejo".
+    ("conejo", "RABBIT", -1185.5, 38, -1092.5, 0, 1.4, "EL CONEJO", "yellow", "Mundo nuevo", [("console_command", "mvtp {player} w:el_conejo")]),
+    # MUNDO FAMILIAR (world, el mundo anterior): movido lejos del inicio, 10 bloques detrás del spawn (hay que darse vuelta).
+    ("familiar", "VILLAGER", -1185.5, 37, -1079.5, 180, 2.4, "MUNDO FAMILIAR", "blue", "Supervivencia", [("console_command", "mvtp {player} w:world")]),
 ]
 
 print("kill @e[type=minecraft:armor_stand,tag=lobby_holo]")

@@ -125,6 +125,7 @@ spec:
                 minigames-with-friends
                 worldedit
                 fancynpcs
+                chunky
             - name: MODRINTH_ALLOWED_VERSION_TYPE
               value: "release"
             # Borra los .jar de plugins/ antes de descargar (evita versiones acumuladas)

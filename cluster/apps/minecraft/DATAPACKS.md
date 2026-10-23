@@ -2,6 +2,8 @@
 
 Instalados (Vanilla Tweaks, MC 26.2): AFK Display, Durability Ping, More Mob Heads, Player Head Drops, Track Raw Statistics, Track Statistics, Wandering Trades, Unlock All Recipes (desbloquea todas las recetas a cada jugador al entrar). Ubicación: `/data/world/datapacks/` en el pod.
 
+Los datapacks son **por mundo**: al crear un mundo familiar nuevo hay que copiarlos a `<mundo>/datapacks/` (los plugins, en cambio, son del servidor). `el_conejo` tiene su copia de los 8 (2026-10-23).
+
 ## Actualizar o añadir
 
 1. Descargar para la versión del servidor desde https://vanillatweaks.net/picker/datapacks/ (o por API: `POST https://vanillatweaks.net/assets/server/zipdatapacks.php` con `packs` y `version`).
