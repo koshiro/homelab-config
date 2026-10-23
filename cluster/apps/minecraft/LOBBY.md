@@ -21,12 +21,13 @@ Voice chat 24454/UDP ───────────────────�
 
 | NPC | Personaje | Lleva a |
 |---|---|---|
+| **EL CONEJO** | conejo | `mvtp w:el_conejo`: mundo familiar nuevo (semilla `5327173214429367666`, survival/hard). Al frente, en la plaza central del spawn (y 38), es el primer NPC al entrar |
 | **ONE BLOCK** | bruja | `/ob`: crea o vuelve a la isla propia (BentoBox AOneBlock) |
 | **PARKOUR** | esqueleto | mundo `parkour`: 5 niveles (Colores, Bosque, Nether, Hielo y cielo, Gran final); la meta de cada nivel lleva al siguiente; placa roja «Volver al Nivel 1»; checkpoints en placas doradas |
 | **PARKOUR SPIRAL 2** | enderman | servidor `spiral2` |
 | **PARKOUR SPIRAL 3** | esqueleto glacial | servidor `spiral3` |
 | **MINIJUEGOS** | zombi | mundo `minijuegos` (Minigames With Friends) |
-| **MUNDO FAMILIAR** | aldeano | `mvtp w:world`: Multiverse-Inventories lo deja en su **última ubicación** de supervivencia; la primera vez, en el spawn junto al portal LOBBY (64.5, 96, 33.5) |
+| **MUNDO FAMILIAR** | aldeano | `mvtp w:world`: el mundo familiar **anterior**, movido 10 bloques detrás del spawn (lejos del inicio). Multiverse-Inventories lo deja en su **última ubicación** de supervivencia; la primera vez, en el spawn junto al portal LOBBY (64.5, 96, 33.5) |
 
 - **OneBlock en pareja:** `/ob team invite <jugador>` y el otro `/ob team accept`. Los jugadores
   Bedrock llevan un punto delante del nombre (p. ej. `.ArrozK`).
@@ -45,7 +46,8 @@ Voice chat 24454/UDP ───────────────────�
   `//paste -o` (coordenadas originales: x −1242…−1125, y −24…157, z −1176…−1057).
 - Spawn en la plaza: (−1185, 38, −1089) mirando al norte. NPCs con **FancyNpcs** en arco frente al
   spawn (`lobby/build_npcs.py`); sus nombres son armor stands (`lobby_holo`) porque Geyser no
-  muestra las entidades de texto de FancyNpcs en Bedrock.
+  muestra las entidades de texto de FancyNpcs en Bedrock. **EL CONEJO** va al frente, en la plaza
+  central (y 38), y **MUNDO FAMILIAR** (el mundo anterior) quedó 10 bloques detrás del spawn.
 
 ## Proxy Velocity (desde 2026-10-03)
 
@@ -81,8 +83,8 @@ Voice chat 24454/UDP ───────────────────�
 
 | Pieza | Detalle |
 |---|---|
-| Plugins (Modrinth, `deployment.yml`) | Multiverse-Core, -Inventories, -Portals, -CommandDestination, BentoBox (+ AOneBlock por initContainer), Minigames With Friends, WorldEdit, FancyNpcs. Floodgate (whitelist Bedrock con `fwhitelist`) |
-| Mundos | `lobby`, `parkour` (vacíos, aventura); `minijuegos` (normal, fácil); `oneblock_world*` (BentoBox); `world*` (supervivencia familiar). El laberinto se eliminó el 2026-10-03 |
+| Plugins (Modrinth, `deployment.yml`) | Multiverse-Core, -Inventories, -Portals, -CommandDestination, BentoBox (+ AOneBlock por initContainer), Minigames With Friends, WorldEdit, FancyNpcs, Chunky (pregeneración). Floodgate (whitelist Bedrock con `fwhitelist`) |
+| Mundos | `lobby`, `parkour` (vacíos, aventura); `minijuegos` (normal, fácil); `oneblock_world*` (BentoBox); `world*` (supervivencia familiar anterior); `el_conejo` (supervivencia familiar nueva, semilla `5327173214429367666`, desde 2026-10-23). El laberinto se eliminó el 2026-10-03 |
 | Inventarios (`config/multiverse-inventories.groups.yml`) | `default` (world + nether + end), `juegos` (lobby), `parkour`, `minijuegos`, `oneblock`. `last_location` activo, `apply-last-location-for-all-teleports: true` y `disabled-shares: [last_location]` en `juegos`, `parkour` y `minijuegos` (llegan a su spawn); `default` (supervivencia) y `oneblock` (desde 2026-10-04) recuerdan dónde salieron o se desconectaron (OneBlock: la primera vez, `/ob` lleva a la isla). **No usar el destino `ll:`**: lee el perfil solo si está en caché y si no manda al spawn (2026-10-03: dos muertes por caída en el spawn viejo) |
 | Portales (`config/multiverse-portals.portals.yml`) | `familiar_lobby` (mundo familiar → lobby) y los dos del parkour; `enforce-portal-access: false` |
 | NPCs (`config/fancynpcs.npcs.yml`) | copia de `plugins/FancyNpcs/npcs.yml` |
@@ -90,6 +92,17 @@ Voice chat 24454/UDP ───────────────────�
 | Reinicio diario | `restart-cronjob.yml`: 05:00 reinicia **proxy** (Geyser/Floodgate al día para Bedrock) y principal |
 
 Los archivos de `config/` son copias de lo que vive en el volumen (`nvme/k8s/minecraft`).
+
+### Mundo `el_conejo` (2026-10-23)
+
+Mundo familiar nuevo con la semilla ganadora del seedfinder (`5327173214429367666`), survival/hard como `world`.
+Creado en vivo: `mv create el_conejo normal --seed …` + `mv modify el_conejo set {gamemode survival, difficulty hard,
+hunger true, pvp true, alias "El Conejo"}`. Spawn en el origen (0,0) por `adjust-spawn` (el seed pasó el filtro
+«tierra en el origen»). **Inventario propio y fresco**: queda fuera de los grupos de Multiverse-Inventories (un mundo
+sin grupo es su propio inventario aislado). Los **datapacks son por mundo**: se copiaron los 8 de Vanilla Tweaks de
+`world/datapacks/` a `el_conejo/datapacks/` (los plugins, en cambio, son del servidor y aplican a todos los mundos sin
+hacer nada). Pregenerado radio 1000 con Chunky. Para ampliarlo: `chunky world el_conejo` → `chunky radius <n>` →
+`chunky start`.
 
 ## Reconstruir
 

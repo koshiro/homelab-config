@@ -1,5 +1,5 @@
 npcs:
-  3e292efc-91c5-475e-bdc7-cace914d358b:
+  92ac6019-b4f3-45b9-bdcf-7ff35bb673ad:
     name: spiral2
     creator: 00000000-0000-0000-0000-000000000000
     displayName: <empty>
@@ -29,97 +29,7 @@ npcs:
         '1':
           action: send_to_server
           value: spiral2
-  12607e1d-c464-4463-8e74-b0b5702f3f75:
-    name: oneblock
-    creator: 00000000-0000-0000-0000-000000000000
-    displayName: <empty>
-    type: WITCH
-    location:
-      world: lobby
-      x: -1190.5
-      y: 37.0
-      z: -1091.5
-      yaw: -63.0
-      pitch: 0.0
-    showInTab: false
-    spawnEntity: true
-    collidable: false
-    glowing: false
-    glowingColor: white
-    turnToPlayer: true
-    turnToPlayerDistance: -1
-    interactionCooldown: 2.0
-    scale: 1.0
-    visibility_distance: -1
-    visibility: ALL
-    skin:
-      mirrorSkin: false
-    actions:
-      ANY_CLICK:
-        '1':
-          action: player_command
-          value: ob
-  fa0a5af5-7314-418a-9c21-ed0d196e364c:
-    name: spiral3
-    creator: 00000000-0000-0000-0000-000000000000
-    displayName: <empty>
-    type: STRAY
-    location:
-      world: lobby
-      x: -1181.5
-      y: 37.0
-      z: -1095.5
-      yaw: 23.0
-      pitch: 0.0
-    showInTab: false
-    spawnEntity: true
-    collidable: false
-    glowing: false
-    glowingColor: white
-    turnToPlayer: true
-    turnToPlayerDistance: -1
-    interactionCooldown: 2.0
-    scale: 1.0
-    visibility_distance: -1
-    visibility: ALL
-    skin:
-      mirrorSkin: false
-    actions:
-      ANY_CLICK:
-        '1':
-          action: send_to_server
-          value: spiral3
-  5ac91b96-ff09-400d-b8fa-333cf42c983d:
-    name: parkour
-    creator: 00000000-0000-0000-0000-000000000000
-    displayName: <empty>
-    type: SKELETON
-    location:
-      world: lobby
-      x: -1188.5
-      y: 37.0
-      z: -1094.5
-      yaw: -34.0
-      pitch: 0.0
-    showInTab: false
-    spawnEntity: true
-    collidable: false
-    glowing: false
-    glowingColor: white
-    turnToPlayer: true
-    turnToPlayerDistance: -1
-    interactionCooldown: 2.0
-    scale: 1.0
-    visibility_distance: -1
-    visibility: ALL
-    skin:
-      mirrorSkin: false
-    actions:
-      ANY_CLICK:
-        '1':
-          action: console_command
-          value: mvtp {player} w:parkour
-  e60956a0-ac4d-4abd-9aa2-2d3a3901b00f:
+  d54422b0-4e6b-47b5-915e-22cc04beeab7:
     name: minijuegos
     creator: 00000000-0000-0000-0000-000000000000
     displayName: <empty>
@@ -149,17 +59,17 @@ npcs:
         '1':
           action: console_command
           value: mvtp {player} w:minijuegos
-  e9122b48-6f89-4504-8ff6-b7b95a25ec54:
+  ce620a08-80ab-4212-823a-2b9b6ae082f5:
     name: familiar
     creator: 00000000-0000-0000-0000-000000000000
     displayName: <empty>
     type: VILLAGER
     location:
       world: lobby
-      x: -1176.5
+      x: -1185.5
       y: 37.0
-      z: -1090.5
-      yaw: 76.0
+      z: -1079.5
+      yaw: 180.0
       pitch: 0.0
     showInTab: false
     spawnEntity: true
@@ -179,3 +89,123 @@ npcs:
         '1':
           action: console_command
           value: mvtp {player} w:world
+  80cf22b1-b049-48d6-a3eb-8cc139dfb1be:
+    name: parkour
+    creator: 00000000-0000-0000-0000-000000000000
+    displayName: <empty>
+    type: SKELETON
+    location:
+      world: lobby
+      x: -1188.5
+      y: 37.0
+      z: -1094.5
+      yaw: -34.0
+      pitch: 0.0
+    showInTab: false
+    spawnEntity: true
+    collidable: false
+    glowing: false
+    glowingColor: white
+    turnToPlayer: true
+    turnToPlayerDistance: -1
+    interactionCooldown: 2.0
+    scale: 1.0
+    visibility_distance: -1
+    visibility: ALL
+    skin:
+      mirrorSkin: false
+    actions:
+      ANY_CLICK:
+        '1':
+          action: console_command
+          value: mvtp {player} w:parkour
+  bf42c2b3-19ec-4d98-9e66-bd9d889c1fca:
+    name: spiral3
+    creator: 00000000-0000-0000-0000-000000000000
+    displayName: <empty>
+    type: STRAY
+    location:
+      world: lobby
+      x: -1181.5
+      y: 37.0
+      z: -1095.5
+      yaw: 23.0
+      pitch: 0.0
+    showInTab: false
+    spawnEntity: true
+    collidable: false
+    glowing: false
+    glowingColor: white
+    turnToPlayer: true
+    turnToPlayerDistance: -1
+    interactionCooldown: 2.0
+    scale: 1.0
+    visibility_distance: -1
+    visibility: ALL
+    skin:
+      mirrorSkin: false
+    actions:
+      ANY_CLICK:
+        '1':
+          action: send_to_server
+          value: spiral3
+  9fa89277-db1a-4257-9ed5-42916c68f832:
+    name: conejo
+    creator: 00000000-0000-0000-0000-000000000000
+    displayName: <empty>
+    type: RABBIT
+    location:
+      world: lobby
+      x: -1185.5
+      y: 38.0
+      z: -1092.5
+      yaw: 0.0
+      pitch: 0.0
+    showInTab: false
+    spawnEntity: true
+    collidable: false
+    glowing: false
+    glowingColor: white
+    turnToPlayer: true
+    turnToPlayerDistance: -1
+    interactionCooldown: 2.0
+    scale: 1.0
+    visibility_distance: -1
+    visibility: ALL
+    skin:
+      mirrorSkin: false
+    actions:
+      ANY_CLICK:
+        '1':
+          action: console_command
+          value: mvtp {player} w:el_conejo
+  13b03da8-72ad-457d-b7a1-4f303f4e0897:
+    name: oneblock
+    creator: 00000000-0000-0000-0000-000000000000
+    displayName: <empty>
+    type: WITCH
+    location:
+      world: lobby
+      x: -1190.5
+      y: 37.0
+      z: -1091.5
+      yaw: -63.0
+      pitch: 0.0
+    showInTab: false
+    spawnEntity: true
+    collidable: false
+    glowing: false
+    glowingColor: white
+    turnToPlayer: true
+    turnToPlayerDistance: -1
+    interactionCooldown: 2.0
+    scale: 1.0
+    visibility_distance: -1
+    visibility: ALL
+    skin:
+      mirrorSkin: false
+    actions:
+      ANY_CLICK:
+        '1':
+          action: player_command
+          value: ob
