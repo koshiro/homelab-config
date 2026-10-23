@@ -2,7 +2,7 @@
 
 Instalados (Vanilla Tweaks, MC 26.2): AFK Display, Durability Ping, More Mob Heads, Player Head Drops, Track Raw Statistics, Track Statistics, Wandering Trades, Unlock All Recipes (desbloquea todas las recetas a cada jugador al entrar). Ubicación: `/data/world/datapacks/` en el pod.
 
-Los datapacks son **por mundo**: al crear un mundo familiar nuevo hay que copiarlos a `<mundo>/datapacks/` (los plugins, en cambio, son del servidor). `el_conejo` tiene su copia de los 8 (2026-10-23).
+En Paper los datapacks son **del servidor**: se cargan desde `world/datapacks/` (el mundo primario) y aplican a **todos** los mundos, incluidos los de Multiverse. No hay que copiarlos por mundo —`<mundo>/datapacks/` en un mundo secundario Paper lo ignora—. Verificar que un mundo los tiene: `rcon-cli "execute in minecraft:<mundo> run datapack list enabled"` (devuelve la misma lista global). Por eso `el_conejo` (2026-10-23) ya tiene los 8 sin tocar nada.
 
 ## Actualizar o añadir
 

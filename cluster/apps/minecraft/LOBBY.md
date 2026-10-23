@@ -99,10 +99,10 @@ Mundo familiar nuevo con la semilla ganadora del seedfinder (`532717321442936766
 Creado en vivo: `mv create el_conejo normal --seed …` + `mv modify el_conejo set {gamemode survival, difficulty hard,
 hunger true, pvp true, alias "El Conejo"}`. Spawn en el origen (0,0) por `adjust-spawn` (el seed pasó el filtro
 «tierra en el origen»). **Inventario propio y fresco**: queda fuera de los grupos de Multiverse-Inventories (un mundo
-sin grupo es su propio inventario aislado). Los **datapacks son por mundo**: se copiaron los 8 de Vanilla Tweaks de
-`world/datapacks/` a `el_conejo/datapacks/` (los plugins, en cambio, son del servidor y aplican a todos los mundos sin
-hacer nada). Pregenerado radio 1000 con Chunky. Para ampliarlo: `chunky world el_conejo` → `chunky radius <n>` →
-`chunky start`.
+sin grupo es su propio inventario aislado). **Datapacks y plugins ya aplican sin tocar nada**: en Paper ambos son del
+servidor (los datapacks se cargan desde `world/datapacks/` y valen para todos los mundos; copiarlos a
+`el_conejo/datapacks/` es inútil, Paper lo ignora). Pregenerado radio 1000 con Chunky. Para ampliarlo:
+`chunky world el_conejo` → `chunky radius <n>` → `chunky start`.
 
 ## Reconstruir
 
