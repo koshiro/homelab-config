@@ -42,7 +42,21 @@ spec:
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2.0.22
-          command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+          # cert-manager renueva mqtt-tls cada ~60 días y el volumen se actualiza solo: si cambia el certificado,
+          # SIGHUP hace que Mosquitto lo recargue sin cortar a los clientes.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mosquitto -c /mosquitto/config/mosquitto.conf & pid=$!
+              trap 'kill -TERM $pid' TERM INT
+              antes=$(md5sum /mosquitto/certs/tls.crt)
+              while kill -0 $pid 2>/dev/null; do
+                sleep 600 & wait $!
+                ahora=$(md5sum /mosquitto/certs/tls.crt)
+                [ "$ahora" != "$antes" ] && antes=$ahora && echo "certificado nuevo: SIGHUP" && kill -HUP $pid
+              done
+              wait $pid
           ports:
             - name: mqtts
               containerPort: 8883
@@ -102,7 +116,7 @@ spec:
             defaultMode: 0440
         - name: certs
           secret:
-            secretName: mqtt
+            secretName: mqtt-tls     # Let's Encrypt (certificate.yml); el autofirmado sigue en el secreto mqtt
             defaultMode: 0440
             items:
               - {key: tls.crt, path: tls.crt}
