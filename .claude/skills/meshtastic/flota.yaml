@@ -150,3 +150,11 @@ nodos:
     perfil: cliente
     owner: OrangeHeltecV3
     owner_short: "OH3"
+  XiaoNRF:                       # extra, XIAO nRF52840 kit (alta 2026-10-24)
+    id: "!d4ac0a05"
+    pubkey: quehtSpFE6TSD95iZ/wFjYxJjfGdrYtKAsE4r8xvcx8=
+    hw: XIAO_NRF52_KIT
+    pio: seeed_xiao_nrf52840_kit
+    perfil: cliente
+    owner: XiaoNRF
+    owner_short: "XNR"
