@@ -1,0 +1,36 @@
+# Certificado de Let's Encrypt para mqtt.danielriquelme.cl. El firmware Meshtastic no valida (setInsecure), pero las
+# apps (Mac/iPhone con MQTT Client Proxy) sí: con el autofirmado fallaban con kCFStreamErrorDomainSSL -9807.
+# DNS-01 en Cloudflare con el mismo token del sidecar cloudflare-ddns (secreto mqtt, CF_API_TOKEN).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt
+  namespace: mqtt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-cuenta
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: mqtt
+              key: CF_API_TOKEN
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mqtt-tls
+  namespace: mqtt
+spec:
+  secretName: mqtt-tls
+  dnsNames:
+    - mqtt.danielriquelme.cl
+  issuerRef:
+    kind: Issuer
+    name: letsencrypt
+  privateKey:
+    algorithm: RSA          # RSA por compatibilidad con el mbedTLS de los ESP32
+    size: 2048
+    rotationPolicy: Always
