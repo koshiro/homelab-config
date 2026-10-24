@@ -64,7 +64,25 @@ def qb(path, form=None):
 PLEX_SH = r'''T=$(sed -n 's:.*PlexOnlineToken="\([^"]*\)".*:\1:p' "/config/Library/Application Support/Plex Media Server/Preferences.xml")
 U="http://localhost:32400/$1"; shift
 curl -sS -G -H "Accept: application/json" -w "\n%{http_code}" "$U" --data-urlencode "X-Plex-Token=$T" "$@"'''
-PLEX_SERIES = 2  # sección "Programas de TV"; Plex monta /data/media como /media
+# Plex monta /data/media como /media; la biblioteca se busca por ruta (plex_seccion)
+HAMA = "com.plexapp.agents.hama"  # agente legacy de las bibliotecas Anime (/media/anime, /media/anime-peliculas)
+
+
+def plex_ruta(path): return path.rstrip("/").replace("/data/media/", "/media/", 1)
+
+
+def plex_secciones():
+    """[(ruta, key, tipo, agente)] de cada ubicación de cada biblioteca."""
+    return [(l["path"], d["key"], d["type"], d["agent"]) for d in plex("library/sections")["Directory"]
+            for l in d["Location"]]
+
+
+def plex_seccion(ruta, secs=None):
+    """Biblioteca que contiene una ruta de Plex (/media/…): (key, tipo, agente)."""
+    for p, k, t, ag in secs or plex_secciones():
+        if ruta == p or ruta.startswith(p + "/"):
+            return k, t, ag
+    sys.exit(f"ninguna biblioteca de Plex contiene {ruta}")
 
 
 def plex_raw(api, **params):
@@ -416,8 +434,8 @@ def c_rename(a):
 
 
 def plex_scan(serie):
-    ruta = serie["path"].replace("/data/media/", "/media/", 1)
-    plex(f"library/sections/{PLEX_SERIES}/refresh", path=ruta)
+    ruta = plex_ruta(serie["path"])
+    plex(f"library/sections/{plex_seccion(ruta)[0]}/refresh", path=ruta)
     print(f"  Plex: escaneo pedido de {ruta} (ver con `plex \"{serie['title']}\"` en ~1 min)")
 
 
@@ -430,9 +448,10 @@ def c_plex(a):
         plex_scan(ss[0])
         return
     son = {s["seasonNumber"]: s["statistics"]["episodeFileCount"] for s in ss[0]["seasons"]}
-    guid = f"tvdb://{ss[0]['tvdbId']}"
-    shows = [d for d in plex(f"library/sections/{PLEX_SERIES}/all", includeGuids=1).get("Metadata", [])
-             if any(g["id"] == guid for g in d.get("Guid", []))]
+    guid, hama = f"tvdb://{ss[0]['tvdbId']}", f"{HAMA}://tvdb-{ss[0]['tvdbId']}?"
+    sec = plex_seccion(plex_ruta(ss[0]["path"]))[0]
+    shows = [d for d in plex(f"library/sections/{sec}/all", includeGuids=1).get("Metadata", [])
+             if any(g["id"] == guid for g in d.get("Guid", [])) or d.get("guid", "").startswith(hama)]
     if not shows:
         sys.exit(f"Plex no tiene {guid} (sin escanear o mal emparejada): `plex \"{a.series}\" --scan`")
     for sh_ in shows:
@@ -440,6 +459,74 @@ def c_plex(a):
         for t in plex(f"library/metadata/{sh_['ratingKey']}/children").get("Metadata", []):
             n = t.get("index", 0)
             print(f"  T{n:<2} plex {t['leafCount']:>3}  sonarr {son.get(n, '-'):>3}  {t['title']}")
+
+
+def c_faltan(a):
+    """Series y películas con archivos en Sonarr/Radarr que Plex no muestra, y películas sin emparejar (local://).
+
+    Compara por ruta en todas las bibliotecas. --apply empareja las películas sin emparejar: en las de HAMA con
+    tmdb-<id de Radarr>; en las de Plex Movie con el primer resultado de igual año y título. Lo que no aparece en
+    Plex se reescanea; si sigue faltando, el agente no lo encuentra (anime → biblioteca Anime, receta).
+    """
+    secs, P = plex_secciones(), {"X-Plex-Container-Size": 9999, "X-Plex-Container-Start": 0}
+    dirs, sueltas = set(), []
+    for k, t, ag in {(k, t, ag) for _, k, t, ag in secs}:
+        if t == "movie":
+            for d in plex(f"library/sections/{k}/all", **P).get("Metadata", []):
+                for m in d.get("Media", []):
+                    dirs.update(p["file"].rsplit("/", 1)[0] for p in m.get("Part", []))
+                if d.get("guid", "").startswith("local://"):
+                    sueltas.append((d, ag))
+        elif t == "show":
+            for e in plex(f"library/sections/{k}/all", type=4, **P).get("Metadata", []):
+                for m in e.get("Media", []):
+                    dirs.update("/".join(p["file"].split("/")[:4]) for p in m.get("Part", []))
+            sueltas += [(d, ag) for d in plex(f"library/sections/{k}/all", **P).get("Metadata", [])
+                        if d.get("guid", "").startswith("local://")]
+    ser = [s for s in arr("sonarr", "series") if s["statistics"]["episodeFileCount"]
+           and "/".join(plex_ruta(s["path"]).split("/")[:4]) not in dirs]
+    rad = {plex_ruta(m["path"]): m for m in arr("radarr", "movie") if m.get("hasFile")}
+    pel = [m for r, m in rad.items() if r not in dirs]
+    for s in ser:
+        print(f"  serie   {cut(s['title'], 45):<45} {s['statistics']['episodeFileCount']:>3} arch.  {plex_ruta(s['path'])}")
+    for m in pel:
+        print(f"  película {cut(m['title'], 44):<44} ({m['year']})  {plex_ruta(m['path'])}")
+    norm = lambda x: re.sub(r"[^a-z0-9]", "", x.lower())
+    son = {plex_ruta(s["path"]): s for s in arr("sonarr", "series")}
+    for d, ag in sueltas:
+        if d["type"] == "show":
+            loc = plex(f"library/metadata/{d['ratingKey']}")["Metadata"][0].get("Location", [{}])[0].get("path")
+            s = son.get(loc)
+            if ag != HAMA or not s:
+                print(f"  serie sin emparejar: {d['title']} ({loc}) → Fix Match a mano"); continue
+            guid = f"{HAMA}://tvdb-{s['tvdbId']}?lang=en"
+            print(f"  serie sin emparejar: {s['title']} → {guid}")
+            if a.apply:
+                plex(f"library/metadata/{d['ratingKey']}/match", guid=guid, name=s["title"])
+            continue
+        m = rad.get(d["Media"][0]["Part"][0]["file"].rsplit("/", 1)[0])
+        if not m:
+            print(f"  sin emparejar y sin Radarr: {d['title']}"); continue
+        if ag == HAMA:
+            guid, cand = f"{HAMA}://tmdb-{m['tmdbId']}?lang=en", m["title"]
+        else:
+            res = plex(f"library/metadata/{d['ratingKey']}/matches", manual=1, agent=ag, title=m["title"],
+                       year=m["year"]).get("SearchResult", [])
+            ok = [r for r in res if abs((r.get("year") or 0) - m["year"]) <= 1
+                  and norm(r["name"])[:6] == norm(m["title"])[:6]]
+            if not ok:
+                print(f"  sin emparejar, sin candidato: {m['title']} ({m['year']}) → Fix Match a mano"); continue
+            guid, cand = ok[0]["guid"], ok[0]["name"]
+        print(f"  sin emparejar: {m['title']} ({m['year']}) → {cand} {guid}")
+        if a.apply:
+            plex(f"library/metadata/{d['ratingKey']}/match", guid=guid, name=cand, year=m["year"])
+    print(f"{len(ser)} series y {len(pel)} películas fuera de Plex; {len(sueltas)} sin emparejar")
+    if a.apply:
+        for r in sorted({plex_ruta(s["path"]) for s in ser} | {plex_ruta(m["path"]) for m in pel}):
+            plex(f"library/sections/{plex_seccion(r, secs)[0]}/refresh", path=r)
+        print("  emparejado y escaneo pedido; repetir `faltan` en unos minutos")
+    else:
+        print("dry-run: --apply empareja las sin emparejar y reescanea lo que falta")
 
 
 PLEX_DIR = "/config/Library/Application Support/Plex Media Server"
@@ -841,6 +928,8 @@ def main():
     x = s.add_parser("plex", help="temporadas que Plex ve de una serie vs archivos en Sonarr (--scan reescanea)")
     x.add_argument("series", help="regex de la serie"); x.add_argument("--scan", action="store_true")
     x.set_defaults(f=c_plex)
+    x = s.add_parser("faltan", help="series/películas con archivos que Plex no muestra o no emparejó (--apply)")
+    x.add_argument("--apply", action="store_true"); x.set_defaults(f=c_faltan)
     x = s.add_parser("transcode", help="prueba de transcoding de Plex (GPU, segmentos, carpeta temporal, errores)")
     x.add_argument("--titulo", default=".", help="regex de la película (por defecto la primera h264/hevc)")
     x.add_argument("--res", default="1280x720"); x.add_argument("--kbps", type=int, default=2000)

@@ -85,6 +85,17 @@ rollout (`~/.cache/flux-plan/bin/flux reconcile ks <app> --with-source` para no 
 versión. `$M update <apps> --apply` solo **reinicia** con la misma imagen (no sube nada). qBittorrent y Plex cortan
 descargas/streams: avisar antes.
 
+## Series o películas que están en Sonarr/Radarr y no en Plex
+1. `$M faltan`: lista por ruta lo que tiene archivos y Plex no muestra, y lo que Plex dejó sin emparejar (`local://`).
+2. Película sin emparejar → `faltan --apply` (Plex Movie: mismo año y título; HAMA: `tmdb-<id>`). Si no hay candidato,
+   Fix Match a mano. Archivo con nombre de episodio (`S03E01`) → Plex Movie lo ignora: renombrar en Radarr (hechos).
+3. Serie que no aparece: buscar en el log `Match request for '<título>' returned no metadata`. Si es anime → mover a
+   `/data/media/anime` con `series/editor` (`rootFolderPath` + `moveFiles`), poner `tvdb.id` y escanear la biblioteca
+   Anime. Si es occidental → escanear (`plex --scan`) y Fix Match.
+4. Antes de mover entre bibliotecas: guardar el visto (hechos, HAMA). Después: `RescanSeries`/`RescanMovie` y comparar
+   archivos, ruta y monitoreo contra la foto previa; luego `plex "<serie>"` (temporadas Plex vs Sonarr). Archivos
+   apilados en un episodio → `rename "<serie>" --apply`.
+
 ## Rendimiento lento / NFS
 `$M status` + `$M prefs` primero; históricamente la causa fue la cola de qBittorrent, no el NFS. NFS/ZFS del host:
 `proxmox/README.md`.
