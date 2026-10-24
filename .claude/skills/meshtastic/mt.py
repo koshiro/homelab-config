@@ -229,6 +229,8 @@ def comparar(a, nombre):
         sets, diffs = [], []
         for k, v in claves.items():
             actual = leer_campo(node.localConfig, node.moduleConfig, k)
+            if a.dest and k.endswith("password") and actual == "sekrit":
+                continue   # por admin remoto el firmware devuelve «sekrit»: no se puede comparar (aplicar sí la escribe)
             if norm(actual) != norm(v):
                 oculto = "***" if "psk" in k or "password" in k else None
                 diffs.append(f"{k}: {oculto or actual!r} → {oculto or v!r}")
