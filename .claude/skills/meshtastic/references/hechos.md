@@ -40,8 +40,15 @@
 - MeshMonitor (2026-10-19): `cluster/apps/meshmonitor`, conectado a AcevedoRoof 4403. Con él arriba, **no** conectar el CLI a
   `192.168.1.105:4403` (el ESP32 atiende un cliente TCP y desconecta a MeshMonitor): usar el nodo virtual
   `k3s-node-0:4404` (Tailscale/MagicDNS: en casa y fuera; `192.168.1.15:4404` solo en la LAN). Web tras Cloudflare
-  Access. El vnode descarta `--remove-node` (ack-and-drop, issue #2602 de MeshMonitor): borrar nodos del techo desde
-  la UI (`POST /api/nodes/<num>/purge-from-device`). (2026-10-24)
+  Access. El vnode descarta `--remove-node` (ack-and-drop, issue #2602 de MeshMonitor). Borrar nodos del techo por la
+  API de MeshMonitor con el `MM_TOKEN` del bot (es de admin), desde el pod `meshmonitor-bot` (`$MM_URL`), `sourceId`
+  `a7e9cbc7-29b8-48fb-a8e8-565a5ce68474` (fuente AcevedoRoof): (2026-10-24)
+  - quitar favorito: `POST /api/admin/commands` `{"command":"removeFavoriteNode","favoriteNodeNum":<num>,"sourceId":…}`;
+  - borrar del techo y de la base: `POST /api/security/dead-nodes/bulk-delete` `{"nodeNums":[<num>],"sourceId":…}`.
+  - No sirven con token: `/api/messages/nodes/<num>/purge-from-device` (se monta con `optionalAuth`, que ignora el
+    Bearer → 403) ni `removeNode` de `/api/admin/commands` (`nodeNum` se toma como destino → 400 siempre).
+  - Conectar el CLI directo a `192.168.1.105:4403` no sirve: MeshMonitor se reconecta y corta al CLI antes de que salga
+    el comando («Broken pipe»).
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
