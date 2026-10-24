@@ -64,6 +64,15 @@ perfiles:
     mqtt.root: msh/acevedo
   cliente:
     device.role: CLIENT
+  cliente_proxy:                 # CLIENT sin WiFi que llega al broker por MQTT Client Proxy: la app conectada
+    device.role: CLIENT          # (Mac/iPhone/Android) abre la conexión; sin app conectada no hay MQTT (2026-10-24)
+    mqtt.enabled: true
+    mqtt.proxy_to_client_enabled: true
+    mqtt.address: mqtt.danielriquelme.cl:8883   # desde cualquier red; usuario y clave van en cada nodo
+    mqtt.tls_enabled: true
+    mqtt.encryption_enabled: true
+    mqtt.json_enabled: false
+    mqtt.root: msh/acevedo
 
 # id y pubkey los escribe `mt.py provisionar` (las llaves nacen en el nodo). owner ≤24 bytes (emoji = 4).
 nodos:
@@ -72,7 +81,11 @@ nodos:
     pubkey: itL0Olq6ahmKafz5ZhnAeRndFaHqLOXrJ4RIQ7fQAgg=
     hw: SEEED_WIO_TRACKER_L1
     pio: seeed_wio_tracker_L1   # verificar con `estado` (hay variantes eink)
-    perfil: cliente
+    perfil: cliente_proxy
+    gateway: true                # uplink/downlink del canal privado por el proxy de la app
+    set:
+      mqtt.username: dnto
+      mqtt.password: secreto:mqtt_pass_dnto
     owner: Dnto_L1
     owner_short: "🤓"
   Laptop:
@@ -80,7 +93,11 @@ nodos:
     pubkey: 2cccCt7uFl5yd9degLIQGwahrT7inJ3skswVoEhjc18=
     hw: SEEED_XIAO_S3
     pio: seeed-xiao-s3
-    perfil: cliente
+    perfil: cliente_proxy
+    gateway: true                # uplink/downlink del canal privado por el proxy de la app
+    set:
+      mqtt.username: laptop
+      mqtt.password: secreto:mqtt_pass_laptop
     owner: LoraLaptop
     owner_short: "💻"
   AcevedoRoof:
