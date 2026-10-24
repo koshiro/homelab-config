@@ -3,7 +3,7 @@
 ## Infraestructura
 - Todo en `k3s-node-1` (afinidad `node-role.kubernetes.io/media-worker`, toleración `p2p`): reiniciar node-1 baja la suite.
 - `/data` = NFS `192.168.1.100:/mnt/homelab-storage/k8s-media-library` (HDD 12 TB + SLOG `sda4`). `/data/downloads` y
-  la biblioteca `/data/media/{movies,series}` están en el mismo FS → los *arr importan con hardlink.
+  la biblioteca `/data/media/{peliculas,series,anime,anime-peliculas}` están en el mismo FS → los *arr importan con hardlink.
 - `/incomplete` = pool `scratch` de pve (stripe sdc+sdd, `sync=disabled`, desechable, sin sanoid). Al completar,
   qBittorrent **copia** (otro FS) a `/data/downloads`; mientras tanto el torrent está en `moving` y el *arr no importa.
 - NetworkPolicy de qbittorrent: solo `allow-arr-suite-communication` (`networkpolicy-arr-suite.yml`: ns con label
@@ -110,8 +110,9 @@
 - `manualimport?downloadId=` devuelve vacío si Sonarr ya no rastrea la descarga (fuera de cola): usar
   `folder=<content_path del torrent>` (2026-10-13).
 - En zsh `$M …` no se separa en palabras: usar `alias M=…` o llamar `python3 -I …/media.py` directo.
-- Plex (2026-10-12): monta la biblioteca como `/media/series` y `/media/peliculas` (no `/data/media`); sección de series
-  = 2. Sonarr **no tiene conexión a Plex**: tras renombrar o importar a mano, Plex no se entera hasta su escaneo
+- Plex (2026-10-12): monta la biblioteca como `/media/…` (no `/data/media`). Bibliotecas (2026-10-23): 1 Películas y
+  2 Programas de TV (agentes nuevos de Plex), 3 Anime (`/media/anime`) y 4 Películas de anime
+  (`/media/anime-peliculas`) con HAMA; `plex_seccion(ruta)` elige la que toca. Sonarr **no tiene conexión a Plex**: tras renombrar o importar a mano, Plex no se entera hasta su escaneo
   periódico; `rename --apply` y `plex --scan` lo piden. GitS SAC S4 (Erai) no salía en Plex por los nombres del grupo.
 - Plex `TranscoderTempDirectory` (2026-10-18): debe quedar **vacío** (por defecto `/config/…/Cache/Transcode`, fuera del
   respaldo). Con una ruta relativa (`transcoding`) la reproducción cae a `TMPDIR=/run/plex-temp` y sigue andando, pero
@@ -120,3 +121,31 @@
 - Transcoding de Plex por GPU (2026-10-18): `$M transcode` → nvdec + nvenc, pipeline completo, ~9× para HEVC 4K → 720p.
   `speed` de `/transcode/sessions` queda en 0 sin cliente; la velocidad real es `maxOffsetAvailable − minOffsetAvailable`
   sobre la espera. El transcoder no arranca con `start.m3u8`: hay que pedir el índice que esa lista enlaza.
+
+## Plex: anime con HAMA (2026-10-23)
+- El agente nuevo «Plex Series» no tiene muchas OVAs (Dream Hunter Rem, Gall Force, Megazone 23): «Match request …
+  returned no metadata» y **ni crea la ficha** (`.plexmatch` con `tvdbid` no lo arregla). Las películas sí se crean
+  como `local://` y se emparejan con `faltan --apply`. Que falle una película occidental conocida (Vesper) es un fallo
+  puntual al agregarla, no de cobertura.
+- Anime va a las bibliotecas HAMA: Sonarr raíz `/data/media/anime`, Radarr raíz `/data/media/anime-peliculas`; Seerr
+  manda el anime nuevo de Sonarr a `/data/media/anime` (`activeAnimeDirectory`; Radarr en Seerr no separa anime).
+  Criterio usado al trasladar: etiqueta Anime de TVDB o idioma japonés (series); japonés + Animation (películas);
+  el live action japonés y la animación occidental se quedan donde estaban.
+- Instalación: initContainer `install-hama` (`plex/deployment.yml`) con commits fijados. HAMA = PR #611 (fork bugale)
+  porque `master` cfddf8f trae TVDB v4 con la clave `TODO` y no empareja nada (issue #610). Plex 1.43.4 aún carga
+  agentes legacy, pero Plex anunció que los quita en 2026: **antes de subir Plex, revisar que siga existiendo
+  `com.plexapp.agents.hama` en `system/agents`** y las notas de versión. Los reemplazos con el sistema nuevo
+  (hama-modern, plex-anime-provider) estaban sin implementar en 2026-10.
+- HAMA consulta `api.anidb.net:9001`: la NetworkPolicy de salida de Plex abre ese puerto (sin él, series sin metadatos).
+- ID forzado: archivo `tvdb.id` en la carpeta de la serie (lo lee el Absolute Series Scanner al crear la ficha; si ya
+  existe, emparejar con `library/metadata/<id>/match?guid=com.plexapp.agents.hama://tvdb-<id>?lang=en`). Películas:
+  `…://tmdb-<id de Radarr>?lang=en`. Si no hay ID, ASS/HAMA buscan por título en AniDB (acierta casi siempre).
+- Prefs de HAMA (en el PVC): `SerieLanguagePriority` y `EpisodeLanguagePriority` = `en, main, ja` (por defecto los
+  títulos salen en romaji). Se cambian con `:/plugins/com.plexapp.agents.hama/prefs/set?<id>=<valor>`.
+- Nombres del grupo («Part 2 - 01», «3rd Season - 02», «5.1», «#01» en la raíz) hacen que ASS apile archivos en un mismo
+  episodio o los mande a la temporada 0: `rename "<serie>" --apply` (formato SxxEyy de Sonarr) lo arregla.
+- Mover a otra biblioteca cambia el GUID: Plex pierde el visto. Guardar `viewCount` antes y repetir `:/scrobble` en
+  la ficha nueva (solo la cuenta dueña del token; otros usuarios lo pierden).
+- Sonarr `You're Under Arrest` (123) tiene la ruta dentro de la carpeta de `You're Under Arrest!` (124): moverla aparte
+  rompe la otra; se mueve la 124 y a la 123 solo se le corrige la ruta sin `moveFiles`.
+- Radarr: `renameMovies=false` (como Sonarr); para renombrar una película, activarlo solo durante el `RenameFiles`.
