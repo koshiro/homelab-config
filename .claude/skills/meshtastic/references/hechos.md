@@ -100,3 +100,9 @@
   `grep -v -i -e private -e psk` antes de mostrar.
 - `--set security.packet_signature_policy COMPATIBLE` → hay que dar el nombre completo
   `PACKET_SIGNATURE_POLICY_COMPATIBLE`.
+- `flashear` en XIAO nRF52840 → «SoftDevice desconocida: S140 version 7.3.0»: su `INFO_UF2.TXT` dice `S140 version 7.3.0`
+  (no `S140 7.3.0`); `mt.py` ya quita el «version ». El nodo queda en DFU: basta repetir `flashear --apply`. (2026-10-24)
+- `provisionar --apply` por USB puede caerse en el respaldo final (el nodo reinicia tras el dueño y el puerto
+  desaparece unos segundos): todo lo demás quedó aplicado; repetir `$T respaldo` y `$T diff`. (2026-10-24)
+- La columna `isFavorite` de MeshMonitor solo se lee del techo al conectarse: tras `favoritos` no cambia hasta
+  reiniciar MeshMonitor. El nodo virtual 4404 no muestra ★ de otros nodos. (2026-10-24)

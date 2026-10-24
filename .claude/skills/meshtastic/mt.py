@@ -708,7 +708,7 @@ def cmd_flashear(a):
     subprocess.run([CLI, "--port", puerto, "--timeout", "30", "--enter-dfu"], capture_output=True)
     vol = unidad_uf2(30) or sys.exit("No apareció la unidad UF2 (entrar en DFU a mano: doble reset o botón al conectar)")
     sd = next((l.split(":", 1)[1].strip() for l in (vol / "INFO_UF2.TXT").read_text().splitlines()
-               if l.startswith("SoftDevice")), "")
+               if l.startswith("SoftDevice")), "").replace("version ", "")   # XIAO: «S140 version 7.3.0»
     erase = next((e for e in ERASE_NRF52 if sd.replace(" ", "_") in e), None) or sys.exit(f"SoftDevice desconocida: {sd}")
     print(f"unidad {vol.name}, SoftDevice {sd} → {erase}")
     subprocess.run(["cp", "-X", str(out / erase), str(vol)], capture_output=True)
