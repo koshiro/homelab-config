@@ -51,6 +51,39 @@ spec:
         - name: media-library
           mountPath: /media
           subPath: media
+      # Agente legacy HAMA + Absolute Series Scanner para la biblioteca "Anime" (/media/anime): el agente nuevo de
+      # Plex no tiene muchas OVAs. Commits fijados: HAMA = PR #611 (master cfddf8f trae TVDB v4 sin clave, #610).
+      # Si la descarga falla, Plex arranca igual con la versión ya instalada.
+      - name: install-hama
+        image: alpine:3.24
+        env:
+        - name: HAMA_REF
+          value: b185393824c4ff87622ff889e61279b67553685e
+        - name: ASS_REF
+          value: b6bfa300332369062b48d17e2277207d1da0a6cd
+        command:
+        - sh
+        - -c
+        - |
+          P="/config/Library/Application Support/Plex Media Server"
+          B="$P/Plug-ins/Hama.bundle"
+          if [ "$(cat "$B/.ref" 2>/dev/null)" != "$HAMA_REF" ]; then
+            rm -rf /tmp/h && mkdir -p /tmp/h && cd /tmp/h &&
+            wget -q -O h.zip "https://codeload.github.com/bugale/Hama.bundle/zip/$HAMA_REF" && unzip -q h.zip &&
+            rm -rf "$B" && mv "Hama.bundle-$HAMA_REF" "$B" && echo "$HAMA_REF" > "$B/.ref" &&
+            echo "HAMA $HAMA_REF instalado" || echo "AVISO: no se pudo instalar HAMA"
+          fi
+          S="$P/Scanners/Series/Absolute Series Scanner.py"
+          mkdir -p "$P/Scanners/Series"
+          if [ "$(cat "$S.ref" 2>/dev/null)" != "$ASS_REF" ]; then
+            wget -q -O /tmp/ass.py "https://raw.githubusercontent.com/ZeroQI/Absolute-Series-Scanner/$ASS_REF/Scanners/Series/Absolute%20Series%20Scanner.py" &&
+            mv /tmp/ass.py "$S" && echo "$ASS_REF" > "$S.ref" &&
+            echo "ASS $ASS_REF instalado" || echo "AVISO: no se pudo instalar Absolute Series Scanner"
+          fi
+          chown -R 1000:1000 "$P/Plug-ins" "$P/Scanners"
+        volumeMounts:
+        - name: config
+          mountPath: /config
       containers:
       - name: plex
         image: lscr.io/linuxserver/plex:1.43.4
