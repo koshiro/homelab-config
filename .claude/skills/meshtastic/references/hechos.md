@@ -39,7 +39,9 @@
   Firmware (MQTT.cpp): `setInsecure()`; con broker de IP privada sube paquetes ajenos sin `ok_to_mqtt`. (2026-10-18)
 - MeshMonitor (2026-10-19): `cluster/apps/meshmonitor`, conectado a AcevedoRoof 4403. Con él arriba, **no** conectar el CLI a
   `192.168.1.105:4403` (el ESP32 atiende un cliente TCP y desconecta a MeshMonitor): usar el nodo virtual
-  `192.168.1.15:4404` (cuando esté activo en la UI). Web tras Cloudflare Access.
+  `k3s-node-0:4404` (Tailscale/MagicDNS: en casa y fuera; `192.168.1.15:4404` solo en la LAN). Web tras Cloudflare
+  Access. El vnode descarta `--remove-node` (ack-and-drop, issue #2602 de MeshMonitor): borrar nodos del techo desde
+  la UI (`POST /api/nodes/<num>/purge-from-device`). (2026-10-24)
 - Telegram del homelab: bot de Alertmanager (`cluster/03-monitoring/monitoring/secret-alertmanager-telegram.sops.yaml`).
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.

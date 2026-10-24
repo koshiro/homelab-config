@@ -13,7 +13,7 @@ actualizar).
 T=~/.claude/skills/meshtastic/mt.py   # ejecutable; su shebang usa el python del CLI (pipx venv meshtastic)
 $T puertos                         # radios por USB
 $T estado [--port X|--host IP[:puerto]]  # firmware, rol, preset, canales, admin keys, nodos oídos
-# Techo: SIEMPRE por el nodo virtual de MeshMonitor `--host 192.168.1.15:4404` (directo a :4403 lo desconecta)
+# Techo: SIEMPRE por el nodo virtual de MeshMonitor `--host k3s-node-0:4404` (Tailscale, en casa o fuera; :4403 lo desconecta)
 $T respaldo [--port X|--host IP]   # .yaml + .cfg (con llave privada) en ~/.config/meshtastic-fleet/backups (600)
 $T diff <nodo> [--dest !id]        # nodo vs flota.yaml + el comando `meshtastic` que lo corrige
 $T aplicar <nodo> [--dest !id] [--apply]   # canales → --set (una transacción) → dueño; dry-run por defecto

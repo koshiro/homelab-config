@@ -63,7 +63,7 @@ def resolver_puerto(a):
 def conectar(a):
     if a.host:
         from meshtastic.tcp_interface import TCPInterface
-        host, _, puerto = a.host.partition(":")   # 192.168.1.15:4404 = nodo virtual de MeshMonitor
+        host, _, puerto = a.host.partition(":")   # k3s-node-0:4404 = nodo virtual de MeshMonitor (Tailscale)
         return TCPInterface(hostname=host, portNumber=int(puerto or 4403), timeout=a.timeout)
     from meshtastic.serial_interface import SerialInterface
     return SerialInterface(devPath=resolver_puerto(a), timeout=a.timeout)
