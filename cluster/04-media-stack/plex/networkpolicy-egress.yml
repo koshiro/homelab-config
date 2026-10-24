@@ -20,7 +20,7 @@ spec:
       port: 53
     - protocol: TCP
       port: 53
-  # HTTP/HTTPS a internet (incluyendo plex.tv)
+  # HTTP/HTTPS a internet (incluyendo plex.tv); 9001 = API HTTP de AniDB (api.anidb.net), que usa el agente HAMA
   - to:
     - ipBlock:
         cidr: 0.0.0.0/0
@@ -29,6 +29,8 @@ spec:
       port: 80
     - protocol: TCP
       port: 443
+    - protocol: TCP
+      port: 9001
   # Permitir comunicación con otros servicios en cluster (sin "to": cualquier destino; "to: []" da drift en k3s 1.35)
   - ports:
     - protocol: TCP
