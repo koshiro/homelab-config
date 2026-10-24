@@ -26,3 +26,8 @@ data:
     topic readwrite msh/#
     user temuco
     topic readwrite msh/#
+    # Nodos sin WiFi por MQTT Client Proxy (la app conectada hace de puente)
+    user laptop
+    topic readwrite msh/#
+    user dnto
+    topic readwrite msh/#

@@ -115,3 +115,9 @@
   desaparece unos segundos): todo lo demás quedó aplicado; repetir `$T respaldo` y `$T diff`. (2026-10-24)
 - La columna `isFavorite` de MeshMonitor solo se lee del techo al conectarse: tras `favoritos` no cambia hasta
   reiniciar MeshMonitor. El nodo virtual 4404 no muestra ★ de otros nodos. (2026-10-24)
+- Por admin remoto el firmware devuelve `mqtt.password` como `sekrit` (AdminModule `secretReserved`); escribir `sekrit`
+  conserva la clave actual. `mt.py diff --dest` la omite; `aplicar --dest` la escribe igual (ACK = guardada). (2026-10-24)
+- MQTT Client Proxy (`mqtt.proxy_to_client_enabled`, perfil `cliente_proxy`): el nodo no abre la conexión; la app
+  Meshtastic conectada (Mac/iPhone/Android) lo hace por él. El CLI no hace de proxy. Usuarios del broker: `laptop`,
+  `dnto`. Uplink/downlink del canal 1 por radio: `meshtastic --dest '!id' --ch-index 1 --ch-set uplink_enabled true
+  --ch-set downlink_enabled true` (verificado: la PSK queda intacta). (2026-10-24)
