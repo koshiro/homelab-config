@@ -19,9 +19,17 @@ integraciones) quedó en las otras referencias de la skill; aquí solo lo propio
 4. **Puntaje en dos pasos**: primero compuertas (excluir / preguntar / descartar / revisar), después el número. Y un
    **chequeo de vigencia** de la oferta antes de gastar tokens o notificar.
 5. **Registry**: GHCR privado (decidido el 2026-10-25; Job Hunter es la primera app del cluster con imagen propia).
-6. **LinkedIn se puede leer sin cuenta y sin navegador** (endpoint de invitados que usa JobSpy, verificado en vivo).
-   No arriesga el perfil de Daniel pero incumple los términos de LinkedIn: decisión del usuario, con las condiciones
-   de `job-hunter-codigo.md` § 1.
+6. **LinkedIn se lee sin cuenta y sin navegador** (endpoint de invitados que usa JobSpy, verificado en vivo).
+   **Aprobado por el usuario el 2026-10-25** con las condiciones de `job-hunter-codigo.md` § 1.
+
+## Decisiones del usuario (2026-10-25)
+
+- El documento de diseño **no es inamovible**: los 17 ajustes de abajo y lo que salga del estado del arte se
+  aplican como mejoras. Ante una mejor práctica con evidencia, proponerla y documentarla en un ADR del repo.
+- **Invariante 4, nueva redacción**: nada de automatizar la *cuenta* de LinkedIn ni de Indeed (login, cookies,
+  Easy Apply, mensajes) ni de resolver CAPTCHAs. Leer LinkedIn como visitante sí, con cadencia baja y parada ante
+  bloqueo. Postular en LinkedIn sigue siendo manual.
+- Registry: GHCR privado.
 
 **Revisión del código fuente** (qué portar de cada repo, con archivo y línea): `job-hunter-codigo.md`.
 
@@ -60,13 +68,13 @@ descubrir qué fuentes rinden, antes de escribir adaptadores. Gasta tokens de la
 | Workable | `GET apply.workable.com/api/v1/widget/accounts/<slug>` o `POST …/api/v3/accounts/<slug>/jobs` con filtros en JSON | 200 (hotjar) | 1 cada 3 s | El v3 solo acepta POST |
 | **HN «Who is hiring?»** | `hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring` | 200 | — | **Agregar**: hilo mensual con mucho remoto; los comentarios se parsean con LLM barato |
 | Empleos Públicos | `www.empleospublicos.cl` | 403 desde el datacenter | — | *Revisar* desde una IP chilena (pod en el cluster); si no hay RSS, entra por alertas de correo |
-| LinkedIn (invitado) | `GET /jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=&f_WT=2&f_TPR=r604800&start=0` y `/jobs/view/<id>` | 200: 10 tarjetas (devops, Chile, remoto) y descripción completa | User Agreement 8.2 prohíbe el scraping | **Pendiente de decisión del usuario** (`job-hunter-codigo.md` § 1). Alternativa limpia: alertas por correo vía IMAP |
+| LinkedIn (invitado) | `GET /jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=&f_WT=2&f_TPR=r604800&start=0` y `/jobs/view/<id>` | 200: 10 tarjetas (devops, Chile, remoto) y descripción completa | User Agreement 8.2 prohíbe el scraping | **Aprobado** (2026-10-25) con cadencia baja y parada ante bloqueo (`job-hunter-codigo.md` § 1); las alertas por correo siguen como respaldo |
 | Indeed | — | — | Prohíbe automatización | Solo alertas por correo |
 
 Otras que career-ops ya soporta y sirven para LATAM/remoto: Working Nomads, Welcome to the Jungle, Landing.jobs,
 Computrabajo (parser HTML: revisar términos), Teamtailor, Recruitee, Personio, SmartRecruiters, BambooHR, Breezy.
 
-## Ajustes recomendados al diseño
+## Ajustes al diseño (aceptados el 2026-10-25)
 
 Numerados contra las secciones del documento.
 
@@ -127,7 +135,7 @@ privado, CI en GitHub Actions. Detalle y alternativas: `../stack.md`.
 - [x] Registry: GHCR privado (2026-10-25), con `hl.py ghcr` para el pull.
 - [ ] Repo `koshiro/job-hunter` privado (el CV maestro es fixture del importador y tiene datos personales).
 - [ ] Probar Empleos Públicos desde una IP chilena (pod del cluster).
-- [ ] **LinkedIn de solo lectura sin cuenta**: ¿se acepta? (cambia el invariante 4 del diseño).
+- [x] LinkedIn de solo lectura sin cuenta: aprobado (2026-10-25).
 - [ ] Confirmar IMAP/SMTP de iCloud con contraseña de app para el dominio propio.
 - [ ] Decisiones abiertas del documento: empresas iniciales, lista negra, renta por defecto (USD y CLP).
 

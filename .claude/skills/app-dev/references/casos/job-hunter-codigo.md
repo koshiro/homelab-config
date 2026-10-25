@@ -40,7 +40,8 @@ tarjetas; detalle → 200 con descripción completa; sin JSON-LD `JobPosting`.
 **Riesgo, honesto**: no usa la cuenta de Daniel, así que **no arriesga su perfil**. Sí incumple el User Agreement
 de LinkedIn (8.2 prohíbe el scraping aunque sea de páginas públicas; en *hiQ v. LinkedIn* LinkedIn ganó por
 incumplimiento de contrato en 2022). El riesgo práctico es que la IP de la casa reciba authwall o 429 para
-visitantes. **Decisión del usuario** (cambia el invariante 4 del diseño). Si se aprueba:
+visitantes. **Aprobado por el usuario el 2026-10-25** (nueva redacción del invariante 4 en `job-hunter.md`), con
+estas condiciones:
 
 - Adaptador propio en Python portando el de JobSpy (sin pandas ni su sesión rotativa): 3–5 búsquedas fijas
   (`f_WT=2`, `f_TPR=r86400`), cada 6–12 h, pausa 3–7 s, máximo ~10 páginas por corrida.
