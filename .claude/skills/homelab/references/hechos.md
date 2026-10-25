@@ -71,6 +71,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- Sector pendiente en un HDD 512e (físico de 4K): `hdparm --write-sector` de a 512 B baja `Pending` pero el sector
+  sigue ilegible → comprobar con `zdb -m <pool>` que su metaslab no tiene datos y reescribir el sector físico entero:
+  `dd if=/dev/zero of=/dev/sdX bs=4096 seek=<LBA/8> count=1 oflag=direct conv=notrunc,fsync`; verificar con `dd … iflag=direct`. (2026-10-25)
+- `hdparm -S /dev/sdX` sin valor no lee el temporizador de standby (lo exige como argumento) → `hdparm -C` (estado) y
+  `Start_Stop_Count` en dos momentos para saber si el disco se duerme. (2026-10-25)
 - immich-server CrashLoopBackOff «must be owner of extension vector» tras subir la imagen de CNPG → en el primario
   `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y reiniciar immich-server; reindexa al arrancar. (2026-10-15)
 - Esperar un rollout de CNPG mirando solo `status.phase` → da «healthy» antes de empezar: exigir además la imagen

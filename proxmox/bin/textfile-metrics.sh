@@ -49,7 +49,11 @@ trap 'rm -f "$tmp"' EXIT
       m("smart_healthy"; if .smart_status.passed then 1 else 0 end),
       m("smart_temperature_celsius"; .temperature.current),
       m("smart_power_on_hours"; .power_on_time.hours),
-      (.ata_smart_attributes.table[]? | select(.id == 5 or .id == 197 or .id == 198 or .id == 199)
+      # último autotest (smartd: corto diario, largo mensual); sin valor mientras corre
+      m("smart_selftest_passed"; if .ata_smart_data.self_test.status.passed == null then null
+        elif .ata_smart_data.self_test.status.passed then 1 else 0 end),
+      # 4 = arranques del motor y 193 = aparcados de cabezal: miden el desgaste por spindown
+      (.ata_smart_attributes.table[]? | select(.id == 4 or .id == 5 or .id == 193 or .id == 197 or .id == 198 or .id == 199)
         | "smart_ata_attribute_raw{device=\"\($d)\",id=\"\(.id)\",name=\"\(.name)\"} \(.raw.value)"),
       m("smart_nvme_percentage_used"; .nvme_smart_health_information_log.percentage_used),
       m("smart_nvme_available_spare_percent"; .nvme_smart_health_information_log.available_spare),

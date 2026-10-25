@@ -209,7 +209,8 @@ sin workers.
   1. **Copia fría fuera de línea**: en un gabinete USB, una tercera copia de `respaldo/k8s` que se conecta una vez al
      mes (protege contra un borrado o un ransomware que alcance a `respaldo` y a R2). Escribe a ráfagas y descansa
      entre copias, que es justo lo que este disco hace bien mientras la copia incremental quepa en la caché.
-  2. **Reemplazar a `sdd` en `scratch`** (WD 2 TB con sectores pendientes, § 5): descargas incompletas de qBittorrent
+  2. ~~Reemplazar a `sdd` en `scratch`~~ (descartado 2026-10-25: `sdd` sigue hasta que muera y el NE-512 es el pool
+     `replica` desde el 2026-10-18). Era: descargas incompletas de qBittorrent
      con `sync=disabled` y `autotrim=on`. Ojo: node-1 llega a bajar a ~95 MB/s, más que los 75 MB/s sostenidos; sirve
      si las descargas grandes caben en la caché. Baja `scratch` de 2,6 TB a ~1,4 TB.
   3. Disco de uso general en un PC (biblioteca de juegos, lectura): ahí la escritura sostenida casi no importa.
@@ -247,8 +248,11 @@ Decisión 2026-10-08: **VictoriaMetrics single-node** en vez de kube-prometheus-
   `SwapHostProxmox` antes del drop-in de `qemu.slice`; `DiscoSectoresNuevos` en `sdd` (WD 2 TB de ~89 500 h, pool
   `scratch`) por `Current_Pending_Sector` 0 → 1 el 2026-10-13. Único ajuste: `DiscoCaliente` en HDD/SSD de 50 a 55 °C
   (en el scrub llegaron a 51–53 °C, dentro de especificación).
-- [ ] Vigilar `sdd`: si `Current_Pending_Sector` sigue subiendo o pasa a reasignados, sacarlo de `scratch` (recrear el pool
-  solo con `sdc`; es desechable).
+- [x] `sdd` (2026-10-25): el sector pendiente (LBA 2809461152, en un metaslab vacío) quedó legible al reescribir el
+  sector físico de 4K, sin reasignar: `Pending` 1 → 0 y scrub limpio. Decisión: **se usa hasta que muera**, porque
+  `scratch` es desechable. Para frenar el desgaste: sin spindown (`proxmox/etc/hdparm.conf`, también `sdc` con APM 254,
+  que ya pasó los 300 000 aparcados), y métricas `Start_Stop_Count`/`Load_Cycle_Count`/`smart_selftest_passed` con
+  las alertas `DiscoAutotestFallido` y `DiscoArrancaMucho`.
 - [ ] Retomar `security-audit` (secret `midas-cookies`, ya eliminado del cluster) si hace falta; no es parte del monitoreo.
 
 ## 6. GitOps con Flux
