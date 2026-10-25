@@ -212,3 +212,6 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `FluxSinReconciliar` pending que «se reinicia»: `gotk_resource_info` lleva `ready` y `revision` como labels; una ks
   que alterna Unknown ↔ False o un commit nuevo crean otra serie y el `for: 15m` vuelve a cero → agregar con `max by
   (customresource_kind, exported_namespace, name)` (aplicado en la regla, #110). (2026-10-16)
+- Script de ediciones + `git commit` + `gh pr merge` en una sola llamada: si el script falla a mitad, lo que sigue corre
+  igual y se mergea un cambio parcial (PR #144) → validar todas las ediciones antes de escribir ninguna y empezar la
+  llamada con `set -e`. (2026-10-25)
