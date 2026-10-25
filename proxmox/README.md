@@ -17,6 +17,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `etc/zfs.conf` | `/etc/modprobe.d/zfs.conf` (ARC 6 GB, `spl_kmem_cache_obj_per_slab=1`; `update-initramfs -u -k all`, efecto al reiniciar) |
 | `etc/garage.toml`, `systemd/garage.service`, `bin/garagectl` | `/etc/garage.toml`, `/etc/systemd/system/garage.service`; binario `/usr/local/bin/garage` (v2.4.1, musl de garagehq.deuxfleurs.fr), usuario `garage`, secretos `/etc/garage/{rpc_secret,admin_token,cnpg-key.txt}` (0600); sus rutas van por variables de entorno en el unit. CLI: `garagectl status` (en `/usr/local/sbin/`) |
 | `etc/smartd.conf` | `/etc/smartd.conf` |
+| `etc/hdparm.conf` | `/etc/hdparm.conf` (HDD de `scratch` sin spindown, `sdc` con APM 254; lo aplica udev al detectar el disco, en vivo `hdparm -B 254 -S 0 <disco>`) |
 | `etc/prometheus-node-exporter.default` | `/etc/default/prometheus-node-exporter` (paquete Debian `prometheus-node-exporter`, :9100; lo lee VictoriaMetrics del cluster) |
 | `etc/smartd-run.d-20telegram` | `/etc/smartmontools/run.d/20telegram` |
 | `etc/zed-all-telegram.sh` | `/etc/zfs/zed.d/all-telegram.sh` |
@@ -117,7 +118,7 @@ La alerta `SwapHostProxmox` avisa cuando el swap del host pasa del 50 %.
 | `nvme1n1` NE-512 2280 (512 GB, INNOGRIT IG5216 sin DRAM) | Pool `replica` (desde 2026-10-18): réplica horaria de `nvme` (syncoid). Sacado del espejo `nvme` el 2026-10-17 por lento; ver abajo y `docs/PENDIENTES.md` § 4f |
 | `sdb` Seagate 12 TB | Pool `homelab-storage` (un solo disco) |
 | `sde` WD 3 TB | Pool `respaldo` (réplica syncoid) |
-| `sdc` WD 1 TB (2,5") + `sdd` WD 2 TB (~10 años de uso) | Pool `scratch` (stripe, 2,6 TB, sin redundancia ni snapshots). `scratch/qbittorrent` (`recordsize=16K`, `sync=disabled`): descargas incompletas de qBittorrent vía NFS. Si muere un disco: recrear el pool y volver a descargar |
+| `sdc` WD 1 TB (2,5") + `sdd` WD 2 TB (~10 años de uso) | Pool `scratch` (stripe, 2,6 TB, sin redundancia ni snapshots). `scratch/qbittorrent` (`recordsize=16K`, `sync=disabled`): descargas incompletas de qBittorrent vía NFS. **Se usan hasta que mueran** (decisión 2026-10-25): si muere un disco, recrear el pool y volver a descargar. Para frenar el desgaste no se duermen (`etc/hdparm.conf`). Un sector pendiente se recupera reescribiendo el sector físico entero de 4K con `dd … bs=4096 oflag=direct`, después de comprobar con `zdb -m scratch` que el metaslab no tiene datos. Con `hdparm --write-sector` de a 512 B el disco no lo recupera |
 
 **`nvme` sin espejo (2026-10-17)**: `nvme1n1` escribía con 113–389 ms de latencia en ráfagas de 4–7 min (31 ms en
 calma) contra 1–3 ms de `nvme0n1`, con el mismo enlace PCIe Gen3 x4, sin errores AER y SMART sano (13 % de desgaste,

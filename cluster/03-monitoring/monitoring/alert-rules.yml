@@ -132,6 +132,22 @@ groups:
         annotations:
           summary: "{{ $labels.device }}: {{ $labels.name }} subió"
           description: "Aumentó en {{ $value | printf \"%.0f\" }} en 24 h: el disco empieza a degradarse."
+      - alert: DiscoAutotestFallido
+        # smartd corre un test corto cada día a las 02:00; uno fallido suele anteceder a DiscoSectoresNuevos
+        expr: smart_selftest_passed == 0
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.device }}: el último autotest SMART falló"
+          description: "smartctl -l selftest /dev/{{ $labels.device }} en Proxmox da el LBA del primer error."
+      - alert: DiscoArrancaMucho
+        # Start_Stop_Count: los HDD no deben dormirse (spindown_time = 0 en /etc/hdparm.conf de pve);
+        # sdd llegó a 100 000 arranques en 10 años. Más de 10 al día es un spindown que volvió.
+        expr: smart_ata_attribute_raw{id="4"} - smart_ata_attribute_raw{id="4"} offset 1d > 10
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.device }} arrancó el motor {{ $value | printf \"%.0f\" }} veces en 24 h"
+          description: "Algo lo está durmiendo: hdparm -C /dev/{{ $labels.device }} y /etc/hdparm.conf en Proxmox."
       - alert: NVMeDesgastado
         expr: smart_nvme_percentage_used > 80 or (smart_nvme_media_errors - smart_nvme_media_errors offset 1d > 0)
         labels: {severity: warning}
