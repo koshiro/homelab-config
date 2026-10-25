@@ -36,6 +36,10 @@ botón desde el teléfono.
 
 ## Reglas de diseño (cada una evitó un problema real o un costo)
 
+0. **Adoptar antes que construir.** Primero buscar una app madura que ya haga el 70 %+ y desplegar su imagen oficial
+   (DISENO-APPS §5); después extenderla por sus puntos de extensión o PRs upstream; fork delgado solo para lo que
+   upstream no acepte; construir solo si nada calza. **El lenguaje lo decide el código reutilizable**, no la
+   costumbre: si lo que se va a reciclar está en TypeScript, la app va en TypeScript.
 1. **Postgres es el centro**: datos, cola (Procrastinate, `SKIP LOCKED`), vectores (pgvector), full-text. Sin Redis,
    Celery ni brokers: un componente menos que operar y respaldar.
 2. **Una imagen, varios comandos** (`api`, `worker`, `cron`); configuración por variables de entorno (DISENO-APPS §2).
