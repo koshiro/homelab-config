@@ -24,3 +24,4 @@
 | 2026-10-17 | Prueba de nvme1n1 (KingSpec NE-512): caché SLC, TRIM, temperatura, APST | ~25 | fio no estaba en pve; la marca no sale en SMART (sí en la búsqueda por modelo) | `scripts/ssd/prueba.sh` + `analiza.py`, paso 6 de la receta *app lenta*, dato en hechos |
 | 2026-10-18 | Discos de workers 150/80/80 y nvme1n1 como pool `replica` (syncoid horario) | ~25 | el clasificador bloqueó `zpool create` hasta el OK explícito; la reserva completa de los zvols hacía inviables los snapshots | dato en hechos, README de proxmox |
 | 2026-10-25 | Skill app-dev + investigación Job Hunter | ~70 | no estaba anotado que pgvector ya viene en la imagen de CNPG ni el endpoint de Ollama | 2 datos en hechos, fila app-dev en el mapa |
+| 2026-10-25 | Registry GHCR privado para imágenes propias | ~20 | GHCR solo acepta PAT classic; sops no cifra fuera de `cluster/` (no hay regla en .sops.yaml) | `hl.py ghcr check|secret`, `vault_var()` genérico, DISENO-APPS §2.4c, dato y receta |

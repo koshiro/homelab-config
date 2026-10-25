@@ -12,6 +12,8 @@ ExitWorktree `keep` → en `~/git/homelab-config`: `git pull --ff-only` → `git
 1. `$H doc DISENO-APPS 3` (árbol de decisiones) y solo la plantilla §4.x que aplique.
 2. Carpeta `cluster/apps/<app>/` copiando una app parecida (`$H app <similar>` muestra su carpeta).
 3. Puerto: `$H ports --serie 30xxx`. Secreto: escribir en claro en `$CLAUDE_JOB_DIR/tmp`, `$H sops encrypt`, mover.
+   Imagen propia (GHCR privado): `$H ghcr secret <ns> cluster/apps/<app>/solo-flux/secret-ghcr-pull.sops.yml` +
+   `imagePullSecrets: [{name: ghcr-pull}]`; antes del merge, `$H ghcr check ghcr.io/koshiro/<app>:<tag>`.
 4. `kubectl kustomize cluster/apps/<app> >/dev/null`; `kubectl apply -k … --dry-run=server` solo si el namespace ya
    existe (no crearlo a mano: lo crea Flux).
 5. Una Kustomization en `cluster/flux/apps.yaml` copiando una parecida (los `*.sops.*` en `solo-flux/` con

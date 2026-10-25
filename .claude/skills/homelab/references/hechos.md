@@ -50,6 +50,9 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
 - La imagen de CNPG (`ghcr.io/cloudnative-pg/postgresql:17.11`) ya trae `vector` 0.8.6, `pg_trgm` y `unaccent`;
   se activan por base con `spec.extensions` del CRD `Database`, sin cambiar la imagen. (2026-10-25)
+- Imágenes propias: GHCR privado `ghcr.io/koshiro/<app>` (decisión del usuario, 2026-10-25). Pull con PAT classic
+  `read:packages` en el vault (`vault_ghcr_pull_token`) → Secret `ghcr-pull` por namespace (`hl.py ghcr secret`), con
+  `metadata.namespace` explícito: si lo pone el transformer de kustomize, cambia el YAML y el MAC de SOPS no calza.
 - Ollama: `ollama-stack/ollama` en k3s-node-1, `ollama.ollama-stack.svc.cluster.local:11434` y NodePort 31434
   (`http://192.168.1.131:31434`). Modelos: `curl …/api/tags`. (2026-10-25)
 - Flux: `cluster/flux/` (`flux-system/`, `capas.yaml`, `apps.yaml`, una Kustomization por carpeta hoja). Lo que solo
