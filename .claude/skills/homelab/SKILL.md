@@ -31,7 +31,7 @@ $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave
 | Tarea | Primero |
 |-------|---------|
 | Salud, "algo anda lento", tras corte de luz | `$H status --deep`; lento o intermitente: `$H io` y receta *app lenta* |
-| App nueva o portar | receta *app nueva* + `$H doc DISENO-APPS 2` (contrato) y la plantilla §4.x que toque |
+| App nueva o portar | receta *app nueva* + `$H doc DISENO-APPS 2` (contrato) y la plantilla §4.x que toque. App propia (stack, repo, código): skill **app-dev** |
 | Sitio estático / publicar web | receta *sitio estático* (túnel `pibot-webs` → `http://192.168.1.15:<nodePort>`) |
 | Cloudflare (hostname, DNS, túnel, reglas) | `$H cf …` (autorizado; lo hace el agente, nunca el usuario) |
 | Respaldos | receta *respaldo*; `$H doc proxmox/README Tareas` |

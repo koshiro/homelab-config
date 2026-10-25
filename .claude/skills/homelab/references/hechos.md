@@ -48,6 +48,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Datos: `local-path` = disco de la VM, sin cuota ni respaldo (CronJob `config-backup-<app>` 02:40–02:48);
   valiosos → NFS `nvme/k8s/<app>`; voluminosos reemplazables → `/mnt/homelab-storage/<app>`; pibot → hostPath.
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
+- La imagen de CNPG (`ghcr.io/cloudnative-pg/postgresql:17.11`) ya trae `vector` 0.8.6, `pg_trgm` y `unaccent`;
+  se activan por base con `spec.extensions` del CRD `Database`, sin cambiar la imagen. (2026-10-25)
+- Ollama: `ollama-stack/ollama` en k3s-node-1, `ollama.ollama-stack.svc.cluster.local:11434` y NodePort 31434
+  (`http://192.168.1.131:31434`). Modelos: `curl …/api/tags`. (2026-10-25)
 - Flux: `cluster/flux/` (`flux-system/`, `capas.yaml`, `apps.yaml`, una Kustomization por carpeta hoja). Lo que solo
   aplica Flux (los `*.sops.*`, el HelmRelease de cnpg) va en el Component `<carpeta>/solo-flux/` y entra por
   `spec.components`; `kubectl apply -k` no lo ve. Binarios `flux`, `k3d`, `flate` y `kubeconform` en `~/.cache/flux-plan/bin`;

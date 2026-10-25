@@ -99,7 +99,8 @@ portarla). Cada punto evita un problema que ya ocurrió o un límite real del cl
    - **b)** Imagen base + `initContainer` que instala dependencias en un `emptyDir`/PVC (lento en cada arranque; solo si
      las dependencias son pocas y no hay alternativa).
    - **c)** Imagen propia publicada en un registry (p. ej. `ghcr.io/koshiro/<app>`): **no existe aún**; requiere que el
-     usuario decida el registry y las credenciales de pull. Preguntar antes de diseñar en esa dirección.
+     usuario decida el registry y las credenciales de pull. Preguntar antes de diseñar en esa dirección. Recomendación
+     y plantillas (Dockerfile, CI a GHCR): skill `app-dev`, `references/stack.md` § Imagen.
 
 ### Proceso y configuración
 
