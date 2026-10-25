@@ -62,7 +62,7 @@ la app lo impida (y entonces ADR). «Descartado» dice por qué, para no volver 
 | Tema | Elegido | Por qué / descartado |
 |------|---------|----------------------|
 | Dockerfile | Multi-stage con uv (`plantillas/Dockerfile`), `python:3.14-slim`, UID 1000, sin root, compatible con `readOnlyRootFilesystem` | DISENO-APPS §2.7 |
-| Registry | **GHCR privado** (`ghcr.io/koshiro/<app>`): almacenamiento y transferencia de imágenes gratis según la doc de facturación de GitHub; pull con token `read:packages` en un Secret `dockerconfigjson` cifrado con SOPS | Zot (binario único, CNCF) si se quiere autoalojar; Harbor demasiado pesado. **Decisión pendiente del usuario** |
+| Registry | **GHCR privado** `ghcr.io/koshiro/<app>` (**decidido 2026-10-25**). Gratis para imágenes según la doc de facturación de GitHub. Publicar desde el CI con `GITHUB_TOKEN` (queda privada y ligada al repo); no hacer el primer push a mano o el CI pierde permiso. Pull: `hl.py ghcr secret` (DISENO-APPS §2.4c) | Zot (binario único, CNCF) si algún día se quiere autoalojar; Harbor demasiado pesado |
 | Build | GitHub Actions + `docker/build-push-action` con caché `type=gha`; tags `sha-<7>` y semver; amd64 (agregar arm64 solo si puede correr en pibot) | — |
 | Despliegue de versiones | Fase inicial: PR en homelab-config que cambia el tag. Después: Flux image automation (ImageRepository + ImagePolicy por semver + ImageUpdateAutomation) | Nunca `latest` |
 | Bucle de desarrollo | Local con `uv run` contra Postgres local (Docker) o `kubectl port-forward svc/homelab-postgres-rw`; probar en el cluster con `flux suspend` | Tilt, Skaffold, DevSpace, mirrord: sobra a esta escala |

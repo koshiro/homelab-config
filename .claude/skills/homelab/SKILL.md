@@ -23,6 +23,7 @@ $H sops keys|encrypt <archivo>                      # con SOPS_AGE_KEY_FILE pues
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet
 $H doc <archivo> [sección]    # índice de encabezados o una sección: doc DISENO-APPS 4.2
 $H cf zones|tunnels|routes <túnel>|route <túnel> <host> <servicio> [--apply]|api <M> <ruta> [-d JSON|@f]
+$H ghcr check [ghcr.io/koshiro/<app>:<tag>] | secret <ns> <…/solo-flux/secret-ghcr-pull.sops.yml>   # imágenes propias
 $H r2 ls [bucket]|mb <bucket>|put <bucket> <archivo> [clave]|get <bucket> <clave> <destino>   # mb/put: --apply
 ```
 

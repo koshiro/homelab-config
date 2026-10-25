@@ -6,7 +6,7 @@ NodePorts libres, resumen de una app, ssh con nombres que resuelven, SOPS sin ol
 `sleep`, secciones de documentos sin leerlos enteros y la API de Cloudflare con el token del vault.
 Lo que escribe en Cloudflare es dry-run salvo --apply.
 """
-import argparse, hashlib, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, base64, hashlib, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from collections import Counter
 from pathlib import Path
 
@@ -294,13 +294,18 @@ def cmd_doc(a):
 
 
 # ---------------------------------------------------------------- Cloudflare
-def cf_token():
-    """Token de cuenta del vault, en memoria (nunca impreso). Autorizado por el usuario para túneles/DNS/hostnames."""
+def vault_var(nombre):
+    """Una variable del vault de Ansible, en memoria (nunca impresa)."""
     exe = shutil.which("ansible-vault") or sys.exit("falta ansible-vault")
     r = subprocess.run([exe, "view", str(VAULT), "--vault-password-file", str(VAULT_PASS)], stdin=subprocess.DEVNULL,
                        capture_output=True, text=True)
-    m = re.search(r"^vault_cloudfare_full_api_token:\s*['\"]?([^'\"\s]+)", r.stdout, re.M)
-    return m.group(1) if m else sys.exit(f"ERROR vault: {r.stderr.strip()[:300]}")
+    m = re.search(rf"^{nombre}:\s*['\"]?([^'\"\s]+)", r.stdout, re.M)
+    return m.group(1) if m else sys.exit(f"ERROR vault: falta {nombre} {r.stderr.strip()[:300]}")
+
+
+def cf_token():
+    """Token de cuenta del vault. Autorizado por el usuario para túneles/DNS/hostnames."""
+    return vault_var("vault_cloudfare_full_api_token")
 
 
 _TOKEN = None
@@ -429,6 +434,65 @@ def cmd_r2(a):
         print(f"{destino} ({len(datos)} B, sha256 {hashlib.sha256(datos).hexdigest()})")
 
 
+# ---------------------------------------------------------------- GHCR (registry de imágenes propias)
+GHCR_USER = "koshiro"
+
+
+def ghcr_bearer(token, repo):
+    """Token de pull de ghcr.io para un repositorio; falla con 401 si el PAT no sirve."""
+    basic = base64.b64encode(f"{GHCR_USER}:{token}".encode()).decode()
+    req = urllib.request.Request(f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repo}:pull",
+                                 headers={"Authorization": f"Basic {basic}"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.load(r)["token"]
+
+
+def cmd_ghcr(a):
+    """check [imagen]: valida el PAT del vault (y que la imagen exista); secret <ns> <archivo>: Secret de pull cifrado."""
+    token = vault_var("vault_ghcr_pull_token")
+    if a.accion == "check":
+        imagen = a.args[0] if a.args else f"{GHCR_USER}/sonda:latest"
+        repo, _, tag = imagen.removeprefix("ghcr.io/").partition(":")
+        try:
+            bearer = ghcr_bearer(token, repo)
+        except urllib.error.HTTPError as e:
+            sys.exit(f"PAT rechazado por ghcr.io: HTTP {e.code} (¿vencido o sin read:packages?)")
+        print("PAT válido para ghcr.io")
+        if a.args:
+            req = urllib.request.Request(f"https://ghcr.io/v2/{repo}/manifests/{tag or 'latest'}", method="HEAD", headers={
+                "Authorization": f"Bearer {bearer}",
+                "Accept": "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json,"
+                          " application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"})
+            try:
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    print(f"{imagen}: existe ({r.headers.get('Docker-Content-Digest', '?')})")
+            except urllib.error.HTTPError as e:
+                sys.exit(f"{imagen}: HTTP {e.code}")
+    elif a.accion == "secret":       # secret <ns> <archivo destino *.sops.yml>
+        if len(a.args) != 2:
+            sys.exit("uso: ghcr secret <namespace> <cluster/…/solo-flux/secret-ghcr-pull.sops.yml>")
+        ns, destino = a.args[0], Path(a.args[1])
+        if not destino.name.endswith((".sops.yml", ".sops.yaml")):
+            sys.exit("el destino debe terminar en .sops.yml (lo descifra Flux)")
+        auth = base64.b64encode(f"{GHCR_USER}:{token}".encode()).decode()
+        cfg = json.dumps({"auths": {"ghcr.io": {"username": GHCR_USER, "password": token, "auth": auth}}})
+        # namespace explícito: si lo pusiera el transformer de kustomize cambiaría metadata y el MAC de SOPS no calzaría
+        yml = ("# Pull de imágenes privadas de ghcr.io/koshiro (PAT classic read:packages, vault_ghcr_pull_token).\n"
+               "# Generado con `hl.py ghcr secret`; rotar = regenerar este archivo en cada namespace.\n"
+               f"apiVersion: v1\nkind: Secret\nmetadata:\n  name: ghcr-pull\n  namespace: {ns}\n"
+               f"type: kubernetes.io/dockerconfigjson\nstringData:\n  .dockerconfigjson: '{cfg}'\n")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(destino, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(yml)
+        try:
+            cmd_sops(argparse.Namespace(accion="encrypt", archivo=str(destino)))
+        except SystemExit:
+            destino.unlink()     # nunca dejar el token en claro
+            raise
+        print(f"Secret ghcr-pull ({ns}) → {destino}; agregarlo al Component solo-flux y usar imagePullSecrets: [{{name: ghcr-pull}}]")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -456,6 +520,8 @@ def main():
     s = sp.add_parser("r2", help="R2: ls [bucket] | mb <bucket> [--apply] | put <bucket> <archivo> [clave] [--apply] | get <bucket> <clave> <destino>")
     s.add_argument("accion", choices=["ls", "mb", "put", "get"]); s.add_argument("args", nargs="*")
     s.add_argument("--apply", action="store_true")
+    s = sp.add_parser("ghcr", help="GHCR: check [ghcr.io/koshiro/<app>:<tag>] (PAT del vault y la imagen) | secret <ns> <archivo.sops.yml> (Secret de pull cifrado)")
+    s.add_argument("accion", choices=["check", "secret"]); s.add_argument("args", nargs="*")
     a = p.parse_args()
     globals()[f"cmd_{a.cmd}"](a)
 

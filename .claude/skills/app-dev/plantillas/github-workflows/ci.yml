@@ -39,6 +39,7 @@ jobs:
       - run: uv run ty check || echo "::warning::ty encontró problemas (no bloquea mientras siga en beta)"
       - run: uv run pytest
 
+  # Primera publicación de la imagen: siempre desde aquí (GITHUB_TOKEN la deja privada y ligada al repo).
   image:
     needs: verify
     if: github.event_name == 'push'

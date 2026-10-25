@@ -18,8 +18,7 @@ integraciones) quedó en las otras referencias de la skill; aquí solo lo propio
    importan nunca.
 4. **Puntaje en dos pasos**: primero compuertas (excluir / preguntar / descartar / revisar), después el número. Y un
    **chequeo de vigencia** de la oferta antes de gastar tokens o notificar.
-5. **Única decisión que bloquea el despliegue**: el registry de imágenes (es la primera app del cluster con imagen
-   propia). Recomendado: GHCR privado.
+5. **Registry**: GHCR privado (decidido el 2026-10-25; Job Hunter es la primera app del cluster con imagen propia).
 
 ## Estado del arte open source (oct-2026)
 
@@ -118,7 +117,7 @@ privado, CI en GitHub Actions. Detalle y alternativas: `../stack.md`.
 
 ## Pendientes antes de implementar
 
-- [ ] **Registry** (usuario): GHCR privado recomendado.
+- [x] Registry: GHCR privado (2026-10-25), con `hl.py ghcr` para el pull.
 - [ ] Repo `koshiro/job-hunter` privado (el CV maestro es fixture del importador y tiene datos personales).
 - [ ] Probar Empleos Públicos desde una IP chilena (pod del cluster).
 - [ ] Confirmar IMAP/SMTP de iCloud con contraseña de app para el dominio propio.

@@ -88,8 +88,8 @@ portarla). Cada punto evita un problema que ya ocurrió o un límite real del cl
 
 ### Imagen
 
-1. **Imagen pública con tag fijo** (`nginx:1.27-alpine`, `ghcr.io/…:2.24.2`), nunca `latest` en apps nuevas. No existe
-   registry propio ni pipeline de build.
+1. **Imagen con tag fijo** (`nginx:1.27-alpine`, `ghcr.io/…:2.24.2`), nunca `latest` en apps nuevas. Las de terceros,
+   públicas; las propias, en GHCR privado y construidas por el CI de su repo (punto 4c).
 2. **amd64** como mínimo; **multi-arch (amd64 + arm64)** si la app podría tener que correr en pibot.
 3. NumPy/PyTorch/ONNX modernos o binarios con `-march=x86-64-v2` corren en cualquier worker (todos con CPU `host` desde
    2026-10-10); fijar a `k3s-node-1` solo si necesita GPU.
@@ -98,9 +98,14 @@ portarla). Cada punto evita un problema que ya ocurrió o un límite real del cl
      (patrón `cluster/apps/minecraft/whitelist-bot/`: `python:3.13-alpine` + `bot.py`). Preferir solo stdlib.
    - **b)** Imagen base + `initContainer` que instala dependencias en un `emptyDir`/PVC (lento en cada arranque; solo si
      las dependencias son pocas y no hay alternativa).
-   - **c)** Imagen propia publicada en un registry (p. ej. `ghcr.io/koshiro/<app>`): **no existe aún**; requiere que el
-     usuario decida el registry y las credenciales de pull. Preguntar antes de diseñar en esa dirección. Recomendación
-     y plantillas (Dockerfile, CI a GHCR): skill `app-dev`, `references/stack.md` § Imagen.
+   - **c)** Imagen propia en **GHCR privado** `ghcr.io/koshiro/<app>` (decidido el 2026-10-25). El CI del repo de la
+     app la construye y publica con `GITHUB_TOKEN` (plantillas en la skill `app-dev`). Pull: Secret `ghcr-pull`
+     (`kubernetes.io/dockerconfigjson`) en el namespace de la app, generado y cifrado con
+     `hl.py ghcr secret <ns> cluster/apps/<app>/solo-flux/secret-ghcr-pull.sops.yml`, y en el pod
+     `imagePullSecrets: [{name: ghcr-pull}]`. Credencial: PAT **classic** de la cuenta `koshiro` solo con
+     `read:packages` (GHCR no acepta tokens fine-grained), guardado en el vault de Ansible como
+     `vault_ghcr_pull_token`; `hl.py ghcr check [imagen]` lo valida. Rotar = nuevo PAT en el vault y regenerar el
+     Secret de cada app.
 
 ### Proceso y configuración
 
@@ -653,7 +658,7 @@ Prometheus, PodSecurityPolicy) y adaptar a este documento. Anotar chart y versi�
 - Solo tiene imagen arm64 o solo amd64 con AVX2/x86-64-v3 (node-1 tiene CPU `host`: verificar flags con
   `ssh` a node-1 `grep -o 'avx2' /proc/cpuinfo | head -1`).
 - Requiere un dominio propio, puertos públicos no HTTP o UDP desde internet.
-- Requiere build de imagen propia (no hay registry).
+- Requiere build de imagen propia de un código que no es nuestro (forkear y publicar en GHCR solo si no hay alternativa).
 
 ---
 

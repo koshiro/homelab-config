@@ -62,8 +62,8 @@ botón desde el teléfono.
 2. Repo: `gh repo create koshiro/<app> --private --clone` (confirmar con el usuario: es hacia afuera).
 3. Copiar plantillas (B: `pyproject.toml`, `Dockerfile`, `.dockerignore`, `ci.yml` en `.github/workflows/`,
    `CLAUDE.md`) y reemplazar `<app>`. `uv sync && uv run ruff check && uv run pytest` en verde antes del primer commit.
-4. Imagen propia (arquetipo B): **decisión pendiente del usuario** sobre el registry (DISENO-APPS §2.4c). Recomendado:
-   GHCR privado + `imagePullSecret` cifrado con SOPS (ver `references/stack.md` § Imagen). Preguntar antes.
+4. Imagen propia (arquetipo B): GHCR privado `ghcr.io/koshiro/<app>`, publicada por el CI de la plantilla. En el
+   cluster: `hl.py ghcr secret <ns> …/solo-flux/secret-ghcr-pull.sops.yml` + `imagePullSecrets` (DISENO-APPS §2.4c).
 5. Despliegue: skill homelab, receta *app nueva*. Métricas propias → job en
    `cluster/03-monitoring/monitoring/scrape.yml` (el cluster no usa anotaciones de scrape).
 
