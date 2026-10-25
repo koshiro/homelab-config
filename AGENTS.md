@@ -9,6 +9,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 |-------|------|-----------|
 | **Cualquier tarea del homelab (empezar aquí)** | **`.claude/skills/homelab/SKILL.md`** | CLI `hl.py` (estado, app, NodePorts, ssh, SOPS, Cloudflare, secciones de docs), trampas conocidas y recetas; se amplía al cerrar cada tarea |
 | Nueva aplicación o portar una existente, Ingress, PVC | **`docs/DISENO-APPS.md`** | Contrato de la app, decisiones (nodo, almacenamiento, exposición, BD, respaldo), plantillas y despliegue |
+| Desarrollar una app propia (stack, repo, CI, imagen, LLM, Telegram, CV/PDF) | **`.claude/skills/app-dev/SKILL.md`** | Arquetipos, stack por defecto con versiones verificadas, plantillas probadas y casos (cyano, SAC, Job Hunter) |
 | Flux / GitOps (estado, desplegar, probar en caliente, deploy key) | skill homelab: `hl.py flux`, recetas *Flux en prod* y *cambio temporal en vivo*; `docs/PLAN-FLUX.md` | Una Kustomization por carpeta en `cluster/flux/`; fases pendientes del plan |
 | Apagado, encendido, reconstrucción, verificación rápida | `README.md` § Operación | Playbooks de apagado/encendido ordenado, tags de `playbook_provision_all.yml`, Flux desde cero |
 | Playbooks Ansible, inventario, VMs | `ansible/playbooks/README.md`, `ansible/inventory` | Vault en `ansible/vars/vault.yml`, contraseña en `~/.config/homelab/ansible-vault-pass` |
