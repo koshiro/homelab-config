@@ -6,6 +6,17 @@ integraciones) quedó en las otras referencias de la skill; aquí solo lo propio
 
 ## Conclusiones
 
+> **Revisión del 2026-10-25 (tarde): adoptar JobOps en vez de construir.** La conclusión 1 de abajo era errónea: JobOps
+> se descartó solo por su licencia, que no impide el uso personal autoalojado, y se eligió Python cuando todo el código
+> reutilizable (JobOps, career-ops, JobAppAgent) está en TypeScript/JavaScript. JobOps (4k★, commits diarios, imagen
+> pública amd64/arm64 `ghcr.io/dakheera47/job-ops` con tags semver, v0.13.1) ya trae: LinkedIn/Indeed/Glassdoor vía
+> JobSpy y 10+ tableros, puntaje 0–100, CV ajustado con render Typst o LaTeX, proveedores Anthropic y Ollama, IMAP +
+> ruteo de correos a estados, SSO/OIDC, SQLite (drizzle). Le falta: Get on Board, Himalayas, Remotive, WWR y HN;
+> resumen por Telegram con botones; verificador de cifras estricto; aprobación por paquete. Plan: desplegar la imagen
+> oficial (fase 0), usarla 1–2 semanas y cerrar las brechas con extractores TypeScript (portando los providers MIT de
+> career-ops) y PRs upstream; fork delgado solo si upstream no acepta algo. Licencia AGPL-3.0 + Commons Clause: uso
+> y modificación personal permitidos; prohibido venderlo; compartir el código si se ofrece a terceros.
+
 1. **Ningún proyecto open source cumple los invariantes** (Postgres + Telegram + cluster + aprobación por paquete +
    verificador anti-invención). Conviene construirlo, copiando ideas y código MIT de tres proyectos (tabla abajo).
    No hace falta inventar el catálogo de fuentes ni el modelo de aprobación.
