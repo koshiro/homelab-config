@@ -41,4 +41,5 @@ Análisis de carpetas investigativas penales con citas verificadas. Sin código 
 ## Job Hunter (arquetipo B, en diseño)
 
 Investigación completa del estado del arte, fuentes verificadas y recomendaciones sobre el documento de diseño:
-`casos/job-hunter.md`.
+`casos/job-hunter.md`. Qué portar del código de career-ops, JobAppAgent, ApplyPilot, JobOps y JobSpy (con archivo y
+línea): `casos/job-hunter-codigo.md`.

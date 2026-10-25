@@ -33,7 +33,8 @@ integraciones) quedó en las otras referencias de la skill; aquí solo lo propio
 | [job-application-agent](https://github.com/vaibhavarora14/job-application-agent) (JobAppAgent) | MIT · 164★, muy activo (release 3.8.4, 23-oct-2026) | Skill + CLI: descubre, califica, llena formularios de Greenhouse/Ashby/Lever, registra solo envíos confirmados | **Compuertas antes del puntaje** (`exclude`/`ask`/`skip`/`review`); puntaje determinista sobre requisitos `met/partial/missing/unclear` con evidencia; **token de aprobación ligado al paquete exacto, de un uso, 24 h**; «llenado ≠ postulado»; duplicados por URL/ID/requisición + enfriamiento de 15 días por empresa; cola de atención (SSO, MFA, CAPTCHA, preguntas legales o demográficas); topes anti-bucle | Node; no ajusta el CV (sube uno canónico); **telemetría y envío de contacto activados por defecto**; trae un módulo para pagar resolución de CAPTCHAs, apagado por defecto |
 | [ApplyPilot](https://github.com/Pickle-Pixel/ApplyPilot) | AGPL-3.0 · ~1.8k★, dormido desde mar-2026 | Postulación 100 % autónoma («1.000 en 2 días»), CapSolver, JobSpy sobre LinkedIn/Indeed | Extracción en cascada **JSON-LD → selectores CSS → LLM**; `/no_think` para Qwen 3 en Ollama; `--dry-run` que llena sin enviar | Contraejemplo: viola los invariantes 1 y 4 (envía solo, resuelve CAPTCHAs, raspa LinkedIn); sin tests |
 | [JobOps](https://github.com/DaKheera47/job-ops) | AGPL + Commons Clause · ~2.6k★ | Next.js autoalojado: búsqueda en 10+ portales, puntaje 0–100, CV con Reactive Resume, seguimiento de correos. No postula | Ideas de UX del pipeline (buscar → puntuar → ajustar → exportar → seguir) | Licencia restrictiva; raspa LinkedIn/Indeed/Glassdoor |
-| [JobSpy](https://pypi.org/project/python-jobspy/) | MIT · `python-jobspy` 1.4.1 (23-oct-2026) | Librería que raspa LinkedIn, Indeed, Glassdoor, Google, ZipRecruiter | — | Raspa portales cuyos términos lo prohíben (invariante 4) |
+| [JobSpy](https://pypi.org/project/python-jobspy/) | MIT · `python-jobspy` 1.4.1 (23-oct-2026) | Librería que raspa LinkedIn, Indeed, Glassdoor, Google, ZipRecruiter | Su módulo de LinkedIn (endpoint de invitados, sin navegador ni cuenta) si el usuario aprueba leer LinkedIn | Raspa portales cuyos términos lo prohíben (invariante 4) |
+| [Job-apply-AI-agent](https://github.com/imon333/Job-apply-AI-agent) | Sin licencia · abr-2025 | Selenium + undetected-chromedriver sobre las páginas públicas de LinkedIn; CV en DOCX con OpenAI | Confirma que LinkedIn se lee sin login | Un Chrome por oferta, una sola página, sin pausas ni tests; JobSpy hace lo mismo por HTTP |
 | [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) | Apache-2.0 · ~25k★ | CV maestro → CV ajustado por oferta, con Ollama | Flujo «CV maestro → variante por oferta» | Sin verificador de hechos ni fuentes de ofertas |
 | [RenderCV](https://github.com/rendercv/rendercv) | MIT · 2.8 | CV en YAML → Typst → PDF | Render: el generador puede emitir su YAML y heredar temas ATS de una columna | — (usar como librería) |
 | JobSync | MIT · sin actividad desde ene-2025 | Tracker Next.js con IA | — | Abandonado |
@@ -59,7 +60,8 @@ descubrir qué fuentes rinden, antes de escribir adaptadores. Gasta tokens de la
 | Workable | `GET apply.workable.com/api/v1/widget/accounts/<slug>` o `POST …/api/v3/accounts/<slug>/jobs` con filtros en JSON | 200 (hotjar) | 1 cada 3 s | El v3 solo acepta POST |
 | **HN «Who is hiring?»** | `hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring` | 200 | — | **Agregar**: hilo mensual con mucho remoto; los comentarios se parsean con LLM barato |
 | Empleos Públicos | `www.empleospublicos.cl` | 403 desde el datacenter | — | *Revisar* desde una IP chilena (pod en el cluster); si no hay RSS, entra por alertas de correo |
-| LinkedIn / Indeed | — | — | Prohíben automatización | Solo sus **alertas por correo** leídas por IMAP (como dice el diseño) |
+| LinkedIn (invitado) | `GET /jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=&f_WT=2&f_TPR=r604800&start=0` y `/jobs/view/<id>` | 200: 10 tarjetas (devops, Chile, remoto) y descripción completa | User Agreement 8.2 prohíbe el scraping | **Pendiente de decisión del usuario** (`job-hunter-codigo.md` § 1). Alternativa limpia: alertas por correo vía IMAP |
+| Indeed | — | — | Prohíbe automatización | Solo alertas por correo |
 
 Otras que career-ops ya soporta y sirven para LATAM/remoto: Working Nomads, Welcome to the Jungle, Landing.jobs,
 Computrabajo (parser HTML: revisar términos), Teamtailor, Recruitee, Personio, SmartRecruiters, BambooHR, Breezy.
@@ -125,6 +127,7 @@ privado, CI en GitHub Actions. Detalle y alternativas: `../stack.md`.
 - [x] Registry: GHCR privado (2026-10-25), con `hl.py ghcr` para el pull.
 - [ ] Repo `koshiro/job-hunter` privado (el CV maestro es fixture del importador y tiene datos personales).
 - [ ] Probar Empleos Públicos desde una IP chilena (pod del cluster).
+- [ ] **LinkedIn de solo lectura sin cuenta**: ¿se acepta? (cambia el invariante 4 del diseño).
 - [ ] Confirmar IMAP/SMTP de iCloud con contraseña de app para el dominio propio.
 - [ ] Decisiones abiertas del documento: empresas iniciales, lista negra, renta por defecto (USD y CLP).
 

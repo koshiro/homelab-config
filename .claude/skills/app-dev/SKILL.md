@@ -18,7 +18,7 @@ fecha de verificación de más de 6 meses (y actualizarla al hacerlo).
 | LLM local, embeddings, Claude API (modelos, precio, caché), anti-invención, evals | `references/llm.md` |
 | Telegram, correo iCloud, PDF/CV, fuentes públicas, scraping, navegador remoto | `references/integraciones.md` |
 | Archivos de arranque | `plantillas/` (pyproject, Dockerfile, ci.yml, CLAUDE.md, adr.md) |
-| Cómo se hizo una app concreta y qué se aprendió | `references/casos.md`; Job Hunter: `references/casos/job-hunter.md` |
+| Cómo se hizo una app concreta y qué se aprendió | `references/casos.md`; Job Hunter: `casos/job-hunter.md` y `casos/job-hunter-codigo.md` |
 | Manifiestos, Flux, puertos, secretos, respaldo, Cloudflare | skill **homelab** (receta *app nueva*, `hl.py doc DISENO-APPS`) |
 
 ## Arquetipos (elegir uno antes de escribir código)
@@ -74,3 +74,6 @@ botón desde el teléfono.
 3. ¿Terminaste una fase de una app? → lecciones en `references/casos.md` (qué funcionó, qué costó, qué no repetir).
 4. ¿Un archivo de arranque cambió en la práctica? → actualizar `plantillas/`.
 5. Una línea en `references/bitacora.md`. Mantener este archivo bajo ~100 líneas.
+
+Estudiar un proyecto existente = **clonarlo y leer el código**, no solo el README: `git clone --depth 1` a un
+directorio aislado del scratchpad, sin instalar ni ejecutar nada suyo, y anotar archivo, línea, licencia y commit.
