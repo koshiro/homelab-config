@@ -1,5 +1,5 @@
-# JobOps: búsqueda de empleo remota (Job Hunter). Sin secretos en el repo: proveedor LLM, cuentas y CV se configuran
-# en la UI y viven en la SQLite del PVC.
+# JobOps: búsqueda de empleo remota (Job Hunter). Proveedor LLM, cuentas y CV se configuran en la UI (SQLite del PVC).
+# secret.sops.yaml (token de Claude Code) entra por solo-flux/ y lo descifra Flux.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: job-ops

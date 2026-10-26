@@ -49,6 +49,12 @@ spec:
             # Por defecto manda analítica (Umami/OpenPanel) al autor; esto la apaga en servidor y navegador
             - name: JOBOPS_DISABLE_ANALYTICS
               value: "true"
+            # Proveedor claude_cli: Claude Code sin interfaz con la suscripción de Daniel (`claude setup-token`)
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: job-ops
+                  key: CLAUDE_CODE_OAUTH_TOKEN
           readinessProbe:
             httpGet: {path: /health, port: http}
             initialDelaySeconds: 20

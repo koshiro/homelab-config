@@ -427,3 +427,9 @@ spec:
   timeout: 10m   # primera descarga de una imagen de ~2 GB
   wait: true
   prune: false
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
