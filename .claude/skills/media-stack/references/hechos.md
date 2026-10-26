@@ -144,6 +144,8 @@
   títulos salen en romaji). Se cambian con `:/plugins/com.plexapp.agents.hama/prefs/set?<id>=<valor>`.
 - Nombres del grupo («Part 2 - 01», «3rd Season - 02», «5.1», «#01» en la raíz) hacen que ASS apile archivos en un mismo
   episodio o los mande a la temporada 0: `rename "<serie>" --apply` (formato SxxEyy de Sonarr) lo arregla.
+- HAMA puede emparejar por AniDB (`anidb-N`), que cubre una sola temporada: Record of Lodoss War quedó en `anidb-169`
+  (solo la OVA) con la S2 colgando. Re-emparejar a `tvdb-<id>` (2026-10-25); `$M plex` ahora avisa del caso.
 - Mover a otra biblioteca cambia el GUID: Plex pierde el visto. Guardar `viewCount` antes y repetir `:/scrobble` en
   la ficha nueva (solo la cuenta dueña del token; otros usuarios lo pierden).
 - Sonarr `You're Under Arrest` (123) tiene la ruta dentro de la carpeta de `You're Under Arrest!` (124): moverla aparte

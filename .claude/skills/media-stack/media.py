@@ -450,8 +450,14 @@ def c_plex(a):
     son = {s["seasonNumber"]: s["statistics"]["episodeFileCount"] for s in ss[0]["seasons"]}
     guid, hama = f"tvdb://{ss[0]['tvdbId']}", f"{HAMA}://tvdb-{ss[0]['tvdbId']}?"
     sec = plex_seccion(plex_ruta(ss[0]["path"]))[0]
-    shows = [d for d in plex(f"library/sections/{sec}/all", includeGuids=1).get("Metadata", [])
+    todas = plex(f"library/sections/{sec}/all", includeGuids=1).get("Metadata", [])
+    shows = [d for d in todas
              if any(g["id"] == guid for g in d.get("Guid", [])) or d.get("guid", "").startswith(hama)]
+    if not shows:  # HAMA a veces empareja por AniDB (anidb-N = solo una temporada): buscar por título
+        shows = [d for d in todas if d["title"].lower() == ss[0]["title"].lower()]
+        for d in shows:
+            print(f"  ojo: emparejada como {d.get('guid')}; con varias temporadas re-emparejar a {hama}lang=en "
+                  f"(`library/metadata/{d['ratingKey']}/match?guid=…`, ver hechos.md)")
     if not shows:
         sys.exit(f"Plex no tiene {guid} (sin escanear o mal emparejada): `plex \"{a.series}\" --scan`")
     for sh_ in shows:
