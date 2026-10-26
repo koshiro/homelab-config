@@ -38,7 +38,15 @@ Análisis de carpetas investigativas penales con citas verificadas. Sin código 
 - **Lecciones del laboratorio OpenContracts**: un LLM local de 4B respondió 7/10 preguntas con 30–270 s por
   respuesta: suficiente para extraer y embeber, no para sintetizar (ADR-0011). Evaluar siempre contra un set dorado.
 
-## Job Hunter (arquetipo B, en diseño)
+## Job Hunter → JobOps adoptado (2026-10-25)
+
+Fase 0 desplegada: imagen oficial `ghcr.io/dakheera47/job-ops:v0.13.1` en `cluster/apps/job-ops/`
+(`jobops.danielriquelme.cl`, Cloudflare Access + login propio, SQLite en PVC, analítica apagada con
+`JOBOPS_DISABLE_ANALYTICS=true`). Sin Telegram ni aprobación por paquete: la interfaz de JobOps los reemplaza y no se
+enviarán correos. Brechas por cerrar con extractores TypeScript y PRs upstream: Get on Board, Himalayas, Remotive,
+WWR, HN y un verificador de cifras estricto (portar `verify-cv-facts.mjs` de career-ops).
+
+### Antecedentes (diseño propio, reemplazado)
 
 Investigación completa del estado del arte, fuentes verificadas y recomendaciones sobre el documento de diseño:
 `casos/job-hunter.md`. Qué portar del código de career-ops, JobAppAgent, ApplyPilot, JobOps y JobSpy (con archivo y
