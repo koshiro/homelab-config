@@ -1,0 +1,72 @@
+# JobOps (https://github.com/DaKheera47/job-ops): búsqueda de empleo, puntaje, CV ajustado y seguimiento. Imagen
+# oficial sin fork (decisión 2026-10-25, skill app-dev casos/job-hunter.md). La imagen corre como root (cachés de
+# Camoufox/Playwright en /root) y escribe fuera de /app/data: sin runAsNonRoot ni readOnlyRootFilesystem.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-ops
+  namespace: job-ops
+  labels:
+    app: job-ops
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # SQLite en PVC RWO
+  selector:
+    matchLabels:
+      app: job-ops
+  template:
+    metadata:
+      labels:
+        app: job-ops
+    spec:
+      # Imagen de ~2 GB comprimida con navegadores: en los workers, nunca en pibot
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
+      containers:
+        - name: job-ops
+          image: ghcr.io/dakheera47/job-ops:v0.13.1
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3001"
+            - name: TZ
+              value: America/Santiago
+            - name: DATA_DIR
+              value: /app/data
+            - name: JOBOPS_PUBLIC_BASE_URL
+              value: https://jobops.danielriquelme.cl
+            # Por defecto manda analítica (Umami/OpenPanel) al autor; esto la apaga en servidor y navegador
+            - name: JOBOPS_DISABLE_ANALYTICS
+              value: "true"
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 3Gi}   # navegadores headless durante las búsquedas
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: job-ops-data

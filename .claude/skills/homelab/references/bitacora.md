@@ -25,3 +25,4 @@
 | 2026-10-18 | Discos de workers 150/80/80 y nvme1n1 como pool `replica` (syncoid horario) | ~25 | el clasificador bloqueó `zpool create` hasta el OK explícito; la reserva completa de los zvols hacía inviables los snapshots | dato en hechos, README de proxmox |
 | 2026-10-25 | Skill app-dev + investigación Job Hunter | ~70 | no estaba anotado que pgvector ya viene en la imagen de CNPG ni el endpoint de Ollama | 2 datos en hechos, fila app-dev en el mapa |
 | 2026-10-25 | Registry GHCR privado para imágenes propias | ~20 | GHCR solo acepta PAT classic; sops no cifra fuera de `cluster/` (no hay regla en .sops.yaml) | `hl.py ghcr check|secret`, `vault_var()` genérico, DISENO-APPS §2.4c, dato y receta |
+| 2026-10-25 | Desplegar JobOps (job-ops) con Access y respaldo | ~40 | `hl.py` no funcionaba en el pod (kubectl + --request-timeout ignora la config in-cluster) | arreglo `EN_CLUSTER` en hl.py, 2 trampas/datos en hechos |

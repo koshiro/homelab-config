@@ -411,3 +411,19 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: job-ops
+  namespace: flux-system
+spec:
+  path: ./cluster/apps/job-ops
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 10m   # primera descarga de una imagen de ~2 GB
+  wait: true
+  prune: false
