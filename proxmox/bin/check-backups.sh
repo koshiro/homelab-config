@@ -23,7 +23,7 @@ chk "WAL Postgres en Garage" "$(find /nvme/k8s/garage/data -type f -printf "%T@\
 # webs-estaticas-backup.yaml)
 for a in plex sonarr radarr prowlarr bazarr overseerr pingvin open-webui \
          minecraft-spiral2 minecraft-spiral3 webodm-db josekast noledigasanadie cyano grafana \
-         qbittorrent comfyui canon-mp250-cups meshmonitor; do
+         qbittorrent comfyui canon-mp250-cups meshmonitor job-ops; do
   chk "config $a"          "$(newest_file /nvme/k8s/backups/apps/$a ".last-backup")" 26
 done
 chk "réplica respaldo/comfyui" "$(newest_snap respaldo/comfyui)" 26

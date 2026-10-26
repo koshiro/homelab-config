@@ -40,7 +40,9 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   baja objetos por la API de cuenta con el token completo, sin claves S3. (2026-10-15)
 - Web Analytics del plan gratis admite 1 sola regla; para excluir un host se usa Configuration Rule `disable_rum`
   (así está cyano). (2026-10-10)
-- Paneles con Cloudflare Access (app «Homelab admin», OTP): grafana, comfyui, swarmui, galeria, chat, *arr, qbittorrent.
+- Paneles con Cloudflare Access (app «Homelab admin» `e2512ee5-4b90-4669-a382-d9d7fc2a0b40`, OTP, política reusable
+  `BlockAllbyMe`): grafana, comfyui, swarmui, galeria, chat, *arr, qbittorrent, meshmonitor, jobops. Agregar un host = PUT de la
+  app con todos sus campos, `destinations` + el nuevo y `policies: [{id, precedence}]`.
 
 ## Convenciones
 - Series de NodePort: 3089x sitios estáticos en pibot (30890 josekast, 30891 noledigasanadie, 30892 cyano),
@@ -215,3 +217,6 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Script de ediciones + `git commit` + `gh pr merge` en una sola llamada: si el script falla a mitad, lo que sigue corre
   igual y se mergea un cambio parcial (PR #144) → validar todas las ediciones antes de escribir ninguna y empezar la
   llamada con `set -e`. (2026-10-25)
+- `kubectl … --request-timeout=…` desde el pod claude-remote (config in-cluster, sin kubeconfig) → cae a
+  `localhost:8080` «connection refused»: cualquier flag de cliente desactiva la config in-cluster. `hl.py` ya lo quita
+  (`EN_CLUSTER`); a mano, no pasar ese flag. (2026-10-25)

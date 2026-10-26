@@ -25,7 +25,15 @@ HOSTS = {
 TRANSITORIO = re.compile(r"TLS handshake|i/o timeout|connection reset|EOF|Unable to connect", re.I)
 
 
+# Dentro de un pod (claude-remote) kubectl usa la config in-cluster solo si no recibe flags de cliente:
+# con --request-timeout cae a localhost:8080. Sin kubeconfig y con KUBERNETES_SERVICE_HOST, se quita.
+EN_CLUSTER = bool(os.environ.get("KUBERNETES_SERVICE_HOST")) and not (
+    os.environ.get("KUBECONFIG") or (Path.home() / ".kube/config").exists())
+
+
 def sh(cmd, inp=None, check=True, reintentos=1, env=None):
+    if EN_CLUSTER and cmd and cmd[0] == "kubectl":
+        cmd = [c for c in cmd if not c.startswith("--request-timeout")]
     for i in range(reintentos + 1):
         r = subprocess.run(cmd, input=inp, capture_output=True, text=True, env=env)
         if not (r.returncode and TRANSITORIO.search(r.stderr)) or i == reintentos:

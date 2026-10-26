@@ -1,0 +1,12 @@
+# SQLite (jobs.db), PDFs generados y cookies de desafíos de Cloudflare. Respaldo: config-backup-job-ops.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: job-ops-data
+  namespace: job-ops
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
