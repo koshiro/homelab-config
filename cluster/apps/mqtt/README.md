@@ -6,7 +6,7 @@ Une mallas Meshtastic separadas por distancia (casa ↔ Temuco) a través de int
 
 | | |
 |---|---|
-| Broker | `eclipse-mosquitto:2.0.22`, solo TLS en **8883**, sin anónimos, un usuario por gateway (`roof`, `temuco`) |
+| Broker | `eclipse-mosquitto:2.0.22`, solo TLS en **8883**, sin anónimos, un usuario por gateway (`roof`, `temuco`, `papo`) |
 | Desde la LAN | `192.168.1.15:8883` (o cualquier nodo k3s: ServiceLB publica en todos) |
 | Desde internet | `mqtt.danielriquelme.cl:8883` (DNS only, actualizado por el sidecar `cloudflare-ddns`) |
 | Certificado | Let's Encrypt por cert-manager (`certificate.yml`: Issuer DNS-01 en Cloudflare con `CF_API_TOKEN`, secreto `mqtt-tls`); se renueva solo y Mosquitto lo recarga con SIGHUP. Hace falta para las apps con MQTT Client Proxy (Mac/iPhone validan: con el autofirmado daban `kCFStreamErrorDomainSSL -9807`). El autofirmado de 10 años queda en `secret.sops.yaml` como respaldo |
