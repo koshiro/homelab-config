@@ -1,5 +1,5 @@
 # Plugin Barman Cloud de CloudNativePG (respaldos base + WAL a S3 → PITR). Va en cnpg-system, junto al operador
-# (CNPG >= 1.26; hoy 1.27.0). Requiere cert-manager (aplicarlo antes). Uso: cluster/apps/postgresql/.
+# (CNPG >= 1.26; hoy 1.30.1). Requiere cert-manager (aplicarlo antes). Uso: cluster/apps/postgresql/.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
