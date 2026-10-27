@@ -1,0 +1,26 @@
+# Variables de proxy de un cliente (envFrom en su Deployment).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: proxy-capture
+    namespace: investigacion
+type: Opaque
+stringData:
+    HTTPS_PROXY: ENC[AES256_GCM,data:wR/Il+ZY7SGfw+tRU4WhzHTSzMdXLK/LLA7kt3agfZIcreLZIY7OvHcBcMu13kfjrbMSoI9+zXqKexbr2e9MBlEgySlRgIfum+Vx/l3gynv59wdT0E7bB+wvcCN655DSxA==,iv:M2pu8xJP9yZ8LHNsOoKMrHDtJ3p1X2ylJaoT5QQFkzU=,tag:6WBNzueBgERa3/SS8rBbwg==,type:str]
+    HTTP_PROXY: ENC[AES256_GCM,data:yrT/N7zLuURMeRiVy9FODBNiVZQT2Tz1+8amH+/2jyWREueIQTXlDlsrEvm6i11KZCFkAYUuwu22A9t4qdWEJMnoj3jjZ1mFyfcsI0PYaOqeepvIqPBsitXHie4HbPqM9A==,iv:9vG+si4KUoy4roSHM5456E4+VlsdQKuNvmT4ZzTkqGI=,tag:MOWT0oJdvMrYZA47HwN4rQ==,type:str]
+    NO_PROXY: ENC[AES256_GCM,data:9hu9eVv0SLpI5p67s6gGLZEmm3v+tGxZr4u7iPthm6j98l/52RoyAT0zDPQvXqF5p9tCgU2ZSGEqMbMPqwVqF6o=,iv:3eCm09l1rIT7bfUg96jPpRpU5YJAqY58aIEK/13MANc=,tag:QBJ1MJph7Cm7O0jkv+gPOA==,type:str]
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkZUJFWFFubHRodFBhMXcy
+            UmNnVW94cUFIVmFDQ3RLSnA3SmZ3eXp0MWx3CmJ5NkVtUW5WZDIvSlVjUWVrYVBy
+            UkZibDRZN2pRNnNicXQ2bDFsZGkwY28KLS0tIENmc01TMkI5dGR6MG43cTc1TUQ3
+            U0crTElmN3Fab045VXpmdDdDSkZtaFUK3QhpwkJvFlPH0iKcEUMdXd62yX+e8139
+            i7C2NunM8DkY1/GKY/uoWkUBUfC3oErnaHkilsPQ7tznGXk2xgTn3w==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-27T18:46:12Z"
+    mac: ENC[AES256_GCM,data:lCtjjEb5FJcnK4Tq6nww4L8un94E/Yfiiue/GWRE/cvpgA1kIB5cIROUToH2fggPkwwnUMKYalqrzAEkT0UtzAgw8I17oASzxEVOOk5SxgVlHbRmzJCgdZ6Fqnp4lN0egiDu5/sU6TTZKFwYo1xrcEWmMFzh/Y127dHI7RGlRpA=,iv:5s4djJuKyXqRSumqwswcami+XXaY/wgeOm/80IZcql0=,tag:TQ3LZqj1GehcLk8NLFm51w==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.2

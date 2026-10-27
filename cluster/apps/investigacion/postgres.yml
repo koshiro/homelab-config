@@ -1,0 +1,103 @@
+# Base propia de la plataforma (no cabe en homelab-postgres: PostGIS exige otra imagen y la auditoría pide roles
+# propios). La imagen postgis «standard» se construye sobre postgresql:17-standard, que ya trae pgvector.
+# Una instancia: la evidencia vive en NFS y la base se recupera de Garage (base diaria + WAL, PITR 30 días).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: investigacion-pg
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-202610121021-standard-trixie
+  primaryUpdateMethod: restart
+  enableSuperuserAccess: false
+  bootstrap:
+    initdb:
+      database: investigacion
+      owner: investigacion
+      encoding: UTF8
+      localeCType: C
+      localeCollate: C
+  affinity:
+    nodeSelector:
+      kubernetes.io/arch: amd64
+  storage:
+    size: 20Gi
+    storageClass: local-path
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {memory: 2Gi}
+  postgresql:
+    parameters:
+      archive_timeout: 5min
+      timezone: America/Santiago
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: garage-investigacion
+---
+# Extensiones de la base (las crea el operador como superusuario).
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: investigacion
+spec:
+  cluster:
+    name: investigacion-pg
+  name: investigacion
+  owner: investigacion
+  extensions:
+    - {name: vector, ensure: present}
+    - {name: postgis, ensure: present}
+    - {name: pg_trgm, ensure: present}
+    - {name: unaccent, ensure: present}
+---
+# Bucket y llave propios en Garage (cnpg-investigacion / investigacion-cnpg): esta llave no ve los respaldos de
+# homelab-postgres. Credenciales en garage-secret.sops.yaml (solo Flux).
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: garage-investigacion
+spec:
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: s3://cnpg-investigacion/
+    endpointURL: http://192.168.1.100:3900
+    s3Credentials:
+      accessKeyId:
+        name: garage-cnpg
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: garage-cnpg
+        key: ACCESS_SECRET_KEY
+      region:
+        name: garage-cnpg
+        key: ACCESS_REGION
+    wal:
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+      jobs: 2
+  instanceSidecarConfiguration:
+    env:
+      # boto3 reciente agrega checksums que Garage rechaza (plugin-barman-cloud#393).
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+      - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: when_required
+---
+# 06:25 UTC = 03:25 en Chile, después del de homelab-postgres (06:20) y antes de syncoid-respaldo (03:30).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: investigacion-pg-diario
+spec:
+  schedule: "0 25 6 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: investigacion-pg
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

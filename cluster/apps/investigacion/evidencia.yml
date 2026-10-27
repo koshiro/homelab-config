@@ -1,0 +1,31 @@
+# Evidencia: dataset ZFS nvme/k8s/investigacion/evidencia en pve (proxmox/etc/k8s.exports), dueño 1000:1000 y
+# root_squash. Lo cubren sanoid (snapshots cada 15 min), syncoid (replica cada hora, respaldo diario) y restic a R2.
+# `capture` lo monta con escritura y `web` en solo lectura; las capturas no se modifican ni se borran desde la app.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: investigacion-evidencia-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-proxmox
+  nfs:
+    server: 192.168.1.100
+    path: /nvme/k8s/investigacion/evidencia
+  claimRef:
+    namespace: investigacion
+    name: evidencia
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: evidencia
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-proxmox
+  volumeName: investigacion-evidencia-pv
+  resources:
+    requests:
+      storage: 100Gi

@@ -17,3 +17,5 @@
 /mnt/scratch/qbittorrent 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
 # Home del pod claude-remote (2026-10-13): repos, ~/.claude y herramientas de Claude Code en modo Remote Control
 /nvme/k8s/claude-remote 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+# Evidencia de la plataforma de investigación (2026-10-27): dueño 1000:1000, root_squash (root de un pod no la toca)
+/nvme/k8s/investigacion/evidencia 192.168.1.0/24(rw,sync,no_subtree_check,root_squash)
