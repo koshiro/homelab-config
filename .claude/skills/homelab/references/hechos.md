@@ -80,6 +80,13 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- `~/.cache/flux-plan/bin/flux: No such file` en el pod claude-remote → bajar el CLI de la misma versión del cluster
+  (`kubectl get ns flux-system -o jsonpath='{.metadata.labels.app\.kubernetes\.io/version}'`) con
+  `gh release download vX -R fluxcd/flux2 -p 'flux_*_linux_amd64.tar.gz' -p '*checksums.txt'`, `sha256sum -c` y extraer
+  `flux` en `~/.cache/flux-plan/bin` (home NFS, sobrevive reinicios). Instalado v2.9.6. (2026-10-26)
+- ExitWorktree es no-op en el pod (worktree `bridge-cse_*` bloqueado por la sesión) → tras el merge
+  `git switch worktree-bridge-<sesión>` + `git merge --ff-only origin/main` + `git branch -d <rama>`; los worktrees
+  `bridge-cse_*` sin lock, limpios y mergeados son de sesiones muertas: `git worktree remove` + `git branch -d`. (2026-10-26)
 - immich-server CrashLoopBackOff «must be owner of extension vector» tras subir la imagen de CNPG → en el primario
   `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y reiniciar immich-server; reindexa al arrancar. (2026-10-15)
 - Esperar un rollout de CNPG mirando solo `status.phase` → da «healthy» antes de empezar: exigir además la imagen
