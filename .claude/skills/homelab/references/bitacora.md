@@ -27,3 +27,4 @@
 | 2026-10-25 | Registry GHCR privado para imágenes propias | ~20 | GHCR solo acepta PAT classic; sops no cifra fuera de `cluster/` (no hay regla en .sops.yaml) | `hl.py ghcr check|secret`, `vault_var()` genérico, DISENO-APPS §2.4c, dato y receta |
 | 2026-10-25 | Desplegar JobOps (job-ops) con Access y respaldo | ~40 | `hl.py` no funcionaba en el pod (kubectl + --request-timeout ignora la config in-cluster) | arreglo `EN_CLUSTER` en hl.py, 2 trampas/datos en hechos |
 | 2026-10-26 | cloudflared 2026.10.1 → 2026.10.4 (vulnerabilidad) | ~25 | sin CLI flux en el pod; ExitWorktree no-op en worktrees bridge | flux v2.9.6 instalado, 2 trampas en hechos, poda de worktrees muertos |
+| 2026-10-27 | subir CNPG 1.27.0 → 1.30.1 (4 PR) | ~45 | receta de subida del operador y chequeo de reinicios | receta *Subir el operador CNPG*, hecho de versión e imagen PostGIS |

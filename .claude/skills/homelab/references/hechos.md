@@ -50,6 +50,10 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Datos: `local-path` = disco de la VM, sin cuota ni respaldo (CronJob `config-backup-<app>` 02:40–02:48);
   valiosos → NFS `nvme/k8s/<app>`; voluminosos reemplazables → `/mnt/homelab-storage/<app>`; pibot → hostPath.
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
+- Operador CNPG **1.30.1** (chart 0.29.1) desde 2026-10-27, con actualización en el lugar del instance manager;
+  `homelab-postgres` con `primaryUpdateMethod: switchover`. Solo Immich usa ese cluster. Plugin barman-cloud v0.15.1.
+  Imagen con PostGIS + pgvector para clusters nuevos: `ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-<fecha>-standard-trixie`
+  (la `standard` ya trae pgvector). (2026-10-27)
 - La imagen de CNPG (`ghcr.io/cloudnative-pg/postgresql:17.11`) ya trae `vector` 0.8.6, `pg_trgm` y `unaccent`;
   se activan por base con `spec.extensions` del CRD `Database`, sin cambiar la imagen. (2026-10-25)
 - Imágenes propias: GHCR privado `ghcr.io/koshiro/<app>` (decisión del usuario, 2026-10-25). Pull con PAT classic
@@ -91,7 +95,7 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `psql -U postgres -d immich -c 'ALTER EXTENSION vector UPDATE'` y reiniciar immich-server; reindexa al arrancar. (2026-10-15)
 - Esperar un rollout de CNPG mirando solo `status.phase` → da «healthy» antes de empezar: exigir además la imagen
   nueva en las 3 instancias. (2026-10-15)
-- `gh pr merge` lo bloquea el clasificador («Merge Without Review») → pedir al usuario que mergee con el comando exacto. (2026-10-15)
+- `gh pr merge` lo bloquea el clasificador («Merge Without Review») → pedir al usuario que mergee con el comando exacto. El 2026-10-27, con autorización del usuario para la tarea, `gh pr merge` pasó sin bloqueo.
 - `kubectl drain`, `uncordon` y el switchover de CNPG son operaciones de ciclo de vida de nodos: requieren
   autorización explícita del usuario → al proponer la tarea, listar los comandos exactos y esperar su aprobación. (2026-10-15)
 - Versión de etcd con `curl https://127.0.0.1:2379/version` da 415 → en pibot
