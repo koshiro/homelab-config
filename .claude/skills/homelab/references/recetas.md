@@ -70,6 +70,19 @@ los Ingress y actualizar `k3s_version` del playbook, el tope de `registry.k8s.io
 `KUBECTL_VER` de claude-remote (y `IMAGEN` de `scripts/flux/ensayo_k3d.py`). (2026-10-15: 1.33.4 → 1.34.12 → 1.35.9
 en ~1 h, sin cortes salvo los pods drenados.)
 
+## Subir el operador CNPG (de a un menor, sin reiniciar Postgres)
+Mapa chart → app: `gh api "repos/cloudnative-pg/charts/contents/charts/cloudnative-pg/Chart.yaml?ref=cloudnative-pg-v<chart>"`.
+Leer `docs/src/installation_upgrade.md` (sección «Upgrading to …») y las «Important changes» de
+`docs/src/release_notes/v1.NN.md` (las viejas en `release_notes/old/`). El HelmRelease ya lleva
+`ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES=true`: el operador cambia el binario del instance manager dentro del pod y
+Postgres sigue corriendo (sin switchover). Un PR por versión menor (cambiar `version:` en
+`cluster/00-infrastructure/cnpg/helmrelease.yaml`) → merge → `flux reconcile ks cnpg --with-source` + `flux reconcile hr
+cnpg -n cnpg-system` → `kubectl -n cnpg-system rollout status deploy/cnpg-cloudnative-pg` → en cada instancia
+`/controller/manager version` = la nueva, `pg_postmaster_start_time()` sin cambios y `restartCount` 0 → al final un
+`Backup` manual (`method: plugin`) y `hl.py flux`. Tres errores «while closing the binaryFileStream … /update: EOF»
+en el operador justo al subir son el corte esperado del reemplazo; solo preocupan si siguen apareciendo.
+(2026-10-27: 1.27.0 → 1.27.1 → 1.28.1 → 1.29.1 → 1.30.1 en ~20 min, PR #159–#162, Postgres sin reiniciar.)
+
 ## Ensayo de Flux en k3d (cluster desechable)
 `S="python3 -I scripts/flux/ensayo_k3d.py"`. Si `docker version` no conecta: `orb start` (OrbStack). Push de la rama
 primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza pods de apps, comprobada) →
