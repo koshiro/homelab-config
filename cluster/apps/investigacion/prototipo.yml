@@ -1,0 +1,49 @@
+# Prototipo de la fase 0 (ADR-0002 del repo koshiro/investigacion): flujo DBOS de 10 pasos con esperas durables de
+# 30 s. Criterio: tras `kubectl rollout restart` retoma desde el último paso completo sin repetir pasos. Se reemplaza
+# por el worker real en la fase 1.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prototipo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # un solo ejecutor de DBOS a la vez
+  selector:
+    matchLabels:
+      app: prototipo
+  template:
+    metadata:
+      labels:
+        app: prototipo
+        investigacion/db: cliente
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets: [{name: ghcr-pull}]
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: prototipo
+          image: ghcr.io/koshiro/investigacion:sha-57eb29b
+          args: [prototipo]
+          env:
+            - name: INVESTIGACION_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: investigacion-pg-app, key: uri}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
