@@ -433,3 +433,29 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: investigacion
+  namespace: flux-system
+spec:
+  path: ./cluster/apps/investigacion
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 10m
+  retryInterval: 2m
+  timeout: 10m   # primer arranque de Postgres (initdb + extensiones)
+  wait: true
+  prune: false
+  deletionPolicy: Orphan
+  dependsOn:
+    - name: cnpg
+    - name: cnpg-plugin-barman-cloud
+  components:
+    - solo-flux
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age

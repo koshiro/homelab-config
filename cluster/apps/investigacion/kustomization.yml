@@ -1,0 +1,15 @@
+# Plataforma de investigación (repo koshiro/investigacion). Fase 0: namespace con denegación por defecto, Postgres
+# propio con PostGIS + pgvector, PV de evidencia y proxy de salida con lista blanca. Sin Ingress: el túnel comodín de
+# Cloudflare haría público cualquier *.danielriquelme.cl; el acceso será por NodePort (LAN o tailnet).
+# Los *.sops.yaml entran por solo-flux/ y los descifra Flux.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: investigacion
+resources:
+  - namespace.yml
+  - networkpolicy.yml
+  - postgres.yml
+  - evidencia.yml
+  - egress-proxy.yml
+components:
+  - ../../components/proteger-datos

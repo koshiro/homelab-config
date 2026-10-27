@@ -1,0 +1,9 @@
+# Lo que solo aplica Flux (secretos SOPS): la Kustomization de Flux de esta carpeta lo suma con
+# `spec.components: [solo-flux]` (cluster/flux/apps.yaml).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ../garage-secret.sops.yaml
+  - ../egress-proxy-auth.sops.yaml
+  - ../proxy-capture.sops.yaml
+  - ../proxy-llm-gateway.sops.yaml

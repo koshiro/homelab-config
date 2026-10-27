@@ -1,0 +1,140 @@
+# Denegar todo por defecto (entrada y salida) y abrir solo lo del diseño (docs del repo koshiro/investigacion).
+# Los clientes se marcan con etiquetas: `investigacion/proxy: cliente` puede hablar con egress-proxy y
+# `investigacion/db: cliente` con investigacion-pg. Nadie sale a internet salvo el proxy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: denegar-todo
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+# Proxy de salida: recibe de los clientes marcados y sale solo a internet público (nunca a la LAN ni al cluster).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-proxy
+spec:
+  podSelector:
+    matchLabels:
+      app: egress-proxy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              investigacion/proxy: cliente
+      ports:
+        - {protocol: TCP, port: 3128}
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 127.0.0.0/8]
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+---
+# Clientes del proxy: pueden abrir conexión hacia él (la entrada la controla la política de arriba).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hacia-egress-proxy
+spec:
+  podSelector:
+    matchLabels:
+      investigacion/proxy: cliente
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: egress-proxy
+      ports:
+        - {protocol: TCP, port: 3128}
+---
+# Postgres (CNPG): clientes marcados, el operador y el plugin (cnpg-system), métricas (monitoring) y las propias
+# instancias. Salida: API de Kubernetes (el instance manager la usa), Garage en pve (respaldos) y las otras instancias.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: investigacion-pg
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: investigacion-pg
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              investigacion/db: cliente
+      ports:
+        - {protocol: TCP, port: 5432}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - {protocol: TCP, port: 9187}
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: investigacion-pg
+  egress:
+    - to:
+        - ipBlock: {cidr: 10.43.0.1/32}
+      ports:
+        - {protocol: TCP, port: 443}
+    - to:
+        - ipBlock: {cidr: 192.168.1.15/32}
+      ports:
+        - {protocol: TCP, port: 6443}
+    - to:
+        - ipBlock: {cidr: 192.168.1.100/32}
+      ports:
+        - {protocol: TCP, port: 3900}
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: investigacion-pg
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hacia-investigacion-pg
+spec:
+  podSelector:
+    matchLabels:
+      investigacion/db: cliente
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: investigacion-pg
+      ports:
+        - {protocol: TCP, port: 5432}
