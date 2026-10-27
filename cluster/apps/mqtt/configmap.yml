@@ -31,3 +31,6 @@ data:
     topic readwrite msh/#
     user dnto
     topic readwrite msh/#
+    # Relay remoto (otra ciudad) por WiFi
+    user papo
+    topic readwrite msh/#
