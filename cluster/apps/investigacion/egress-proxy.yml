@@ -18,6 +18,8 @@ data:
     via off
     forwarded_for delete
     httpd_suppress_version_string on
+    # Sin capacidades de red cruda: el pinger ICMP solo dejaría errores en el log.
+    pinger_enable off
 
     auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/auth/htpasswd
     auth_param basic realm egress-proxy

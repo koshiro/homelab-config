@@ -51,3 +51,17 @@ WWR, HN y un verificador de cifras estricto (portar `verify-cv-facts.mjs` de car
 Investigación completa del estado del arte, fuentes verificadas y recomendaciones sobre el documento de diseño:
 `casos/job-hunter.md`. Qué portar del código de career-ops, JobAppAgent, ApplyPilot, JobOps y JobSpy (con archivo y
 línea): `casos/job-hunter-codigo.md`.
+
+## Investigación (arquetipo B, fase 0) · `~/git/investigacion` · repo privado `koshiro/investigacion`
+
+Plataforma de un solo usuario para investigar con datos públicos chilenos (agentes LLM, evidencia inmutable, citas
+verificadas, aprobación humana). Estado 2026-10-27: fase 0 desplegada en `cluster/apps/investigacion/`.
+
+- **Estudio del estado del arte** sobre la especificación: `docs/estado-del-arte.md` del repo (patrones *dual LLM* y
+  *plan-then-execute*, Froide para estados de solicitudes, DBOS, Presidio + GLiNER, R2 Bucket Lock).
+- **Decisiones reutilizables**: DBOS en vez de Procrastinate cuando hay esperas de días y pasos reanudables (ADR-0002);
+  base CNPG propia con `postgis:<pg>-<postgis>-<fecha>-standard-trixie` (PostGIS + pgvector sin compilar); proxy Squid
+  con usuario por cliente (las IP de pods cambian) y `dstdomain -n`; `capture` y `extract` separados (el parser no
+  tiene red).
+- **Lecciones**: el token del pod claude-remote no tiene scope `workflow` (no puede subir `.github/workflows/`); la
+  plantilla fijaba versiones más nuevas que la regla de dos semanas → `exclude-newer` en la plantilla.

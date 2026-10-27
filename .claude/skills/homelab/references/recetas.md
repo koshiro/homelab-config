@@ -83,6 +83,16 @@ cnpg -n cnpg-system` → `kubectl -n cnpg-system rollout status deploy/cnpg-clou
 en el operador justo al subir son el corte esperado del reemplazo; solo preocupan si siguen apareciendo.
 (2026-10-27: 1.27.0 → 1.27.1 → 1.28.1 → 1.29.1 → 1.30.1 en ~20 min, PR #159–#162, Postgres sin reiniciar.)
 
+## Probar la restauración de un Cluster CNPG (sin tocar el original)
+Marca: `psql -c "create table prueba_restauracion …; insert …"` y **aparte** `psql -c "select pg_switch_wal()"`;
+esperar que `pg_stat_archiver.last_archived_wal` avance. Aplicar fuera de git un Cluster `<nombre>-restaurada` con
+`bootstrap.recovery.source: origen` y `externalClusters: [{name: origen, plugin: {name: barman-cloud.cloudnative-pg.io,
+parameters: {barmanObjectName: <ObjectStore>, serverName: <cluster original>}}}]`, sin `plugins` (así no escribe en el
+bucket), y si el namespace deniega por defecto, una NetworkPolicy temporal para `cnpg.io/cluster: <nombre>-restaurada`
+(API 10.43.0.1:443 y 192.168.1.15:6443, Garage 192.168.1.100:3900, entrada desde cnpg-system). `kubectl wait
+cluster/… --for=jsonpath='{.status.phase}'='Cluster in healthy state'` → consultar la marca → borrar Cluster,
+NetworkPolicy y marca. (2026-10-27: investigacion-pg, ~1 min.)
+
 ## Ensayo de Flux en k3d (cluster desechable)
 `S="python3 -I scripts/flux/ensayo_k3d.py"`. Si `docker version` no conecta: `orb start` (OrbStack). Push de la rama
 primero (Flux la lee de GitHub). `$S crear` (k3s de prod + guarda que rechaza pods de apps, comprobada) →
