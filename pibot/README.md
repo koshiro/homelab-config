@@ -11,7 +11,11 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `boot/cmdline.txt` | `/boot/firmware/cmdline.txt` (una sola línea, sin salto final) |
 | `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml` |
 
-## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
+## Overclock: hoy 2000 MHz con `over_voltage=6` (desde 2026-10-18)
+
+Estado en `config.txt`: `arm_freq=2000`, `over_voltage=6`. Esperado en `vcgencmd`: `throttled=0x0`, ~2000 MHz, ~1,02 V.
+De serie son 1500 MHz (líneas comentadas en `config.txt`); a 1800 MHz con `over_voltage=2` sigue siendo la alternativa
+si 2000 MHz deja de aguantar.
 
 **2026-10-18: prueba de 2000 MHz con `over_voltage=6` y fuente nueva.** Activado en `config.txt` (respaldo
 `/boot/firmware/config.txt.bak-pre-oc2000-20261018`, 1500 MHz) y pibot apagada para cambiar la fuente. Al encender:
@@ -42,11 +46,10 @@ Benchmark (`7z b`, `openssl speed -multi 4`) del 2026-10-06:
 | **1800 MHz, `over_voltage=2`** | 1722 | 5354 | 646 MB/s | 265 MB/s | 0,92 V | 59,4 °C | `0x0` |
 | 2000 MHz, `over_voltage=6` | — | — | — | — | 1,02 V | — | `0x50000` al arrancar |
 
-El objetivo es **1800 MHz con `over_voltage=2`** (+15 % en 7z, +21 % en cripto). Con carga sostenida, pasado el
-primer minuto el voltaje cae con todos los cables probados, así que hoy va a **1500 MHz de serie** (líneas comentadas
-en `config.txt`) hasta tener un cable USB-C nuevo (ver `docs/PENDIENTES.md`, 4e). 2000 MHz ya marcó bajo
-voltaje en el arranque. No subir `over_voltage` ni tocar `gpu_freq`: la GPU no se usa (sin pantalla, cámara ni
-transcodificación) y solo suma consumo. El CM4 no tiene sensor de corriente (`vcgencmd pmic_read_adc` es solo de la
+Antes de 2000 MHz, el objetivo era **1800 MHz con `over_voltage=2`** (+15 % en 7z, +21 % en cripto), que quedó
+descartado por bajo voltaje sostenido con los cables de entonces (ver `docs/PENDIENTES.md`, 4e). Con 2000 MHz no subir
+`over_voltage` por encima de 6 ni tocar `gpu_freq`: la GPU no se usa (sin pantalla, cámara ni transcodificación) y solo
+suma consumo. El CM4 no tiene sensor de corriente (`vcgencmd pmic_read_adc` es solo de la
 Pi 5): para medir watts hace falta un medidor USB-C o un enchufe inteligente. Respaldos en la Pi:
 `/boot/firmware/config.txt.bak-oc-20261005` (OC original) y `config.txt.bak-pre-bench-20261006` (1500 MHz).
 
@@ -65,13 +68,14 @@ Verificar después de cualquier cambio de hardware o de `config.txt`:
 
 ```bash
 ssh daniel@k3s-node-0 'vcgencmd get_throttled; vcgencmd measure_clock arm; vcgencmd measure_volts core'
-# esperado: throttled=0x0, ~1500 MHz (~1800 MHz y ~0,92 V si se reactiva el OC)
+# esperado: throttled=0x0, ~2000 MHz y ~1,02 V (de serie: ~1500 MHz y ~0,87 V)
 ```
 
 ## Qué corre aquí
 
-Además del plano de control y etcd, solo lo que depende de la Pi: `cups-airprint` (impresora por USB) y
-`noledigasanadie` (hostPath `/var/lib/homelab-noledigasanadie`). `cloudflared` está fijado a los workers x86
+Además del plano de control y etcd, solo lo que depende de la Pi: `cups-airprint` (impresora por USB),
+`noledigasanadie` (hostPath `/var/lib/homelab-noledigasanadie`) y `vaultwarden` (hostPath `/var/lib/homelab-vaultwarden`,
+NodePort 30892, sin Ingress: `http://192.168.1.15:30892`; respaldo `config-backup-vaultwarden` con `sqlite3 .backup`). `cloudflared` está fijado a los workers x86
 (`cluster/06-external/cloudflared/deployment.yml`); Traefik, CoreDNS, Immich y Grafana no están fijados y quedaron en
 los workers tras el mantenimiento del 2026-10-05.
 
@@ -80,7 +84,8 @@ los workers tras el mantenimiento del 2026-10-05.
 1. Snapshot de etcd y copia al NAS (el CronJob `backups/etcd-snapshot-copy` solo copia `etcd-snapshot-*`):
    `sudo k3s etcd-snapshot save --name <motivo>`.
 2. `kubectl cordon pibot` y borrar los pods que pueden vivir en otro nodo (todos salvo `cups-airprint`,
-   `noledigasanadie` y los `svclb-*`). No usar `drain`: movería esos dos y noledigasanadie arrancaría sin datos.
+   `noledigasanadie`, `vaultwarden` y los `svclb-*`). No usar `drain`: movería esos y noledigasanadie/vaultwarden
+   arrancarían sin datos.
 3. Comprobar los sitios y apagar: `sudo shutdown -h now`. Sin el master, los pods siguen corriendo pero no hay API.
 4. Al volver: `kubectl uncordon pibot`. Durante 1–2 min flannel no llega a los pods de la Pi (502 en
    noledigasanadie); el operador CNPG puede reiniciarse varias veces hasta que vuelve la API.
