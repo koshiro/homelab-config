@@ -175,3 +175,18 @@ nodos:
     perfil: cliente
     owner: XiaoNRF
     owner_short: "XNR"
+  PapoRelay:                     # relay MQTT en otra ciudad (WiFi de ahí); entra al broker por internet
+    id: "!561b1920"
+    pubkey: 0DGnr1HB7RL6peiXCiHhFbWNoIHSNvW7+sRq7qMu4xQ=
+    hw: SEEED_XIAO_S3
+    pio: seeed-xiao-s3
+    perfil: base
+    gateway: true
+    set:
+      network.wifi_ssid: secreto:papo_wifi_ssid
+      network.wifi_psk: secreto:papo_wifi_psk
+      mqtt.address: mqtt.danielriquelme.cl:8883
+      mqtt.username: papo
+      mqtt.password: secreto:mqtt_pass_papo
+    owner: papoRelay
+    owner_short: papo
