@@ -1,0 +1,57 @@
+# Respaldo de Vaultwarden (pibot, /var/lib/homelab-vaultwarden) al NAS: Proxmox nvme/k8s/backups/apps/vaultwarden/data.
+# La base SQLite se copia con `sqlite3 .backup` (consistente aunque la app esté escribiendo); el resto, con rsync.
+# Restaurar: parar el pod, copiar data/ a /var/lib/homelab-vaultwarden/ en pibot y arrancar de nuevo.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: config-backup-vaultwarden
+  namespace: vaultwarden
+  labels:
+    app.kubernetes.io/component: config-backup
+spec:
+  schedule: "52 2 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          nodeName: pibot
+          containers:
+            - name: backup
+              image: alpine:3.24
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  apk add -q --no-cache rsync sqlite
+                  d=/backups/apps/vaultwarden
+                  mkdir -p "$d/data"
+                  sqlite3 /src/db.sqlite3 ".backup /tmp/db.sqlite3"
+                  rsync -a --delete --exclude 'db.sqlite3*' /src/ "$d/data/"
+                  cp /tmp/db.sqlite3 "$d/data/db.sqlite3"
+                  date -Iseconds > "$d/.last-backup"
+                  du -sh "$d/data"
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: src
+              hostPath:
+                path: /var/lib/homelab-vaultwarden
+                type: Directory
+            - name: backups
+              nfs:
+                server: 192.168.1.100
+                path: /nvme/k8s/backups

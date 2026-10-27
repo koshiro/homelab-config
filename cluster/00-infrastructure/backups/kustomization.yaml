@@ -4,5 +4,6 @@ resources:
   - etcd-snapshot-copy.yaml
   - app-config-backup.yaml
   - webs-estaticas-backup.yaml
+  - vaultwarden-backup.yaml
 components:
   - ../../components/proteger-datos
