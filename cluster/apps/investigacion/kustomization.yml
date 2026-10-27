@@ -11,5 +11,6 @@ resources:
   - postgres.yml
   - evidencia.yml
   - egress-proxy.yml
+  - prototipo.yml
 components:
   - ../../components/proteger-datos

@@ -7,3 +7,4 @@ resources:
   - ../egress-proxy-auth.sops.yaml
   - ../proxy-capture.sops.yaml
   - ../proxy-llm-gateway.sops.yaml
+  - ../secret-ghcr-pull.sops.yaml
