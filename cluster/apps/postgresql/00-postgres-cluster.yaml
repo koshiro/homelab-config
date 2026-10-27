@@ -64,7 +64,9 @@ spec:
       wal_sender_timeout: 5s
     syncReplicaElectionConstraint:
       enabled: false
-  primaryUpdateMethod: restart
+  # Si algo obliga a recrear los pods (cambio de imagen o de plantilla), el primario se cambia con un switchover
+  # (segundos sin escritura) en vez de reiniciarse en el lugar.
+  primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   probes:
     liveness:

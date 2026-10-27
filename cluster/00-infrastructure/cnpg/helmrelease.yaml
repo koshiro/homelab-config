@@ -1,9 +1,10 @@
-# Operador CloudNativePG: hoy es el release de Helm «cnpg» (chart cloudnative-pg 0.26.0, app 1.27.0) instalado a mano
-# y sin valores de usuario (scripts/flux/helm_valores.py cnpg-system sh.helm.release.v1.cnpg.v1 → {}).
-# Este HelmRelease lo adopta con el mismo nombre y namespace; un manifiesto upstream crearía un segundo operador.
+# Operador CloudNativePG: release de Helm «cnpg» (adoptado por Flux el 2026-10-16 con el mismo nombre y namespace; un
+# manifiesto upstream crearía un segundo operador).
 # NO está en kustomization.yaml: lo suma solo Flux con el Component solo-flux/ (docs/PLAN-FLUX.md, fase 2).
 # Nunca podar ni borrar: desinstalar el chart se lleva el operador y los webhooks. Los 10 CRD tienen
 # helm.sh/resource-policy: keep (verificado el 2026-10-16), así que el Cluster de Postgres sobrevive, pero sin operador.
+# Subir de versión: de a una versión menor por PR (1.27 → 1.28 → 1.29 → 1.30), como recomienda upstream
+# (installation_upgrade.md, «Compatibility among versions»). Receta *subir CNPG* en la skill homelab.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -28,7 +29,7 @@ spec:
   chart:
     spec:
       chart: cloudnative-pg
-      version: 0.26.0
+      version: 0.26.1 # app 1.27.1
       sourceRef:
         kind: HelmRepository
         name: cnpg
@@ -38,4 +39,9 @@ spec:
   upgrade:
     remediation:
       retries: 0
-  values: {}
+  values:
+    config:
+      data:
+        # Al subir el operador, cambiar el binario del instance manager dentro del pod en vez de un rolling update con
+        # switchover: Postgres no se reinicia (installation_upgrade.md, «In-place updates of the instance manager»).
+        ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES: "true"
