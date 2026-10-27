@@ -84,6 +84,17 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- Push con `.github/workflows/*` desde el pod claude-remote → «refusing to allow an OAuth App to create or update
+  workflow … without `workflow` scope» (el `GH_TOKEN` tiene `repo, read:org, gist`) → subir el workflow desde el Mac
+  (`gh auth refresh -s workflow`) o renovar `GH_TOKEN` en `cluster/apps/claude-remote/secret.sops.yml` con ese scope.
+  `gh auth login` en el pod lo bloquea el clasificador («Access Added As A Means»). (2026-10-27)
+- Secreto SOPS multi-documento (`---`) → cada documento lleva su `sops:`, pero partir el archivo da «MAC mismatch»:
+  un archivo por Secret. (2026-10-27)
+- `psql -c "…; select pg_switch_wal()"` → todo va en una transacción y el COMMIT queda después del cambio de WAL: una
+  restauración «pierde» el dato. El `pg_switch_wal()` va en otro `psql -c`. (2026-10-27)
+- CLI de Garage en pve: `GARAGE_RPC_SECRET_FILE=/etc/garage/rpc_secret garage -c /etc/garage.toml …` (sin la variable,
+  «No RPC secret provided»). El clasificador lo bloquea («Credential Materialization») hasta que el usuario autoriza.
+  Buckets: `cnpg-backups` (homelab-postgres, llave `cnpg`) y `cnpg-investigacion` (llave `investigacion-cnpg`). (2026-10-27)
 - `~/.cache/flux-plan/bin/flux: No such file` en el pod claude-remote → bajar el CLI de la misma versión del cluster
   (`kubectl get ns flux-system -o jsonpath='{.metadata.labels.app\.kubernetes\.io/version}'`) con
   `gh release download vX -R fluxcd/flux2 -p 'flux_*_linux_amd64.tar.gz' -p '*checksums.txt'`, `sha256sum -c` y extraer
