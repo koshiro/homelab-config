@@ -84,10 +84,12 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
-- Push con `.github/workflows/*` desde el pod claude-remote → «refusing to allow an OAuth App to create or update
-  workflow … without `workflow` scope» (el `GH_TOKEN` tiene `repo, read:org, gist`) → subir el workflow desde el Mac
-  (`gh auth refresh -s workflow`) o renovar `GH_TOKEN` en `cluster/apps/claude-remote/secret.sops.yml` con ese scope.
-  `gh auth login` en el pod lo bloquea el clasificador («Access Added As A Means»). (2026-10-27)
+- Push con `.github/workflows/*` desde el pod claude-remote → «refusing to allow an OAuth App … without `workflow`
+  scope». Desde el 2026-10-27 el `GH_TOKEN` del secreto (`cluster/apps/claude-remote/secret.sops.yml`, PR #167) es un
+  token OAuth de gh con `gist, read:org, repo, workflow`, el mismo de `~/.config/gh/hosts.yml`; rige desde el reinicio
+  del pod. Renovarlo: el usuario pide en el chat `env -u GH_TOKEN gh auth login -h github.com -p https -s
+  workflow,repo,read:org,gist --web`, aprueba el código en github.com/login/device y se copia con `sops set` (base64 en
+  `data`). Sin pedido explícito del usuario el clasificador lo bloquea («Access Added As A Means»). (2026-10-27)
 - Secreto SOPS multi-documento (`---`) → cada documento lleva su `sops:`, pero partir el archivo da «MAC mismatch»:
   un archivo por Secret. (2026-10-27)
 - `psql -c "…; select pg_switch_wal()"` → todo va en una transacción y el COMMIT queda después del cambio de WAL: una
