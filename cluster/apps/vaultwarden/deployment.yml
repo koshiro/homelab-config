@@ -1,0 +1,70 @@
+# Vaultwarden (gestor de contraseñas) en pibot: sobrevive a una caída de Proxmox, igual que los sitios estáticos.
+# Datos en /var/lib/homelab-vaultwarden (SQLite + adjuntos + claves). Respaldo diario al NAS: config-backup-vaultwarden
+# (cluster/00-infrastructure/backups/vaultwarden-backup.yaml), con `sqlite3 .backup` para no copiar la base en caliente.
+# Sin ADMIN_TOKEN: la página /admin queda desactivada. Sin Ingress: se accede por NodePort 30892 (ver service.yml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      # k3s-node-0 / MagicDNS: Raspberry Pi (hostname de cluster: pibot)
+      nodeName: pibot
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vaultwarden
+          image: vaultwarden/server:1.37.4
+          imagePullPolicy: IfNotPresent
+          env:
+            # Enlaces generados por el servidor. Cambiar cuando exista el hostname público.
+            - name: DOMAIN
+              value: http://192.168.1.15:30892
+            # Dejar en true solo para crear la primera cuenta; luego poner "false" en un PR.
+            - name: SIGNUPS_ALLOWED
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 192Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/homelab-vaultwarden
+            type: DirectoryOrCreate
