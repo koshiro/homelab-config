@@ -54,6 +54,8 @@
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
 ## Trampas (`error → forma correcta`)
+- `flashear` falla con «Device not configured» → el S3 re-enumeró en bootloader con otro nombre: `$T puertos` y repetir con el puerto nuevo.
+- `aplicar` con `network.*` + `admin_key` corta la transacción (el nodo reinicia): esperar 40 s y repetir `aplicar --apply`; converge en 2–3 pasadas. (2026-10-26)
 
 - Por el nodo virtual de MeshMonitor el firmware sale como `2.8.2.fad52bb-MM4.17.0`, sin `pio`, y el canal 0 como
   `LongFast` (no "") → mt.py lo trata como igual; no aplicar el `--seturl` que salga solo por eso.
