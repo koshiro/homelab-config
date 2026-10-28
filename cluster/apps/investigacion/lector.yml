@@ -1,0 +1,59 @@
+# Lector bajo demanda: lee las capturas sin ficha y no aisladas, verifica sus citas y sale. Suspendido: gasta API.
+# Ejecutar a mano: kubectl -n investigacion create job lector-$(date +%s) --from=cronjob/lector
+# (hay que levantar antes llm-gateway). Escribe fichas con inv_worker y verifica con inv_verificador.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lector
+spec:
+  suspend: true
+  schedule: "0 3 * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app: lector
+            investigacion/db: cliente
+            investigacion/gateway: cliente
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          imagePullSecrets: [{name: ghcr-pull}]
+          nodeSelector:
+            kubernetes.io/arch: amd64
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: lector
+              image: ghcr.io/koshiro/investigacion:sha-d920f28
+              args: [lector, --pendientes]
+              env:
+                - name: INVESTIGACION_DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: {name: pg-usr-worker, key: uri}
+                - name: INVESTIGACION_VERIFICADOR_DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: {name: pg-usr-verificador, key: uri}
+                - {name: INVESTIGACION_GATEWAY_URL, value: "http://llm-gateway:8080"}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              resources:
+                requests: {cpu: 20m, memory: 96Mi}
+                limits: {memory: 384Mi}
+              volumeMounts:
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: tmp
+              emptyDir: {sizeLimit: 64Mi}

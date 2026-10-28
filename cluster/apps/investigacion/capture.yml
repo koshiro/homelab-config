@@ -1,22 +1,22 @@
-# Prototipo de la fase 0 (ADR-0002 del repo koshiro/investigacion): flujo DBOS de 10 pasos con esperas durables de
-# 30 s. Criterio: tras `kubectl rollout restart` retoma desde el último paso completo sin repetir pasos. Se reemplaza
-# por el worker real en la fase 1.
+# Capturas: atiende capture_job (lo pide web), descarga SOLO por egress-proxy con el usuario `capture` y guarda en la
+# evidencia (única con escritura). Sin Ingress ni Service: nadie le habla, solo lee la cola en Postgres.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prototipo
+  name: capture
 spec:
   replicas: 1
   strategy:
-    type: Recreate # un solo ejecutor de DBOS a la vez
+    type: Recreate
   selector:
     matchLabels:
-      app: prototipo
+      app: capture
   template:
     metadata:
       labels:
-        app: prototipo
+        app: capture
         investigacion/db: cliente
+        investigacion/proxy: cliente
     spec:
       automountServiceAccountToken: false
       imagePullSecrets: [{name: ghcr-pull}]
@@ -28,13 +28,17 @@ spec:
         runAsGroup: 1000
         seccompProfile: {type: RuntimeDefault}
       containers:
-        - name: prototipo
-          image: ghcr.io/koshiro/investigacion:sha-57eb29b
-          args: [prototipo]
+        - name: capture
+          image: ghcr.io/koshiro/investigacion:sha-d920f28
+          args: [capture]
           env:
             - name: INVESTIGACION_DATABASE_URL
               valueFrom:
-                secretKeyRef: {name: investigacion-pg-app, key: uri}
+                secretKeyRef: {name: pg-usr-capture, key: uri}
+            - name: INVESTIGACION_PROXY_URL
+              valueFrom:
+                secretKeyRef: {name: proxy-capture, key: HTTPS_PROXY}
+            - {name: INVESTIGACION_EVIDENCIA_DIR, value: /evidencia}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -43,7 +47,10 @@ spec:
             requests: {cpu: 20m, memory: 128Mi}
             limits: {memory: 512Mi}
           volumeMounts:
+            - {name: evidencia, mountPath: /evidencia}
             - {name: tmp, mountPath: /tmp}
       volumes:
+        - name: evidencia
+          persistentVolumeClaim: {claimName: evidencia}
         - name: tmp
-          emptyDir: {sizeLimit: 64Mi}
+          emptyDir: {sizeLimit: 128Mi}

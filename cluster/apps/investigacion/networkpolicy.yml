@@ -138,3 +138,53 @@ spec:
               cnpg.io/cluster: investigacion-pg
       ports:
         - {protocol: TCP, port: 5432}
+---
+# web: entra desde cualquier origen al puerto 8000 porque el NodePort 30960 llega con IP de nodo o de LAN/tailnet; la
+# exposición la acota el Service (NodePort, sin Ingress). Su salida es solo Postgres (etiqueta investigacion/db).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-entrada
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 8000}
+---
+# llm-gateway: solo lo alcanzan los pods marcados `investigacion/gateway: cliente` (el lector).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-gateway-entrada
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-gateway
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              investigacion/gateway: cliente
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hacia-llm-gateway
+spec:
+  podSelector:
+    matchLabels:
+      investigacion/gateway: cliente
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: llm-gateway
+      ports:
+        - {protocol: TCP, port: 8080}

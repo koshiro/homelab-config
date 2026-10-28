@@ -1,0 +1,55 @@
+# Extracción (docling + Tesseract + Presidio/GLiNER) SIN salida de red: no lleva la etiqueta del proxy, así que la
+# denegación por defecto solo le deja DNS y Postgres. Los modelos van horneados en la imagen (modo offline). Lee la
+# evidencia en solo lectura y escribe extraction/pii_scan con el rol inv_extract.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extract
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: extract
+  template:
+    metadata:
+      labels:
+        app: extract
+        investigacion/db: cliente
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets: [{name: ghcr-pull}]
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: extract
+          image: ghcr.io/koshiro/investigacion-extract:sha-d920f28
+          args: [extract]
+          env:
+            - name: INVESTIGACION_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: pg-usr-extract, key: uri}
+            - {name: INVESTIGACION_EVIDENCIA_DIR, value: /evidencia}
+            - {name: HOME, value: /tmp}
+            - {name: MPLCONFIGDIR, value: /tmp/mpl}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 200m, memory: 1536Mi}
+            limits: {memory: 4Gi}
+          volumeMounts:
+            - {name: evidencia, mountPath: /evidencia, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: evidencia
+          persistentVolumeClaim: {claimName: evidencia, readOnly: true}
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}
