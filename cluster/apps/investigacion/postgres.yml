@@ -17,6 +17,46 @@ spec:
       encoding: UTF8
       localeCType: C
       localeCollate: C
+  # Un rol de grupo por servicio (permisos mínimos en las migraciones del repo koshiro/investigacion) y un rol con
+  # login que pertenece a él; las contraseñas viven en pg-usr-*.sops.yaml. Los GRANT los hace la migración 0002.
+  managed:
+    roles:
+      - {name: inv_web, ensure: present, login: false}
+      - {name: inv_capture, ensure: present, login: false}
+      - {name: inv_extract, ensure: present, login: false}
+      - {name: inv_worker, ensure: present, login: false}
+      - {name: inv_verificador, ensure: present, login: false}
+      - {name: inv_gateway, ensure: present, login: false}
+      - name: usr_web
+        ensure: present
+        login: true
+        inRoles: [inv_web]
+        passwordSecret: {name: pg-usr-web}
+      - name: usr_capture
+        ensure: present
+        login: true
+        inRoles: [inv_capture]
+        passwordSecret: {name: pg-usr-capture}
+      - name: usr_extract
+        ensure: present
+        login: true
+        inRoles: [inv_extract]
+        passwordSecret: {name: pg-usr-extract}
+      - name: usr_worker
+        ensure: present
+        login: true
+        inRoles: [inv_worker]
+        passwordSecret: {name: pg-usr-worker}
+      - name: usr_verificador
+        ensure: present
+        login: true
+        inRoles: [inv_verificador]
+        passwordSecret: {name: pg-usr-verificador}
+      - name: usr_gateway
+        ensure: present
+        login: true
+        inRoles: [inv_gateway]
+        passwordSecret: {name: pg-usr-gateway}
   affinity:
     nodeSelector:
       kubernetes.io/arch: amd64

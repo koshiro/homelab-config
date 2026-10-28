@@ -1,0 +1,72 @@
+# Único cliente de la API de Claude. Arranca en 0 réplicas hasta que Daniel cree el Secret `anthropic-api`
+# (ANTHROPIC_API_KEY) y ponga el límite de gasto en la consola de Anthropic; luego se sube a 1 por PR.
+# Sale solo por egress-proxy (usuario llm-gateway, solo api.anthropic.com). Entra solo desde pods con la etiqueta
+# `investigacion/gateway: cliente` (el lector).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: llm-gateway
+  template:
+    metadata:
+      labels:
+        app: llm-gateway
+        investigacion/db: cliente
+        investigacion/proxy: cliente
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets: [{name: ghcr-pull}]
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: llm-gateway
+          image: ghcr.io/koshiro/investigacion:sha-d920f28
+          args: [llm-gateway]
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: INVESTIGACION_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: pg-usr-gateway, key: uri}
+            - name: INVESTIGACION_PROXY_URL
+              valueFrom:
+                secretKeyRef: {name: proxy-llm-gateway, key: HTTPS_PROXY}
+            - name: INVESTIGACION_ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: {name: anthropic-api, key: ANTHROPIC_API_KEY}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 20m, memory: 96Mi}
+            limits: {memory: 384Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-gateway
+spec:
+  selector:
+    app: llm-gateway
+  ports:
+    - {name: http, port: 8080, targetPort: http}

@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: pg-usr-web
+    namespace: investigacion
+    labels:
+        cnpg.io/reload: "true"
+type: kubernetes.io/basic-auth
+stringData:
+    username: ENC[AES256_GCM,data:soqYpwQ1yw==,iv:1/0wOppdmgAIzS4EzPSz9IAoI3BNziQYwD3L42YYPr8=,tag:/PS6H5T1utLiNk6Vl6CvSw==,type:str]
+    password: ENC[AES256_GCM,data:Kq9tWqEvC9xZHkmpKnf/V5RnH19omvB4lKqSza72kJCmTjACzTcrhF/dYrN25n/U,iv:VnHtIRjzm/iJbUIBYxiUeDTHvk8jASSueq7DmZmjmX4=,tag:2m32Hbn5le2bBnGvJqHRVQ==,type:str]
+    uri: ENC[AES256_GCM,data:hCmrlrksPVZwU6ci5ZFPkryMPKP+Go389N9XrsiT+trNMcUprYRXusayrhuCJo7TucrBgizR+Oy/Lm4tvhQ3mzY93Z9q97jl93N8lVuPYV+cNFpU/K9VqJRnq2RKab4Z2ceGXt8YAtRZztZz,iv:SSdAdQKD6hA2Q1T66PQDNYmLN04EMh3zcEtwJemeiLY=,tag:AYbg98mhlsU9RVvzBA7qUw==,type:str]
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBtVkNMcEVVNUJoZnQ5eG8y
+            Z3YzeFRpaFdkSlU1RlFwWFZwVExTc3RQenl3CndTRUJxK2JLcCtuQ0VqbXArUE1l
+            K0pDM1VHdVprODQvelJuR0NCK21kMk0KLS0tIFFQMEFBZ2s2L3pKeU91WHNKV2Uy
+            Z3JqalJva3ZPd3p1TWozMytqYlN2bHcK4npd7LUeCsz/WvXVVhaqzYXIezeKOf/2
+            J8X0YM3evNW8qh7QLLDOZs66BvlgAtBX+GhTNw0mgZzrnCJSKCvBoA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-28T00:36:03Z"
+    mac: ENC[AES256_GCM,data:adduc/4Arb6+MgQpdWwmcNWwo6I6pYaFNv0FrjKaNKfGcUTqnAZMRHYWeK69wnvylJQKxpaUM25pxg90Fud4j2ntqOOc/jm6292vfx31JgBeK8FwNvCYaCHMmcM/5xQ6+y09VwRXt/X1lEU5Y2vea6UZLophEjsbZichblLSRkk=,iv:+2vBR8JnlDMqH5ITj3UZhJdgsfNEa5y07HDE6StP/eY=,tag:2VG3CcmoGeRvjXPcG3bAuA==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.2
