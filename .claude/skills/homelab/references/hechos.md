@@ -244,3 +244,16 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - `kubectl … --request-timeout=…` desde el pod claude-remote (config in-cluster, sin kubeconfig) → cae a
   `localhost:8080` «connection refused»: cualquier flag de cliente desactiva la config in-cluster. `hl.py` ya lo quita
   (`EN_CLUSTER`); a mano, no pasar ese flag. (2026-10-25)
+- CNPG con `enableSuperuserAccess: false`: `kubectl -n <ns> exec <cluster>-1 -c postgres -- psql -d <base>` entra como
+  `postgres` por el socket local (sirve para consultas y sembrar datos; las contraseñas no hacen falta). Para crear
+  roles por servicio, declararlos en `spec.managed.roles` (grupo `login: false` + login con `inRoles` y
+  `passwordSecret` tipo `kubernetes.io/basic-auth`, etiqueta `cnpg.io/reload: "true"`); el dueño de la base NO tiene
+  CREATEROLE, así que las migraciones solo hacen GRANT a roles que ya existen. (2026-10-27)
+- Pod efímero con red de un namespace con denegación por defecto: `kubectl run … --labels=<etiqueta de cliente>
+  --overrides='{…}'` (el `--labels` solo no basta si hay `imagePullSecrets`/`securityContext` que poner). Receta en
+  `cluster/apps/investigacion/README.md` (`crear-usuario`). (2026-10-27)
+- Quitar un manifiesto del repo NO borra el objeto (prune apagado): tras mergear, `kubectl delete` a mano (hecho con el
+  Deployment `prototipo`). (2026-10-27)
+- Nodo para pods de ML sin GPU: extract (docling + GLiNER) usa ~2 CPU y ~2,1 GiB en regimen; pedir 1,5 GiB y
+  limitar a 4 GiB. Un PDF de 12 MB tarda varios minutos con OCR de Tesseract activo. (2026-10-27)
+

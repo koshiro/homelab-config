@@ -164,3 +164,15 @@ Apagar: siempre `playbook_graceful_shutdown_cluster.yml`, nunca `poweroff --forc
 5. Así se encontró `nvme1n1` (2026-10-17, `proxmox/README.md` § Discos y pools).
 6. Para saber por qué un SSD es lento (caché, TRIM, temperatura, APST): sacarlo de uso y correr
    `scripts/ssd/prueba.sh <by-id> --destruir` en el host con nohup (~60 min; uso en su cabecera) y `scripts/ssd/analiza.py`.
+
+## Plataforma de investigación (namespace `investigacion`)
+
+1. Mapa y puesta en marcha: `cluster/apps/investigacion/README.md` (usuario único, Secret `anthropic-api`, lector).
+2. Subir versión: las dos imágenes (`investigacion` y `investigacion-extract`) llevan el mismo `sha-<7>` de `main` del
+   repo `koshiro/investigacion`; PR que cambia ese tag en `web/capture/extract/llm-gateway/lector.yml`; comprobar con
+   `hl.py ghcr check` antes de mergear. `hl.py wait investigacion extract`.
+3. Comprobar integridad: `kubectl -n investigacion exec deploy/web -c web -- investigacion verificar-capturas`
+   (exit 0 = todas íntegras; el rol de `capture` no ve la auditoría).
+4. Encolar capturas a mano: `INSERT INTO capture_job` por `psql` en `investigacion-pg-1` + `audit_append('daniel',
+   'capture.pedir', 'capture_job/<id>', '{}')`; seguir con `select estado, error from capture_job`.
+
