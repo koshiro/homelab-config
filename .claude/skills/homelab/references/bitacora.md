@@ -29,3 +29,5 @@
 | 2026-10-26 | cloudflared 2026.10.1 → 2026.10.4 (vulnerabilidad) | ~25 | sin CLI flux en el pod; ExitWorktree no-op en worktrees bridge | flux v2.9.6 instalado, 2 trampas en hechos, poda de worktrees muertos |
 | 2026-10-27 | subir CNPG 1.27.0 → 1.30.1 (4 PR) | ~45 | receta de subida del operador y chequeo de reinicios | receta *Subir el operador CNPG*, hecho de versión e imagen PostGIS |
 | 2026-10-27 | investigacion fase 0 (namespace, CNPG PostGIS, proxy Squid, evidencia NFS, Garage propio) | ~70 | scope workflow del token; SOPS multi-doc; psql -c en una transacción | 4 trampas, receta de prueba de restauración, caso en app-dev |
+| 2026-10-27 | investigacion fase 1: despliegue de web, capture, extract, llm-gateway, lector | ~120 | roles gestionados por CNPG; borrar `prototipo` a mano; medir extract con datos reales | 4 trampas en hechos, receta *Plataforma de investigación* |
+
