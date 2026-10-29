@@ -63,6 +63,9 @@ data:
     www.villarrica.cl
     serviuaraucania.minvu.gob.cl
     vialidad.mop.gob.cl
+    # Sitio oficial de la Municipalidad (encontrado con SearXNG el 2026-10-29; el inventario dirá qué es www.villarrica.cl).
+    www.munivillarrica.cl
+    munivillarrica.cl
     www.portaltransparencia.cl
     www.bcn.cl
     www.gorearaucania.cl
@@ -71,7 +74,10 @@ data:
     links.duckduckgo.com
     html.duckduckgo.com
     duckduckgo.com
-    search.brave.com
+    www.bing.com
+    www.google.com
+    www.qwant.com
+    api.qwant.com
   llm-gateway.txt: |
     api.anthropic.com
 ---
@@ -90,7 +96,7 @@ spec:
         app: egress-proxy
       annotations:
         # Squid no relee squid.conf ni las listas: cambiar este valor al editar el ConfigMap reinicia el proxy.
-        investigacion/config: "2026-10-29-searxng"
+        investigacion/config: "2026-10-29-motores"
     spec:
       automountServiceAccountToken: false
       nodeSelector:
