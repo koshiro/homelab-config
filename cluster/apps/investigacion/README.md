@@ -23,10 +23,12 @@ initContainer `migrar` de `web` con el rol dueño (`investigacion-pg-app`).
    ```bash
    IMG=$(kubectl -n investigacion get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}')
    kubectl -n investigacion run crear-usuario --rm -it --restart=Never --image="$IMG" \
-     --labels=investigacion/db=cliente --overrides='{"spec":{"imagePullSecrets":[{"name":"ghcr-pull"}],"securityContext":{"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"crear-usuario","image":"'"$IMG"'","args":["crear-usuario","daniel"],"stdin":true,"tty":true,"env":[{"name":"INVESTIGACION_DATABASE_URL","valueFrom":{"secretKeyRef":{"name":"investigacion-pg-app","key":"uri"}}},{"name":"INVESTIGACION_WEB_TOTP_SECRETO","valueFrom":{"secretKeyRef":{"name":"web-secreto","key":"INVESTIGACION_WEB_TOTP_SECRETO"}}}]}]}}'
+     --labels=investigacion/db=cliente --overrides='{"spec":{"nodeSelector":{"kubernetes.io/arch":"amd64"},"imagePullSecrets":[{"name":"ghcr-pull"}],"securityContext":{"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"crear-usuario","image":"'"$IMG"'","args":["crear-usuario","daniel"],"stdin":true,"tty":true,"env":[{"name":"INVESTIGACION_DATABASE_URL","valueFrom":{"secretKeyRef":{"name":"investigacion-pg-app","key":"uri"}}},{"name":"INVESTIGACION_WEB_TOTP_SECRETO","valueFrom":{"secretKeyRef":{"name":"web-secreto","key":"INVESTIGACION_WEB_TOTP_SECRETO"}}}]}]}}'
    ```
 
-   Imprime el URI `otpauth://…` para la app de autenticación. Entrar en `http://<IP de un nodo o tailnet>:30960`.
+   El `nodeSelector` amd64 es obligatorio: sin él el pod puede caer en pibot (arm64) y queda en `ImagePullBackOff`.
+   Imprime el URI `otpauth://…` para la app de autenticación; si no quieres el prompt, define
+   `INVESTIGACION_NUEVA_PASSWORD` en `env` del contenedor. Entrar en `http://<IP de un nodo o tailnet>:30960`.
 2. API de Claude (cuando Daniel ponga el límite de gasto en la consola de Anthropic): crear
    `anthropic-api.sops.yaml` (clave `ANTHROPIC_API_KEY`), sumarlo a `solo-flux/` y subir `llm-gateway` a 1 réplica por PR.
 3. Leer capturas: `kubectl -n investigacion create job lector-$(date +%s) --from=cronjob/lector`.
