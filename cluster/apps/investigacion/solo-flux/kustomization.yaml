@@ -15,3 +15,4 @@ resources:
   - ../pg-usr-verificador.sops.yaml
   - ../pg-usr-gateway.sops.yaml
   - ../web-secreto.sops.yaml
+  - ../anthropic-api.sops.yaml

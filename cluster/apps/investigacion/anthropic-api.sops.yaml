@@ -1,0 +1,24 @@
+# Clave PROVISIONAL de la API de Claude (la reemplaza Daniel). Solo la monta llm-gateway.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: anthropic-api
+    namespace: investigacion
+type: Opaque
+stringData:
+    ANTHROPIC_API_KEY: ENC[AES256_GCM,data:Ot3Vas0sNOE+HWErSMBdMbMMyFKVj64tQNqJFrASvNTiLY8KxVadLAemcrnDiQWOI1ce/qLuSbNCURiYypBEpynwQbA+HX741nUiZJ5StV8F7utr99+9xNNV5cqGgYhXdTLbuoB4yjabWw==,iv:5SNxMJP+VJaqYO9b3lzRC/CSK9s4kd26MkEJjVUyw8k=,tag:i2XRFSGnWgsVhWk6ieIkNw==,type:str]
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoZ2JlQXV5T1VUL0NoU1dP
+            VWd6Z1ZuQWtyMXhUVkxxSXc2WnA3dzZEcXhrCk9RV1liTm9zS0F2dUs2czFyZlBQ
+            ODhySE1YaEU0aWhJT1MvZDZweVFva28KLS0tIEpVMnYyYWVqTmRNRDd3UFdmR3JG
+            MUE1Uk96bWpYbUNlUUZtdzdBVFUxR0kK10Mhd40ku8XIyrnmhodsRttdI4PHNm5e
+            9VC02ZoF/SVuh01MMyFJPqbXlrTGCyMdXh3zXC0FMI8na4C9jivX9Q==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-29T14:09:05Z"
+    mac: ENC[AES256_GCM,data:5nXnKm2hRBVM/+KvT7ZJViep6jMjEJZRR+8xVeMssRqmKODmy2sOoswsFeyt12tsi39vtjcTFUw8O1B/pe60CHcJ5OEYDlQHsPzfnIOvxwH3WaHxOyepsdB+XfaE3tuLc9x3fP5nqqiQuzzYgT7O13Nh3v1BnhSVqepR+5hMFuk=,iv:NBaEjZMR1LjltGXxyogh4ziQXNV+ZjagLfQVuAS3Pug=,tag:yvpMw1sUv0bdtn6LrICC8Q==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.2

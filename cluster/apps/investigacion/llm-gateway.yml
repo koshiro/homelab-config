@@ -1,5 +1,5 @@
-# Único cliente de la API de Claude. Arranca en 0 réplicas hasta que Daniel cree el Secret `anthropic-api`
-# (ANTHROPIC_API_KEY) y ponga el límite de gasto en la consola de Anthropic; luego se sube a 1 por PR.
+# Único cliente de la API de Claude. Secret `anthropic-api` (clave PROVISIONAL del 2026-10-29; Daniel la reemplaza).
+# Pendiente de Daniel: el límite de gasto en la consola de Anthropic.
 # Sale solo por egress-proxy (usuario llm-gateway, solo api.anthropic.com). Entra solo desde pods con la etiqueta
 # `investigacion/gateway: cliente` (el lector).
 apiVersion: apps/v1
@@ -7,7 +7,7 @@ kind: Deployment
 metadata:
   name: llm-gateway
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
