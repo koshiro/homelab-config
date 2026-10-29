@@ -1,7 +1,7 @@
-# Único cliente de la API de Claude. Secret `anthropic-api` (clave PROVISIONAL del 2026-10-29; Daniel la reemplaza).
-# Pendiente de Daniel: el límite de gasto en la consola de Anthropic.
+# Único cliente de la API de Claude. Secret `anthropic-api` (clave definitiva y límite de gasto en la consola de
+# Anthropic, confirmados por Daniel el 2026-10-29).
 # Sale solo por egress-proxy (usuario llm-gateway, solo api.anthropic.com). Entra solo desde pods con la etiqueta
-# `investigacion/gateway: cliente` (el lector).
+# `investigacion/gateway: cliente` (lector y worker).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,7 +31,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: llm-gateway
-          image: ghcr.io/koshiro/investigacion:sha-935f48f
+          image: ghcr.io/koshiro/investigacion:sha-af57e32
           args: [llm-gateway]
           ports:
             - {name: http, containerPort: 8080}

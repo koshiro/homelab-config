@@ -27,9 +27,11 @@ data:
     acl autenticado proxy_auth REQUIRED
     acl u_capture proxy_auth capture
     acl u_llm proxy_auth llm-gateway
+    acl u_searxng proxy_auth searxng
     # -n: sin búsqueda inversa; un destino por IP literal nunca calza con la lista.
     acl d_capture dstdomain -n "/etc/squid/listas/capture.txt"
     acl d_llm dstdomain -n "/etc/squid/listas/llm-gateway.txt"
+    acl d_searxng dstdomain -n "/etc/squid/listas/searxng.txt"
     acl red_privada dst 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 127.0.0.0/8
     acl SSL_ports port 443
     acl Safe_ports port 80 443
@@ -42,10 +44,12 @@ data:
     http_access deny !autenticado
     http_access allow u_capture d_capture
     http_access allow u_llm d_llm
+    http_access allow u_searxng d_searxng
     http_access deny all
   capture.txt: |
-    # Fuentes de la investigación de Villarrica que respondieron el 2026-10-27. Pendientes (no responden o bloquean
-    # clientes automáticos): www.portaltransparencia.cl (403), www.bcn.cl (401), www.gorearaucania.cl (sin respuesta).
+    # Fuentes de la investigación de Villarrica. Las tres últimas no respondían a clientes automáticos el 2026-10-27
+    # (403, 401, sin respuesta): entran para que el inventario de la fase 2 las marque con evidencia y para descubrir
+    # los canales de transparencia (el Portal y el sitio del GORE son fuentes oficiales de los organismos).
     bid-ckan.ministeriodesarrollosocial.gob.cl
     api.mercadopublico.cl
     www.chilecompra.cl
@@ -59,6 +63,15 @@ data:
     www.villarrica.cl
     serviuaraucania.minvu.gob.cl
     vialidad.mop.gob.cl
+    www.portaltransparencia.cl
+    www.bcn.cl
+    www.gorearaucania.cl
+  searxng.txt: |
+    # Motores que usa SearXNG (settings en searxng.yml). Solo devuelven listas de resultados.
+    links.duckduckgo.com
+    html.duckduckgo.com
+    duckduckgo.com
+    search.brave.com
   llm-gateway.txt: |
     api.anthropic.com
 ---
@@ -75,6 +88,9 @@ spec:
     metadata:
       labels:
         app: egress-proxy
+      annotations:
+        # Squid no relee squid.conf ni las listas: cambiar este valor al editar el ConfigMap reinicia el proxy.
+        investigacion/config: "2026-10-29-searxng"
     spec:
       automountServiceAccountToken: false
       nodeSelector:

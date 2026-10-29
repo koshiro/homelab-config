@@ -188,3 +188,39 @@ spec:
               app: llm-gateway
       ports:
         - {protocol: TCP, port: 8080}
+---
+# searxng: solo lo alcanzan los pods marcados `investigacion/searxng: cliente` (el worker). Su salida es el proxy
+# (etiqueta investigacion/proxy: cliente, usuario searxng con la lista de motores).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: searxng-entrada
+spec:
+  podSelector:
+    matchLabels:
+      app: searxng
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              investigacion/searxng: cliente
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hacia-searxng
+spec:
+  podSelector:
+    matchLabels:
+      investigacion/searxng: cliente
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: searxng
+      ports:
+        - {protocol: TCP, port: 8080}

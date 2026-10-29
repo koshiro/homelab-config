@@ -1,0 +1,131 @@
+# Búsqueda web del investigador (fase 2). SearXNG sale SOLO por egress-proxy (usuario searxng, lista searxng.txt) y
+# solo lo consulta el worker. El worker usa título y URL; el resto de la respuesta se descarta en el código.
+# Imagen fijada con al menos dos semanas publicada. Sin limiter ni valkey: no es una instancia pública.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng
+data:
+  settings.yml: |
+    use_default_settings:
+      engines:
+        # startpage y mojeek vienen inactivos (captcha de prueba de trabajo); google y bing, deshabilitados de fábrica.
+        keep_only: [duckduckgo, brave]
+    general:
+      instance_name: investigacion
+      enable_metrics: false
+    search:
+      safe_search: 1
+      formats: [json]
+      default_lang: es-CL
+    server:
+      limiter: false
+      public_instance: false
+      image_proxy: false
+      method: GET
+    outgoing:
+      request_timeout: 6.0
+      max_request_timeout: 12.0
+      enable_http2: false
+      # El proxy y su contraseña llegan por la variable SEARXNG_PROXY (ver entrypoint del contenedor).
+    valkey:
+      url: false
+    # Plugins que descargan listas de terceros al arrancar (ClearURLs, Ahmia): apagados; su salida no está en la lista.
+    plugins:
+      searx.plugins.tracker_url_remover.SXNGPlugin:
+        active: false
+      searx.plugins.ahmia_filter.SXNGPlugin:
+        active: false
+    ui:
+      static_use_hash: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+        investigacion/proxy: cliente
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 977
+        runAsGroup: 977
+        fsGroup: 977
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        # Escribe settings.yml con el proxy (la contraseña viene del Secret; no queda en el ConfigMap).
+        - name: config
+          image: docker.io/searxng/searxng:2026.10.13-22c64b8d3
+          command: [/bin/sh, -c]
+          args:
+            - |
+              cp /plantilla/settings.yml /config/settings.yml
+              printf '  proxies:\n    all://:\n      - %s\n' "$PROXY_URL" > /tmp/proxies
+              sed -i '/^outgoing:/r /tmp/proxies' /config/settings.yml
+          env:
+            - name: PROXY_URL
+              valueFrom:
+                secretKeyRef: {name: proxy-searxng, key: PROXY_URL}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: plantilla, mountPath: /plantilla, readOnly: true}
+            - {name: config, mountPath: /config}
+            - {name: tmp, mountPath: /tmp}
+      containers:
+        - name: searxng
+          image: docker.io/searxng/searxng:2026.10.13-22c64b8d3
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: SEARXNG_SETTINGS_PATH, value: /config/settings.yml}
+            - name: SEARXNG_SECRET
+              valueFrom:
+                secretKeyRef: {name: searxng-secreto, key: SEARXNG_SECRET}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 20m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: config, mountPath: /etc/searxng}
+            - {name: cache, mountPath: /var/cache/searxng}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: plantilla
+          configMap: {name: searxng}
+        - name: config
+          emptyDir: {sizeLimit: 16Mi}
+        - name: cache
+          emptyDir: {sizeLimit: 256Mi}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+spec:
+  selector:
+    app: searxng
+  ports:
+    - {name: http, port: 8080, targetPort: http}
