@@ -29,7 +29,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       initContainers:
         - name: migrar
-          image: ghcr.io/koshiro/investigacion:sha-cbf964d
+          image: ghcr.io/koshiro/investigacion:sha-935f48f
           args: [migrar]
           env:
             - name: INVESTIGACION_DATABASE_URL
@@ -44,7 +44,7 @@ spec:
             limits: {memory: 256Mi}
       containers:
         - name: web
-          image: ghcr.io/koshiro/investigacion:sha-cbf964d
+          image: ghcr.io/koshiro/investigacion:sha-935f48f
           args: [web]
           ports:
             - {name: http, containerPort: 8000}
