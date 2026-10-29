@@ -254,6 +254,16 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   `cluster/apps/investigacion/README.md` (`crear-usuario`). (2026-10-27)
 - Quitar un manifiesto del repo NO borra el objeto (prune apagado): tras mergear, `kubectl delete` a mano (hecho con el
   Deployment `prototipo`). (2026-10-27)
-- Nodo para pods de ML sin GPU: extract (docling + GLiNER) usa ~2 CPU y ~2,1 GiB en regimen; pedir 1,5 GiB y
-  limitar a 4 GiB. Un PDF de 12 MB tarda varios minutos con OCR de Tesseract activo. (2026-10-27)
+- Pod en CrashLoop: `kubectl get pod -l app=<x> -o jsonpath='{.items[0].status.containerStatuses[0].lastState}'` dice
+  `OOMKilled` (exit 137) o el error; `kubectl top pod` muestra el consumo. extract (GLiNER + torch) ronda 1,3 GiB tras
+  quitar docling del camino principal; con docling superaba 3 GiB en un PDF de 175 KB. Medir con un vigilante de RSS
+  antes de subir el límite (el nodo k3s-node-1 está al ~84 % de memoria). (2026-10-28)
+- `kubectl exec -i <pod> -c postgres -- psql -d <base> -f - < archivo.sql` para consultas con comillas o `\pset`; las
+  consultas largas por `-c` rompen con las comillas del shell. (2026-10-28)
+- El `/tmp` del pod claude-remote se vacía entre llamadas (y el venv de `uv` se reconstruye): descargar y usar el
+  archivo en la MISMA llamada de Bash. (2026-10-28)
+- Esperas largas de CI o de un rollout: `Monitor` con `until <condición>; do :; done` en vez de `sleep`; el Monitor
+  vence a los 25–30 min sin avisar el resultado, así que re-armarlo si la condición no se cumplió. (2026-10-28)
+- Encadenar con `;` tras un `pytest | tail` sube cambios aunque fallen (el pipe devuelve 0): usar `&&` y no filtrar el
+  código de salida de las pruebas. (2026-10-28)
 
