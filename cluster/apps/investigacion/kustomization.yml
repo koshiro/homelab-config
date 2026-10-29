@@ -1,5 +1,5 @@
 # Plataforma de investigación (repo koshiro/investigacion). Fase 0 (base) + fase 1 (web, capture, extract,
-# llm-gateway, lector): namespace con denegación por defecto, Postgres
+# llm-gateway, lector) + fase 2 (searxng, worker): namespace con denegación por defecto, Postgres
 # propio con PostGIS + pgvector, PV de evidencia y proxy de salida con lista blanca. Sin Ingress: el túnel comodín de
 # Cloudflare haría público cualquier *.danielriquelme.cl; el acceso será por NodePort (LAN o tailnet).
 # Los *.sops.yaml entran por solo-flux/ y los descifra Flux.
@@ -17,5 +17,7 @@ resources:
   - extract.yml
   - llm-gateway.yml
   - lector.yml
+  - searxng.yml
+  - worker.yml
 components:
   - ../../components/proteger-datos

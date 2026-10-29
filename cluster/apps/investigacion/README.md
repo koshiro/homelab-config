@@ -8,8 +8,10 @@ mergear a `main` despliega (Flux, Kustomization `investigacion`).
 | `web` | Interfaz (login argon2 + TOTP, investigaciones, visor). **NodePort 30960**, sin Ingress | entra: LAN/tailnet; sale: Postgres |
 | `capture` | Atiende `capture_job`, descarga y guarda en `evidencia` (única con escritura) | Postgres + `egress-proxy` (usuario `capture`) |
 | `extract` | docling + Tesseract + Presidio/GLiNER, **sin red** (solo Postgres), evidencia en solo lectura | Postgres |
-| `llm-gateway` | Único cliente de la API de Claude. **0 réplicas** hasta crear el Secret `anthropic-api` | Postgres + proxy (`llm-gateway`, solo `api.anthropic.com`); entra solo desde `investigacion/gateway: cliente` |
-| `lector` | CronJob **suspendido**; lee capturas sin ficha y no aisladas | Postgres + `llm-gateway` |
+| `llm-gateway` | Único cliente de la API de Claude (clave y límite de gasto confirmados por Daniel el 2026-10-29) | Postgres + proxy (`llm-gateway`, solo `api.anthropic.com`); entra solo desde `investigacion/gateway: cliente` |
+| `lector` | CronJob **suspendido**; lee capturas sin ficha y no aisladas (en la fase 2 es un paso del worker) | Postgres + `llm-gateway` |
+| `worker` | Flujos DBOS de los agentes (esquema `dbos_worker`): planes que Daniel pide y aprueba, descubrimiento de canales, inventario, lector, hallazgos, borradores | Postgres + `llm-gateway` + `searxng` |
+| `searxng` | Búsqueda web del investigador (solo JSON; el worker usa título y URL) | entra solo desde `investigacion/searxng: cliente`; sale por el proxy (usuario `searxng`, `searxng.txt`) |
 | `investigacion-pg` | CNPG (PostGIS + pgvector), respaldo barman a Garage | solo clientes `investigacion/db: cliente` |
 
 Roles de la base: un grupo `inv_*` por servicio (permisos mínimos en las migraciones de la app) y un login `usr_*` que
@@ -32,6 +34,17 @@ initContainer `migrar` de `web` con el rol dueño (`investigacion-pg-app`).
 3. Leer capturas: `kubectl -n investigacion create job lector-$(date +%s) --from=cronjob/lector`.
 
 ## Operación
+
+### Fase 2: agentes
+
+1. En la web, en la investigación, «Proponer plan». El worker lo encola (flujo `plan-<id>`) y el investigador lo
+   propone; nada se ejecuta hasta aprobarlo en **Aprobaciones** (TOTP nuevo en cada decisión).
+2. Canales de transparencia, hallazgos con citas en `revisar`, capturas aisladas y borradores también se aprueban ahí.
+3. Datos del solicitante para los borradores (opcional; si falta, quedan marcadores): Secret `solicitante` con
+   `INVESTIGACION_SOLICITANTE_NOMBRE` e `INVESTIGACION_SOLICITANTE_CORREO`, cifrado con SOPS y sumado a `solo-flux/`.
+4. Estado de un flujo: `kubectl -n investigacion logs deploy/worker`; tareas y costo en la página de la investigación.
+5. SearXNG: al arrancar intenta bajar las listas de ClearURLs directo (sin proxy) y la NetworkPolicy lo corta; el aviso
+   en el log es esperado. Motores: duckduckgo y brave (startpage y mojeek vienen inactivos por captcha).
 
 - Capturar: en la web, «Capturar una URL» (solo dominios de `egress-proxy.yml`, lista `capture.txt`).
 - Integridad: `/auditoria` valida la cadena de hashes y recalcula el hash de cada captura; por consola:

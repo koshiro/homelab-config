@@ -7,6 +7,8 @@ resources:
   - ../egress-proxy-auth.sops.yaml
   - ../proxy-capture.sops.yaml
   - ../proxy-llm-gateway.sops.yaml
+  - ../proxy-searxng.sops.yaml
+  - ../searxng-secreto.sops.yaml
   - ../secret-ghcr-pull.sops.yaml
   - ../pg-usr-web.sops.yaml
   - ../pg-usr-capture.sops.yaml

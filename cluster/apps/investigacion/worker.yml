@@ -1,0 +1,61 @@
+# Worker de los agentes (fase 2): flujos DBOS con checkpoints en el esquema dbos_worker. Arranca planes que Daniel pide
+# en la web, espera su aprobación y ejecuta las tareas aprobadas (descubrimiento de canales, inventario, lector,
+# hallazgos, verificación, borradores). Escribe con usr_worker y verifica citas con usr_verificador.
+# Una réplica y Recreate: DBOS recupera los flujos a medias al arrancar; dos workers se pisarían.
+# Datos del solicitante (artículo 12 de la Ley 20.285): Secret opcional `solicitante` (claves
+# INVESTIGACION_SOLICITANTE_NOMBRE y _CORREO). Sin él, los borradores llevan marcadores; nunca salen hacia la API.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        investigacion/db: cliente
+        investigacion/gateway: cliente
+        investigacion/searxng: cliente
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets: [{name: ghcr-pull}]
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: worker
+          image: ghcr.io/koshiro/investigacion:sha-935f48f
+          args: [worker]
+          env:
+            - name: INVESTIGACION_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: pg-usr-worker, key: uri}
+            - name: INVESTIGACION_VERIFICADOR_DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: pg-usr-verificador, key: uri}
+            - {name: INVESTIGACION_GATEWAY_URL, value: "http://llm-gateway:8080"}
+            - {name: INVESTIGACION_SEARXNG_URL, value: "http://searxng:8080"}
+          envFrom:
+            - secretRef: {name: solicitante, optional: true}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 160Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}

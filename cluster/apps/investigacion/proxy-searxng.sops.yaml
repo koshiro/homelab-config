@@ -1,0 +1,24 @@
+# Proxy de SearXNG (usuario searxng: solo los motores de búsqueda de searxng.txt).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: proxy-searxng
+    namespace: investigacion
+type: Opaque
+stringData:
+    PROXY_URL: ENC[AES256_GCM,data:fG1jksukmhAsfNzPMAcrznHJW9E3rMQMPZ+IZ6Ui4kpQc9nl12rMBZcY7k+4mcQY+EK9JnngphjyU+sU00LmcpUYHgw1RZNE7RO31mAFaNMSgPEXOl80Kl0fjWg+BgGRFSlpyW1H2mFxtaR5dq8XhHQ=,iv:YiYbcRn+PYJdPy/idSla3jWuVemTLmUt06LBQuarGi0=,tag:moxtVuKrOlk+vV5D9vjoUA==,type:str]
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAvV2xEUWRORUhYaGpwN1pB
+            THV4NVZEWlJSNDR0S05LcHVQVDl4UG9GUEFVCnBZVkxkTDFQQ0JIRHlWZGR4cFlk
+            NFdjeDNQZ3FUS2dEaWJndWtnQ1lLSkkKLS0tIHlUL3J4Um9WWVdJOTRPTEV2ZzM1
+            QTJJaHJWbW5DdVdIcWZQMkM0SDVKZVkKi3s7fb1UqPezgSOMrRAw8cX4oIHDAZNf
+            DDESO1tc0p5BLIlUaF90EJhXAxjWUqWIv7gue1FKO2hzy101n8EGJg==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-29T20:02:24Z"
+    mac: ENC[AES256_GCM,data:FSc8eWiLSax7ec4vb9yYN/Wq7yn4tVVjbDX1Zx9sV4CCxD/Fp7LXfRc0P4u9fYO0P21vzYuL5R+vPXxyytwgvX/5yDbmXymt45dqzGhf9VVa4lsEuhgFV3+mbb7N6yaJDani8DIeAn9v1xeXX9t2/dM+ei0Qpce3Jbpi0XvKMSE=,iv:iFgtq3CU7ouanDiT/QB+i3kyli4PdcnIj0SFdRsm2aA=,tag:jC7HwWIuCG+c0puC09CziQ==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.2
