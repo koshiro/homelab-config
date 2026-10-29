@@ -35,7 +35,7 @@ spec:
             seccompProfile: {type: RuntimeDefault}
           containers:
             - name: lector
-              image: ghcr.io/koshiro/investigacion:sha-cbf964d
+              image: ghcr.io/koshiro/investigacion:sha-935f48f
               args: [lector, --pendientes]
               env:
                 - name: INVESTIGACION_DATABASE_URL
