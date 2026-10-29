@@ -31,7 +31,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: llm-gateway
-          image: ghcr.io/koshiro/investigacion:sha-935f48f
+          image: ghcr.io/koshiro/investigacion:sha-af57e32
           args: [llm-gateway]
           ports:
             - {name: http, containerPort: 8080}
