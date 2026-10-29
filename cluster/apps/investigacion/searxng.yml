@@ -9,12 +9,28 @@ data:
   settings.yml: |
     use_default_settings:
       engines:
-        # startpage y mojeek vienen inactivos (captcha de prueba de trabajo); google y bing, deshabilitados de fábrica.
-        keep_only: [duckduckgo, brave]
+        # Medido el 2026-10-29: brave responde 429 con captcha y duckduckgo pide CAPTCHA tras ~6 consultas seguidas;
+        # startpage y mojeek vienen inactivos (captcha de prueba de trabajo). Se reparten las consultas entre cuatro.
+        keep_only: [duckduckgo, bing, google, qwant]
+    engines:
+      - name: bing
+        disabled: false
+      - name: google
+        disabled: false
+      - name: qwant
+        disabled: false
     general:
       instance_name: investigacion
       enable_metrics: false
     search:
+      # Una IP doméstica choca pronto con los CAPTCHA: suspender el motor minutos, no horas (por defecto 1 h a 15 días).
+      suspended_times:
+        SearxEngineAccessDenied: 300
+        SearxEngineCaptcha: 600
+        SearxEngineTooManyRequests: 300
+        cf_SearxEngineCaptcha: 3600
+        cf_SearxEngineAccessDenied: 3600
+        recaptcha_SearxEngineCaptcha: 3600
       safe_search: 1
       formats: [json]
       default_lang: es-CL
@@ -24,8 +40,8 @@ data:
       image_proxy: false
       method: GET
     outgoing:
-      request_timeout: 6.0
-      max_request_timeout: 12.0
+      request_timeout: 8.0
+      max_request_timeout: 20.0
       enable_http2: false
       # El proxy y su contraseña llegan por la variable SEARXNG_PROXY (ver entrypoint del contenedor).
     valkey:
@@ -53,6 +69,9 @@ spec:
       labels:
         app: searxng
         investigacion/proxy: cliente
+      annotations:
+        # settings.yml se copia al arrancar: cambiar este valor al editar el ConfigMap reinicia SearXNG.
+        investigacion/config: "2026-10-29-motores"
     spec:
       automountServiceAccountToken: false
       nodeSelector:
