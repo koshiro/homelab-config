@@ -25,8 +25,10 @@ mkdir -p ~/.local/bin "$MARKS" ~/git ~/.ssh ~/.config/sops/age ~/.config/homelab
 chmod 700 ~/.ssh
 install -m 600 /secrets/age-key ~/.config/sops/age/keys.txt
 install -m 600 /secrets/ansible-vault-pass ~/.config/homelab/ansible-vault-pass
-install -m 600 /secrets/ssh-key ~/.ssh/id_rsa
-install -m 644 /secrets/ssh-key.pub ~/.ssh/id_rsa.pub
+install -m 600 /secrets/ssh-key ~/.ssh/id_ed25519_homelab
+install -m 644 /secrets/ssh-key.pub ~/.ssh/id_ed25519_homelab.pub
+ln -sf id_ed25519_homelab ~/.ssh/id_rsa  # compatibilidad con rutas antiguas; la llave es ed25519 propia del pod
+ln -sf id_ed25519_homelab.pub ~/.ssh/id_rsa.pub
 install -m 600 /files/ssh_config ~/.ssh/config
 
 # 3. Herramientas fijadas (marca por versión en $MARKS)
