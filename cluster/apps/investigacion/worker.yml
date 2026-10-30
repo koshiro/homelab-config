@@ -34,7 +34,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: worker
-          image: ghcr.io/koshiro/investigacion:sha-22b094e
+          image: ghcr.io/koshiro/investigacion:sha-b61844a
           args: [worker]
           env:
             - name: INVESTIGACION_DATABASE_URL
