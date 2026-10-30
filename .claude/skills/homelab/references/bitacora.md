@@ -31,4 +31,4 @@
 | 2026-10-27 | investigacion fase 0 (namespace, CNPG PostGIS, proxy Squid, evidencia NFS, Garage propio) | ~70 | scope workflow del token; SOPS multi-doc; psql -c en una transacción | 4 trampas, receta de prueba de restauración, caso en app-dev |
 | 2026-10-27 | investigacion fase 1: despliegue de web, capture, extract, llm-gateway, lector | ~120 | roles gestionados por CNPG; borrar `prototipo` a mano; medir extract con datos reales | 4 trampas en hechos, receta *Plataforma de investigación* |
 | 2026-10-28 | investigacion fase 1: extract en CrashLoop (OOM), re-extracción y falsos RUN | ~180 | diagnosticar el OOM a ciegas; /tmp volátil | 4 trampas en hechos (CrashLoop, psql -f, /tmp, Monitor) |
-
+| 2026-10-29 | investigacion fase 2: searxng, worker, usuario searxng del proxy, imagen sha-54e98a3 | ~250 | recargar Squid/SearXNG al cambiar ConfigMap; probar imágenes con pod efímero | 3 trampas en hechos |

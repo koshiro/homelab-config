@@ -52,7 +52,7 @@ Investigación completa del estado del arte, fuentes verificadas y recomendacion
 `casos/job-hunter.md`. Qué portar del código de career-ops, JobAppAgent, ApplyPilot, JobOps y JobSpy (con archivo y
 línea): `casos/job-hunter-codigo.md`.
 
-## Investigación (arquetipo B, fase 0) · `~/git/investigacion` · repo privado `koshiro/investigacion`
+## Investigación (arquetipo B, fases 0–2) · `~/git/investigacion` · repo privado `koshiro/investigacion`
 
 Plataforma de un solo usuario para investigar con datos públicos chilenos (agentes LLM, evidencia inmutable, citas
 verificadas, aprobación humana). Estado 2026-10-27: fase 0 desplegada en `cluster/apps/investigacion/`.
@@ -65,3 +65,15 @@ verificadas, aprobación humana). Estado 2026-10-27: fase 0 desplegada en `clust
   tiene red).
 - **Lecciones**: el token del pod claude-remote no tiene scope `workflow` (no puede subir `.github/workflows/`); la
   plantilla fijaba versiones más nuevas que la regla de dos semanas → `exclude-newer` en la plantilla.
+- **Fase 2 (2026-10-29, agentes y aprobaciones)**: las reglas de aprobación las impone la **base** (triggers + función
+  SECURITY DEFINER `approval_usar()` de uso único; hash del contenido como columna generada), no solo el código; DBOS
+  del worker en su propio esquema (`dbos_system_schema`) y versión de app fija para no perder flujos que esperan días;
+  `web` no toca DBOS (el worker se despierta solo con `DBOS.send` idempotente). Plan-then-execute: la entrada del plan
+  no lleva contenido externo y cada paso pasa por `PERMISOS` por rol en código (auditado). Descubrimiento de correos en
+  código, no con LLM (los institucionales están en el texto original y la cita queda exacta).
+- **Lecciones fase 2**: (1) migrar las pruebas con un dueño **sin superusuario** como CNPG (`CREATE SCHEMA …
+  AUTHORIZATION` pasaba en local y fallaba en la base real); (2) en un trigger BEFORE las columnas generadas aún no
+  están calculadas: comparar las de origen; (3) DBOS 3.2 registra colas tras `launch()` y exige URL, no DSN — lo
+  encontró la prueba con cliente real; un login de prueba sin clave colgó el CI (TCP con contraseña): dar clave en
+  ejecución y plazos a las esperas; (4) verificar en vivo los dominios oficiales de las semillas (el municipal era
+  `munivillarrica.cl`); (5) la búsqueda web gratuita desde una IP no sirve de base (ver integraciones).

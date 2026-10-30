@@ -47,6 +47,15 @@ selectores CSS → LLM** sobre el texto. Cada nivel solo si el anterior no exist
   bots en su User Agreement).
 - Catálogo de fuentes de empleo verificado en vivo: `casos/job-hunter.md` § Fuentes.
 
+### Búsqueda web propia (SearXNG) — medido 2026-10-29
+- Imagen `searxng/searxng:<fecha>-<sha>`, solo `formats: [json]`, `outgoing.proxies.all://` (curl_cffi) y bajar
+  `search.suspended_times` a minutos. Al arrancar baja las listas de ClearURLs **sin proxy** (la NetworkPolicy lo corta).
+- Desde una IP doméstica: brave → 429 con captcha; duckduckgo → CAPTCHA tras ~6 consultas y `unexpected crash` con
+  `site:`; google y qwant → access denied; bing responde pero con resultados pobres. **No basar un flujo en la
+  búsqueda gratuita**: URLs conocidas + enlaces de páginas oficiales primero; API de pago con clave si hace falta.
+- Portal de Transparencia (CPLT) responde 403 a clientes automáticos; los códigos de organismo del CPLT se repiten en
+  leylobby (`AP011` = SERVIU Araucanía; `MU339` = Municipalidad de Villarrica).
+
 ## Navegador asistido (humano en el bucle)
 
 - **Playwright** prellena; la persona revisa y envía. Nunca pulsar «Enviar» por código en formularios de terceros.
