@@ -62,7 +62,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 4. No hay `develop`, `release/` ni `hotfix/`: un arreglo urgente es una rama `fix/` más.
 5. Flux aplica `main`, así que mergear es desplegar. Para probar un cambio antes del merge: `flux suspend ks <app>` → cambio a mano → PR → merge apenas se confirma que funciona → `flux resume ks <app>`. Nunca dejar una Kustomization suspendida (`hl.py flux` las lista).
 
-El repo es privado en el plan gratuito: GitHub no permite proteger `main`, así que el flujo se cumple por convención. Nada de push directo a `main` ni `--force`.
+El repo es **público** (sirve de portafolio; todo lo que se commitee queda a la vista, secretos solo con SOPS) y en el plan gratuito GitHub no permite proteger `main`, así que el flujo se cumple por convención. Nada de push directo a `main` ni `--force`.
 
 ## Referencias
 
