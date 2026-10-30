@@ -2,8 +2,8 @@
 # en la web, espera su aprobación y ejecuta las tareas aprobadas (descubrimiento de canales, inventario, lector,
 # hallazgos, verificación, borradores). Escribe con usr_worker y verifica citas con usr_verificador.
 # Una réplica y Recreate: DBOS recupera los flujos a medias al arrancar; dos workers se pisarían.
-# Datos del solicitante (artículo 12 de la Ley 20.285): Secret opcional `solicitante` (claves
-# INVESTIGACION_SOLICITANTE_NOMBRE y _CORREO). Sin él, los borradores llevan marcadores; nunca salen hacia la API.
+# Datos del solicitante (artículo 12 de la Ley 20.285): Secret `solicitante` (solicitante.sops.yaml; Daniel
+# Riquelme, investigacion@danielriquelme.cl). Sin él, los borradores llevan marcadores; nunca salen hacia la API.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +22,9 @@ spec:
         investigacion/db: cliente
         investigacion/gateway: cliente
         investigacion/searxng: cliente
+      annotations:
+        # Las variables de un Secret se leen al arrancar: cambiar este valor al editar `solicitante` reinicia el worker.
+        investigacion/config: "2026-10-30-solicitante"
     spec:
       automountServiceAccountToken: false
       imagePullSecrets: [{name: ghcr-pull}]

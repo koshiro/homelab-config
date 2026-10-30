@@ -1,0 +1,26 @@
+# Datos del solicitante para las solicitudes de transparencia (artículo 12 de la Ley 20.285). Los agrega el worker al
+# borrador DESPUÉS del modelo: nunca salen hacia la API. Decisión de Daniel, 2026-10-30.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: solicitante
+    namespace: investigacion
+type: Opaque
+stringData:
+    INVESTIGACION_SOLICITANTE_NOMBRE: ENC[AES256_GCM,data:H2ADzburfTk5I0heoEKL,iv:OcNOuRMZI5tWOBUhSf5T5abv6Xgy61ChXcKy/jl+Vvc=,tag:xNKit7GXqwVL/bHZds6Icw==,type:str]
+    INVESTIGACION_SOLICITANTE_CORREO: ENC[AES256_GCM,data:ts5jTOHxfjGVbCk/PMpqzLmQcz6YHw7h+84KL1MwuQ==,iv:j9r+VI3kA9dg0OirN5o42XDA8nD8tJzf7MI1cWNs9aU=,tag:3rJGSSBh4wleSxbryYBGMA==,type:str]
+sops:
+    age:
+        - recipient: age1ga4dqzwv2wrf5c0dduz0vsjkzlda9xzrp787u2mnhhj6zh5qxaws4mlhhs
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhdDU4ZkdTazFuVm45b1lu
+            cnpmWmtWdkVEclJlNSszUEJQb3RaYU5WSGs4ClhpNk02dzFIMk50aE12d0xTUHR3
+            Ty9zUzFNYWtVS1pQU2pQcGxnbkV4L3MKLS0tIG9NMG5HZWhWdHF4LzBGTGxLVVNV
+            RzEwZ0RocGRpZU9UZlBaRHBtKzg2ZzQKbODwcWexvQKRhI+e9py0F4p8sPx4KN1t
+            RdPnn31WVlyNK2Vsg4oA2lF4/2uQwSSJ7/3jtyCsx8RYyhLYhKNWOQ==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-30T14:24:31Z"
+    mac: ENC[AES256_GCM,data:Ko5ocR8FFocjKd5vzqy7QuqvyIjSmJaHx1PEUhKcI4uoPEF4Qq08wFmpfHXkdeMEV0VY+KhyQNhKzV6uu3ZSbSLwm9lim97DdMbvsvw7TwM9HSrLgmIg3Lq7Hu39IpRTO2l2+pN4gaWGHwzznDv4tkq8BN709VuCYn3n+h43EJ8=,iv:rxuWMyp7sxXPcQlF1kmSGVmqPtJgR5w1cG3ngxYwgms=,tag:1aCCJdEd2YPD37KG4s/thg==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.2

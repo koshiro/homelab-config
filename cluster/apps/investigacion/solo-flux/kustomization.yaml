@@ -18,3 +18,4 @@ resources:
   - ../pg-usr-gateway.sops.yaml
   - ../web-secreto.sops.yaml
   - ../anthropic-api.sops.yaml
+  - ../solicitante.sops.yaml
