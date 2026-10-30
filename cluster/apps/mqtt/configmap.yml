@@ -34,3 +34,6 @@ data:
     # Relay remoto (otra ciudad) por WiFi
     user papo
     topic readwrite msh/#
+    # XIAO nRF52840 sin WiFi: MQTT Client Proxy desde la app conectada
+    user xiaonrf
+    topic readwrite msh/#
