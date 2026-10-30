@@ -29,7 +29,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: capture
-          image: ghcr.io/koshiro/investigacion:sha-af57e32
+          image: ghcr.io/koshiro/investigacion:sha-54e98a3
           args: [capture]
           env:
             - name: INVESTIGACION_DATABASE_URL
