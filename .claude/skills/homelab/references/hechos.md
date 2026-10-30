@@ -84,6 +84,13 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- Squid (egress-proxy) y SearXNG no releen su ConfigMap → cambiar la anotación `investigacion/config` de su
+  plantilla en el mismo PR para que Flux los reinicie. (2026-10-29)
+- Probar una imagen nueva antes del merge (Flux `wait: true`) → pod efímero en el namespace con la misma spec y sin
+  red (solo DNS): arranque, usuario, FS de solo lectura y `/healthz`; las migraciones nuevas se aplican antes con un
+  pod `migrar` (son aditivas). Receta en `cluster/apps/investigacion/README.md`. (2026-10-29)
+- `kubectl -n investigacion exec … cat /evidencia/evidencia/…` → la ruta montada es `/evidencia/<sha[0:2]>/<sha>`
+  (la columna `ruta` lleva el prefijo `evidencia/`). (2026-10-29)
 - Push con `.github/workflows/*` desde el pod claude-remote → «refusing to allow an OAuth App … without `workflow`
   scope». Desde el 2026-10-27 el `GH_TOKEN` del secreto (`cluster/apps/claude-remote/secret.sops.yml`, PR #167) es un
   token OAuth de gh con `gist, read:org, repo, workflow`, el mismo de `~/.config/gh/hosts.yml`; rige desde el reinicio
