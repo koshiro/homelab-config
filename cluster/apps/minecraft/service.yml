@@ -18,6 +18,15 @@ spec:
       port: 19132
       targetPort: 19132
       protocol: UDP
+    # Bedrock 26.60+ solo conecta por NetherNet: signaling HTTP (TCP) + WebRTC (UDP 19133)
+    - name: bedrock-signaling
+      port: 19132
+      targetPort: 19132
+      protocol: TCP
+    - name: bedrock-webrtc
+      port: 19133
+      targetPort: 19133
+      protocol: UDP
 ---
 # Simple Voice Chat va directo al servidor principal (no pasa por el proxy).
 apiVersion: v1
