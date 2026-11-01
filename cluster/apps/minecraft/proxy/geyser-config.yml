@@ -67,7 +67,7 @@ bedrock:
     # Settings for the external signaling service. Only used in the "nxs" and "hybrid" modes, or when built-in signaling cannot run.
     nxs:
       # Additional public UDP endpoints players can reach this server on, e.g. 198.51.100.1:19133 or [2001:db8::1]:19133. Port forwarding is not set up for you.
-      advertise-addresses: []
+      advertise-addresses: [minecraft.danielriquelme.cl:19133]
 
       # Access token for the signaling service, or file:/path/to/token to read it from a file. Leave empty to register without an account.
       token: ''
