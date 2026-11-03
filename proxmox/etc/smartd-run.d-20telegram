@@ -1,3 +1,12 @@
 #!/bin/sh
-# smartd -> Telegram (lo invoca smartd-runner con variables SMARTD_*)
-notify-telegram "💽 SMART ${SMARTD_DEVICE:-?} (${SMARTD_FAILTYPE:-?}): ${SMARTD_MESSAGE:-sin mensaje}"
+# smartd -> Telegram (lo invoca smartd-runner con variables SMARTD_*).
+# Agrupa: un aviso por dispositivo+tipo cada 7 días; lo repetido entre medio se cuenta y va en el siguiente.
+dir=/var/lib/smartd-telegram; mkdir -p "$dir"
+key=$(printf '%s_%s' "${SMARTD_DEVICE:-x}" "${SMARTD_FAILTYPE:-x}" | tr -c 'A-Za-z0-9_\n' _)
+stamp="$dir/$key"
+if [ -f "$stamp" ] && [ -z "$(find "$stamp" -mmin +10080)" ]; then
+  echo $(( $(cat "$stamp.n" 2>/dev/null || echo 0) + 1 )) > "$stamp.n"; exit 0
+fi
+n=$(cat "$stamp.n" 2>/dev/null || echo 0); : > "$stamp"; rm -f "$stamp.n"
+extra=""; [ "$n" -gt 0 ] && extra=" (+$n repetidos en 7 días)"
+notify-telegram "💽 SMART ${SMARTD_DEVICE:-?} (${SMARTD_FAILTYPE:-?}): ${SMARTD_MESSAGE:-sin mensaje}$extra"
