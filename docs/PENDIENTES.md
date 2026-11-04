@@ -134,6 +134,16 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
     `spl_kmem_cache_obj_per_slab=1` en
     `proxmox/etc/zfs.conf` (baja esas peticiones de orden 10 a orden ≤8) y, si el ARC sigue desplomándose,
     `zfs_arc_shrinker_limit` (hoy 0; el issue sugiere ~1300 para 64 GB).
+- Diagnóstico 2026-11-04: `spl_kmem_cache_obj_per_slab=1` no bastó. Con 15 GB libres kswapd sigue despertando
+  (histograma de 90 s: `spl_kmem_cache`, orden 8 `GFP_ATOMIC` y orden 0), el swap-out base es de 20–150 MiB/10 min
+  y hubo un pico de ~10 GB el 3-nov 02:05–03:30 (GMT-3). El ARC sigue en ~2,1–2,5 GB de 6. Todo el swap es de
+  `system.slice` (pveproxy/pvedaemon fríos); el caché de página es de 344 MB, así que kswapd solo puede sacar RAM
+  anónima y `vm.swappiness` no cambia nada. El fix **#19276 se fusionó en OpenZFS el 2026-10-19**, pero
+  `proxmox-kernel-7.0` 7.0.14-25…28 (ZFS 2.4.4-pve1) no lo trae.
+  - [ ] Aplicar `proxmox/systemd/drop-ins/system-slice-sin-swap.conf` en el host:
+    `systemctl set-property system.slice MemorySwapMax=0 && swapoff -a && swapon -a` (15 GB libres, seguro).
+    Mitiga el aviso, no la causa. Retirar junto con el de `qemu.slice` cuando llegue un kernel de Proxmox con el fix
+    (mirar `apt-get changelog proxmox-kernel-7.0` buscando «kswapd» o «vmem»; hoy está disponible el 7.0.14-28).
 - No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
 - Descartado: el balloon con free-page-reporting y THP no son la causa (en el foro de Proxmox VMs con `balloon: 0`
   también caían a swap); `vm.swappiness` no influye; `vm.watermark_boost_factor=0` solo calla kswapd unos minutos.
