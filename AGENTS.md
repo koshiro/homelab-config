@@ -16,6 +16,7 @@ página dice cuál leer según la tarea y reúne las reglas que aplican siempre.
 | ZFS, NFS, sanoid/syncoid/restic, LXC `nas` en Proxmox | `proxmox/README.md` | Fuente de verdad del host: qué archivo del repo va a qué ruta |
 | Suite arr, qBittorrent, Plex, Seerr (cola, atascos, calidad, actualizar) | **`.claude/skills/media-stack/SKILL.md`** | CLI `media.py` con salida compacta; leerla antes de explorar el repo o los pods |
 | ComfyUI (Media Assets, LoadImage, frontend, custom nodes, actualizar) | **`.claude/skills/comfyui/SKILL.md`** | CLI `comfy.py` (fuentes del frontend, API interna, assets) y cómo funcionan assets e historial |
+| Diseñar o revisar una pieza para imprimir en 3D, modelar con ScanRuler, reparar una pieza desde un escaneo | **`.claude/skills/diseno-impresion-3d/SKILL.md`** | Flujo por carga y orientación, reglas para la Ender-3 V2, recetas de ScanRuler probadas, evidencia con fuentes y `revisar_impresion.py` para STL y 3MF |
 | Respaldos y su verificación | `proxmox/README.md` § Tareas programadas, `cluster/00-infrastructure/backups/` | sanoid/syncoid/restic en el host + CronJobs `config-backup-*`, dump de Postgres y copia de etcd |
 | Pi master (voltaje, boot, overclock, apagarla) | `pibot/README.md` | |
 | Claude remoto (Remote Control desde claude.ai/móvil), memoria y skills sincronizadas con el Mac | `cluster/apps/claude-remote/README.md` | Pod con los repos en `/Users/daniel/git` y Syncthing de `~/.claude` (lista blanca) |
