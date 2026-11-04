@@ -140,8 +140,8 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
   `system.slice` (pveproxy/pvedaemon fríos); el caché de página es de 344 MB, así que kswapd solo puede sacar RAM
   anónima y `vm.swappiness` no cambia nada. El fix **#19276 se fusionó en OpenZFS el 2026-10-19**, pero
   `proxmox-kernel-7.0` 7.0.14-25…28 (ZFS 2.4.4-pve1) no lo trae.
-  - [ ] Aplicar `proxmox/systemd/drop-ins/system-slice-sin-swap.conf` en el host:
-    `systemctl set-property system.slice MemorySwapMax=0 && swapoff -a && swapon -a` (15 GB libres, seguro).
+  - [x] Aplicado 2026-11-04 en el host (`proxmox/systemd/drop-ins/system-slice-sin-swap.conf`):
+    `systemctl set-property system.slice MemorySwapMax=0 && swapoff -a && swapon -a`; swap usado 1,1 GB → 0.
     Mitiga el aviso, no la causa. Retirar junto con el de `qemu.slice` cuando llegue un kernel de Proxmox con el fix
     (mirar `apt-get changelog proxmox-kernel-7.0` buscando «kswapd» o «vmem»; hoy está disponible el 7.0.14-28).
 - No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
