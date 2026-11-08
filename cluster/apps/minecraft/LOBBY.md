@@ -85,7 +85,7 @@ Voice chat 24454/UDP ───────────────────�
 |---|---|
 | Plugins (Modrinth, `deployment.yml`) | Multiverse-Core, -Inventories, -Portals, -CommandDestination, BentoBox (+ AOneBlock por initContainer), Minigames With Friends, WorldEdit, FancyNpcs, Chunky (pregeneración). Floodgate (whitelist Bedrock con `fwhitelist`) |
 | Mundos | `lobby`, `parkour` (vacíos, aventura); `minijuegos` (normal, fácil); `oneblock_world*` (BentoBox); `world*` (supervivencia familiar anterior); `el_conejo` (supervivencia familiar nueva, semilla `5327173214429367666`, desde 2026-10-23). El laberinto se eliminó el 2026-10-03 |
-| Inventarios (`config/multiverse-inventories.groups.yml`) | `default` (world + nether + end), `juegos` (lobby), `parkour`, `minijuegos`, `oneblock`. `last_location` activo, `apply-last-location-for-all-teleports: true` y `disabled-shares: [last_location]` en `juegos`, `parkour` y `minijuegos` (llegan a su spawn); `default` (supervivencia) y `oneblock` (desde 2026-10-04) recuerdan dónde salieron o se desconectaron (OneBlock: la primera vez, `/ob` lleva a la isla). **No usar el destino `ll:`**: lee el perfil solo si está en caché y si no manda al spawn (2026-10-03: dos muertes por caída en el spawn viejo) |
+| Inventarios (`config/multiverse-inventories.groups.yml`) | `default` (world + nether + end), `conejo` (el_conejo + nether + end), `juegos` (lobby), `parkour`, `minijuegos`, `oneblock`. `last_location` activo, `apply-last-location-for-all-teleports: true` y `disabled-shares: [last_location]` en `juegos`, `parkour` y `minijuegos` (llegan a su spawn); `default` (supervivencia) y `oneblock` (desde 2026-10-04) recuerdan dónde salieron o se desconectaron (OneBlock: la primera vez, `/ob` lleva a la isla). **No usar el destino `ll:`**: lee el perfil solo si está en caché y si no manda al spawn (2026-10-03: dos muertes por caída en el spawn viejo) |
 | Portales (`config/multiverse-portals.portals.yml`) | `familiar_lobby` (mundo familiar → lobby) y los dos del parkour; `enforce-portal-access: false` |
 | NPCs (`config/fancynpcs.npcs.yml`) | copia de `plugins/FancyNpcs/npcs.yml` |
 | `/lobby` en Paper | alias en `commands.yml` + permiso por defecto `multiverse.teleport.self.w.lobby` en `permissions.yml` |
@@ -103,6 +103,12 @@ sin grupo es su propio inventario aislado). **Datapacks y plugins ya aplican sin
 servidor (los datapacks se cargan desde `world/datapacks/` y valen para todos los mundos; copiarlos a
 `el_conejo/datapacks/` es inútil, Paper lo ignora). Pregenerado radio 1000 con Chunky. Para ampliarlo:
 `chunky world el_conejo` → `chunky radius <n>` → `chunky start`.
+
+**Nether y End (2026-11-08):** `el_conejo` se creó sin dimensiones propias, así que el portal del Nether llevaba al
+`world_nether` por defecto y de ahí al mundo anterior. Arreglo: mundos `el_conejo_nether` y `el_conejo_the_end`
+(`mv create <n> nether|the_end --seed 5327173214429367666`, desde rcon con `rcon-cli -- mv create …`), plugin
+**Multiverse-NetherPortals** (enlaza `el_conejo` ↔ `el_conejo_nether` ↔ `el_conejo_the_end` por el sufijo del nombre)
+y grupo de inventario `conejo` con los tres mundos. Un mundo familiar nuevo necesita siempre sus tres dimensiones.
 
 ## Reconstruir
 
