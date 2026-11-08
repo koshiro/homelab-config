@@ -10,6 +10,13 @@ groups:
     - world_the_end
     shares:
     - all
+  conejo:
+    worlds:
+    - el_conejo
+    - el_conejo_nether
+    - el_conejo_the_end
+    shares:
+    - all
   juegos:
     worlds:
     - lobby
