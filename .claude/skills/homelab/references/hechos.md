@@ -273,4 +273,11 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
   vence a los 25–30 min sin avisar el resultado, así que re-armarlo si la condición no se cumplió. (2026-10-28)
 - Encadenar con `;` tras un `pytest | tail` sube cambios aunque fallen (el pipe devuelve 0): usar `&&` y no filtrar el
   código de salida de las pruebas. (2026-10-28)
-
+- **GPU de node-1 se perdía tras `systemctl daemon-reload`** (`NVML: Unknown Error` en Plex/Ollama/ComfyUI): causa = el hook
+  legacy del toolkit 1.17.x edita el cgroup sin que runc lo sepa (NVIDIA/nvidia-container-toolkit #1227); `apt-daily-upgrade`
+  lo dispara a las 06:46 UTC. Arreglado el 2026-11-09 subiendo a toolkit **1.20.1** (CDI just-in-time por defecto desde 1.18;
+  `libnvidia-container*` con la versión exacta) y probando `daemon-reload` con la GPU viva. Versión fija y en hold en el rol
+  `nvidia_gpu`. Driver 580 (LTSB hasta jun-2028): no subir de rama sin motivo. Alerta `GPUNoDisponible` (Telegram). (2026-11-09)
+- **Drenar un worker manda sus pods a pibot** (master, 3,8 GB, sin taint): el 2026-11-09 `minecraft-spiral2` (Java, 2 GiB) en
+  pibot hizo OOM en bucle, reinició k3s 41 veces y colgó el nodo (hubo que cortarle la corriente). Antes de un drain: `kubectl get pods
+  -A -o wide` y comprobar que lo pesado tenga afinidad que excluya pibot; los Deployments de Minecraft ya la tienen. (2026-11-09)
