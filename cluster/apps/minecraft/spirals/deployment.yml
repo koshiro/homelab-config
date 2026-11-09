@@ -79,6 +79,15 @@ spec:
       labels:
         app: minecraft-spiral2
     spec:
+      # Fuera de pibot (master, 3,8 GB): el 2026-11-09 un drain de node-1 llevó spiral2 allí y su OOM tumbó k3s
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
       terminationGracePeriodSeconds: 60
       containers:
         - name: minecraft
@@ -179,6 +188,15 @@ spec:
       labels:
         app: minecraft-spiral3
     spec:
+      # Fuera de pibot (master, 3,8 GB): el 2026-11-09 un drain de node-1 llevó spiral2 allí y su OOM tumbó k3s
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
       terminationGracePeriodSeconds: 60
       containers:
         - name: minecraft
