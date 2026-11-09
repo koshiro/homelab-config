@@ -20,6 +20,15 @@ spec:
       annotations:
         data/nfs-path: "192.168.1.100:/nvme/k8s/minecraft"
     spec:
+      # Fuera de pibot (master, 3,8 GB): el 2026-11-09 un drain de node-1 llevó spiral2 allí y su OOM tumbó k3s
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [pibot]
       # Tiempo para guardado graceful: save-all + /stop antes de SIGKILL (evita pérdida de datos)
       terminationGracePeriodSeconds: 90
       initContainers:
