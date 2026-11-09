@@ -1,6 +1,7 @@
 ---
 # tasks file for ansible/roles/nvidia_gpu
 # Este rol consolida la configuración completa de NVIDIA para un nodo worker de k3s.
+# Versión del toolkit: ver nvidia_gpu_toolkit_version en defaults/main.yml (subirla = quitar el hold, instalar los 4 y repetir la prueba de daemon-reload).
 
 - name: NVIDIA | 1. Deshabilitar driver nouveau
   tags: nvidia, driver
@@ -62,11 +63,29 @@
       args:
         creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-    - name: Instalar NVIDIA Container Toolkit
+    - name: Instalar NVIDIA Container Toolkit (las 4 versiones iguales)
+      # 1.17.x dejaba a los pods sin GPU tras un daemon-reload (NVML Unknown Error, toolkit #1227). Desde 1.18 el runtime
+      # usa CDI just-in-time y no hay carrera con runc. libnvidia-container* debe coincidir exactamente con el toolkit.
+      # Probado en node-1 el 2026-11-09: la GPU sobrevive al daemon-reload.
       ansible.builtin.apt:
-        name: nvidia-container-toolkit
+        name:
+          - "nvidia-container-toolkit={{ nvidia_gpu_toolkit_version }}"
+          - "nvidia-container-toolkit-base={{ nvidia_gpu_toolkit_version }}"
+          - "libnvidia-container-tools={{ nvidia_gpu_toolkit_version }}"
+          - "libnvidia-container1={{ nvidia_gpu_toolkit_version }}"
         state: present
+        allow_downgrade: true
         update_cache: yes
+
+    - name: Retener los 4 paquetes (unattended-upgrades no debe subirlos por separado)
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - nvidia-container-toolkit
+        - nvidia-container-toolkit-base
+        - libnvidia-container-tools
+        - libnvidia-container1
 
 - name: NVIDIA | 3. Configurar k3s para usar el runtime de NVIDIA
   tags: nvidia, k3s, runtime

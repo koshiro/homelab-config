@@ -167,3 +167,12 @@ groups:
         annotations:
           summary: "Flux: {{ $labels.customresource_kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} suspendida"
           description: "Lleva 6 h suspendida: los cambios de main no se aplican. Terminar la prueba y flux resume (receta «cambio temporal en vivo»)."
+  - name: gpu
+    rules:
+      - alert: GPUNoDisponible
+        expr: kube_node_status_allocatable{resource="nvidia_com_gpu"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.node }} sin GPU asignable"
+          description: "El device plugin no publica la GPU hace 5 min (Plex, Ollama y ComfyUI sin aceleración). Revisar nvidia-smi -L en un pod con GPU y el DaemonSet nvidia-device-plugin; receta en references/hechos.md § Trampas."
