@@ -251,6 +251,27 @@ def cmd_io(a):
         print(f"  {k:24} " + " ".join(f"{c}={filas[k][c]:.0f}" for c in nodo if c in filas[k]))
 
 
+def cmd_vm(a):
+    """Serie temporal de una consulta PromQL (query_range) por el proxy del apiserver: una línea por serie con
+    etiquetas útiles y hora=valor; --rango 24h --paso 1h; --hasta ISO UTC para mirar el pasado; --min oculta valores menores."""
+    import datetime as dt
+    hasta = dt.datetime.fromisoformat(a.hasta.replace("Z", "+00:00")) if a.hasta else dt.datetime.now(dt.timezone.utc)
+    seg = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    rango = int(a.rango[:-1]) * seg[a.rango[-1]]
+    qs = urllib.parse.urlencode({"query": a.query, "start": hasta.timestamp() - rango, "end": hasta.timestamp(), "step": a.paso})
+    r = json.loads(sh(["kubectl", "get", "--raw", f"/api/v1/namespaces/monitoring/services/victoria-metrics:8428/proxy/api/v1/query_range?{qs}",
+                       "--request-timeout=30s"], reintentos=1))["data"]["result"]
+    if not r:
+        print("sin series"); return
+    fmt = "%d %H:%M" if rango > 86400 else "%H:%M"
+    for serie in r:
+        m = serie["metric"]
+        et = ",".join(f"{k}={m[k]}" for k in ("instance", "device", "namespace", "pod", "container", "job") if k in m) or m.get("__name__", "")
+        vals = [(dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime(fmt), float(v)) for t, v in serie["values"]]
+        vals = [(t, v) for t, v in vals if a.min is None or v >= a.min]
+        print(f"{et or '-'}: " + " ".join(f"{t}={v:.{a.dec}f}" for t, v in vals))
+
+
 def cmd_sops(a):
     env = {**os.environ, "SOPS_AGE_KEY_FILE": str(AGE_KEY)}
     # Sin «apply»: desde 2026-10-16 Flux descifra y aplica los *.sops.* (Component solo-flux) al mergear.
@@ -516,6 +537,9 @@ def main():
     sp.add_parser("alertas", help="alertas activas de vmalert (pending/firing), una por línea; horas en UTC")
     s = sp.add_parser("io", help="latencia/uso por disco e iowait/PSI por nodo (máximo de --ventana); --en 2026-10-17T01:36:00Z para mirar una ráfaga pasada")
     s.add_argument("--en"); s.add_argument("--ventana", default="10m")
+    s = sp.add_parser("vm", help="vm '<promql>' [--rango 24h] [--paso 1h] [--hasta <ISO UTC>] [--min N]: serie temporal compacta de VictoriaMetrics (query_range)")
+    s.add_argument("query"); s.add_argument("--rango", default="24h"); s.add_argument("--paso", default="1h"); s.add_argument("--hasta")
+    s.add_argument("--min", type=float); s.add_argument("--dec", type=int, default=0)
     s = sp.add_parser("sops", help="keys|encrypt <archivo> con SOPS_AGE_KEY_FILE ya puesto (aplicar = merge; lo hace Flux)")
     s.add_argument("accion", choices=["keys", "encrypt"]); s.add_argument("archivo")
     s = sp.add_parser("ssh", help="ssh <pibot|pve|node-1..3> <comando>: LAN y si no, tailnet")

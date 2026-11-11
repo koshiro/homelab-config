@@ -11,6 +11,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `systemd/drop-ins/syncoid-respaldo-notify.conf` | `/etc/systemd/system/syncoid-respaldo.service.d/notify.conf` |
 | `systemd/drop-ins/syncoid-replica-notify.conf` | `/etc/systemd/system/syncoid-replica.service.d/notify.conf` |
 | `systemd/drop-ins/qemu-slice-sin-swap.conf` | `/etc/systemd/system.control/qemu.slice.d/50-MemorySwapMax.conf` (lo escribe `systemctl set-property qemu.slice MemorySwapMax=0`; en caliente) |
+| `systemd/drop-ins/system-slice-sin-swap.conf`, `init-scope-sin-swap.conf`, `user-slice-sin-swap.conf` | `/etc/systemd/system.control/<unidad>.d/50-MemorySwapMax.conf` (ídem, `systemctl set-property <unidad> MemorySwapMax=0`) |
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |

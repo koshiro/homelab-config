@@ -18,6 +18,7 @@ $H wait <ns> <deploy> [--kind sts] [--timeout 5m]   # en vez de sleep; si falla 
 $H flux                       # fuente vs SHA de main, ks activas (Ready, revisión), suspendidas, HelmReleases, nodo de los pods
 $F reconcile ks <ks> --with-source                  # F=~/.cache/flux-plan/bin/flux; tras un merge, sin esperar los 5 min
 $H alertas                    # alertas activas de vmalert (pending/firing), horas en UTC
+$H vm '<promql>' [--rango 24h --paso 1h --hasta <ISO UTC> --min N]   # serie temporal compacta (query_range); historia de una alerta
 $H io [--en <ISO UTC>] [--ventana 6m]               # latencia/uso por disco, iowait y PSI por nodo (pve incluido)
 $H sops keys|encrypt <archivo>                      # con SOPS_AGE_KEY_FILE puesto; keys = solo nombres; aplicar = merge
 $H ssh <pibot|pve|node-1..3> <comando>              # LAN y, si no responde, tailnet

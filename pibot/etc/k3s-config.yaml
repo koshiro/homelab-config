@@ -1,3 +1,20 @@
 tls-san:
   - pibot
   - k3s-node-0
+
+# Un solo server (etcd de un miembro): la elección de líder de los controladores no aporta nada y es la forma en que
+# un atasco del NVMe de pibot tumba el cluster entero. El 2026-11-11 02:47 (y el 2026-10-29 02:50) el fsync del WAL
+# de etcd subió a 0,5–2,5 s durante ~35 s; el cloud-controller-manager no pudo renovar su lease (10 s) y k3s salió
+# con «leaderelection lost»: API caído ~2 min, Flux y los demás controladores perdieron sus leases y entraron en
+# CrashLoopBackOff. Sin elección, los controladores esperan a etcd en vez de matar el proceso. Si algún día hay un
+# segundo server, quitar estas tres líneas. Aplicar: copiar a /etc/rancher/k3s/config.yaml y `systemctl restart k3s`.
+kube-controller-manager-arg:
+  - leader-elect=false
+kube-scheduler-arg:
+  - leader-elect=false
+kube-cloud-controller-manager-arg:
+  - leader-elect=false
+
+# Métricas de etcd en 0.0.0.0:2381 (sin TLS, solo LAN): VictoriaMetrics las lee en el job `etcd` y la alerta
+# EtcdFsyncLento avisa antes de que el disco tumbe el API. Sin esto solo escucha en 127.0.0.1.
+etcd-expose-metrics: true

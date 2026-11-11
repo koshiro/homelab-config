@@ -28,6 +28,16 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - VM 105 `opencontracts-lab` (192.168.1.140) es un laboratorio temporal: no versionar nada de ella.
 - El pod `claude-remote` tiene la misma paridad de acceso (`HOME=/Users/daniel`, repos en `~/git`).
 
+- pibot: NVMe Toshiba KBG30ZMV256G (BG3, sin DRAM, PCIe 2.0 x1) con fsync de ~2,5 ms de media y atascos de 0,5–2,5 s
+  por escritura durante 30–60 s (3 veces en 30 días, dos en la ventana de respaldos 02:40–02:50). etcd está ahí
+  (`/var/lib/rancher/k3s/server/db`, 26 MB). Desde el PR del 2026-11-11 k3s (kube-controller-manager, scheduler, ccm)
+  y los 4 controladores de Flux corren **sin elección de líder** para que un atasco no los mate; métricas de etcd en
+  `http://192.168.1.15:2381/metrics` (job `etcd`, alertas `EtcdFsyncLento` y `K3sServerReiniciado`). Config versionada
+  en `pibot/etc/k3s-config.yaml` → `/etc/rancher/k3s/config.yaml` + `sudo systemctl restart k3s` (API ~2 min caído).
+  Detalle: `$H doc PENDIENTES 4g`. (2026-11-11)
+- Horas de los logs: `journalctl --since` interpreta hora **local del host** (pibot y pve en GMT-3, los workers en UTC)
+  y `--utc` solo cambia lo que imprime; las notificaciones de Telegram y `kubectl` están en UTC. (2026-11-11)
+
 ## Cloudflare
 - Cuenta `84f8d7966bfc3d39812bebeeeed0cfa4`; zonas `danielriquelme.cl`, `josekast.cl`; túneles `pve` (conectores en
   workers, comodín `*.danielriquelme.cl` → Traefik) y `pibot-webs` (conector en pibot, sitios estáticos → NodePort).
@@ -84,6 +94,17 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- Flux `PodReiniciando` de los 4 controladores a la vez (exit 1, «failed to get server groups: 503» en `--previous`)
+  → no es Flux: el API de pibot estuvo caído o lento. Mirar `$H vm 'changes(process_start_time_seconds{job="etcd"}[30m])'`,
+  `sudo journalctl -u k3s` en pibot («leaderelection lost» = k3s salió por etcd lento) y `$H io --en <hora>`. (2026-11-11)
+- Pod claude-remote: sesiones nuevas con «Authentication failed» y en tmux «Failed to refresh session … token: Remote
+  Control is only available with claude.ai subscriptions» → el pod está deslogueado (`claude auth status` →
+  `loggedIn: false`; `.credentials.json` con `expiresAt: 0`) aunque los `remote-control` padres sigan «Connected».
+  Arreglo: `claude auth login` en el pod (interactivo, lo hace el usuario) o, permanente, `claude setup-token` en el
+  Mac → clave `CLAUDE_CODE_OAUTH_TOKEN` del Secret (README de claude-remote). `bash -lc 'claude …'` no encontraba el
+  binario (home NFS sin `.profile`): desde el PR del 2026-11-11 bootstrap.sh lo escribe; antes, `export
+  PATH=$HOME/.local/bin:$PATH` o `tmux capture-pane -p -t rc:<n>` para ver las ventanas. (2026-11-11)
+- `kubectl -n claude-remote exec … bash -lc 'claude auth status'` dice `command not found` → PATH (ver arriba). (2026-11-11)
 - Squid (egress-proxy) y SearXNG no releen su ConfigMap → cambiar la anotación `investigacion/config` de su
   plantilla en el mismo PR para que Flux los reinicie. (2026-10-29)
 - Probar una imagen nueva antes del merge (Flux `wait: true`) → pod efímero en el namespace con la misma spec y sin

@@ -44,8 +44,12 @@ fetch gh $GH_VER "curl -fsSL https://github.com/cli/cli/releases/download/v$GH_V
 fetch node $NODE_VER "rm -rf ~/.local/node && mkdir -p ~/.local/node && curl -fsSL https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz | tar -xJ -C ~/.local/node --strip-components=1"
 fetch uv 1 "curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=\$HOME/.local/bin INSTALLER_NO_MODIFY_PATH=1 sh"
 fetch ansible 1 "uv tool install --with-executables-from ansible-core ansible"
-# Claude Code se actualiza solo; solo se instala si falta.
+# Claude Code: se instala si falta y se actualiza en cada arranque (los procesos remote-control viven semanas y no
+# se actualizan solos; el pod quedó en 2.1.296 con el Mac en 2.1.321).
 command -v claude >/dev/null || fetch claude 1 "curl -fsSL https://claude.ai/install.sh | bash"
+claude update >/dev/null 2>&1 || log "AVISO: claude update falló"
+# PATH para los shells de login (kubectl exec … bash -lc 'claude …'): el home es NFS y no trae .profile.
+grep -qs 'local/bin' ~/.profile || echo 'export PATH="$HOME/.local/bin:$HOME/.local/node/bin:$PATH"' >> ~/.profile
 
 # 4. git: HTTPS con GH_TOKEN (Secret) como credencial
 git config --global user.name "Daniel Riquelme"
@@ -72,11 +76,19 @@ for p in $(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' 
   claude plugin install "$p" >/dev/null 2>&1 || true
 done
 
-# 8. Login (una vez, interactivo; el token queda en ~/.claude/.credentials.json, fuera de la lista blanca de Syncthing)
-until claude auth status 2>/dev/null | jq -e .loggedIn >/dev/null; do
-  log "sin sesión: kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- bash -lc 'claude auth login'"
-  sleep 60 & wait $!
-done
+# 8. Login. Preferido: token de larga vida (`claude setup-token` en el Mac → clave CLAUDE_CODE_OAUTH_TOKEN del
+#    Secret), que no se refresca ni caduca en meses. Sin él, login interactivo una vez: el token queda en
+#    ~/.claude/.credentials.json (fuera de la lista blanca de Syncthing) y lo refrescan tres procesos remote-control a
+#    la vez; el 2026-11-10 eso dejó el pod deslogueado («Remote Control is only available with claude.ai
+#    subscriptions») y las sesiones nuevas fallaban con «Authentication failed».
+if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+  log "autenticación con CLAUDE_CODE_OAUTH_TOKEN (Secret)"
+else
+  until claude auth status 2>/dev/null | jq -e .loggedIn >/dev/null; do
+    log "sin sesión: kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- bash -lc 'claude auth login'"
+    sleep 60 & wait $!
+  done
+fi
 
 # 9. Remote Control: una ventana tmux por repo, con reinicio automático. Inspeccionar con
 #    kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- tmux attach -t rc

@@ -112,6 +112,23 @@ scrape_configs:
       - target_label: cluster
         replacement: homelab
 
+  # etcd embebido de k3s en pibot (pibot/etc/k3s-config.yaml: etcd-expose-metrics). Solo latencia de disco, líder y
+  # arranque del proceso: lo que usan EtcdFsyncLento y K3sServerReiniciado.
+  - job_name: etcd
+    static_configs:
+      - targets: [192.168.1.15:2381]
+    relabel_configs:
+      - target_label: instance
+        replacement: pibot
+      - target_label: node
+        replacement: pibot
+      - target_label: cluster
+        replacement: homelab
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: etcd_disk_(wal_fsync|backend_commit)_duration_seconds_.*|etcd_server_(has_leader|leader_changes_seen_total|proposals_failed_total|slow_apply_total)|etcd_mvcc_db_total_size_in_bytes|process_start_time_seconds
+        action: keep
+
   # Host Proxmox vía API (VMs, LXC, storage). target = host a consultar.
   - job_name: pve
     metrics_path: /pve

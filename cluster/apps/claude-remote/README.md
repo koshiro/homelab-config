@@ -30,7 +30,15 @@ Revocar: borrar el ClusterRoleBinding, quitar la llave de los `authorized_keys` 
 # Desplegar: lo aplica Flux al mergear a main (el secreto entra por solo-flux/). Para no esperar:
 ~/.cache/flux-plan/bin/flux reconcile ks claude-remote --with-source
 
-# Primer login (una vez; el token queda en el NFS)
+# Login, opción A (recomendada): token de larga vida, sin refrescos. En el Mac, `claude setup-token` abre el
+# navegador y devuelve un token; guardarlo en el Secret y reiniciar el pod:
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops set cluster/apps/claude-remote/secret.sops.yml \
+  '["data"]["CLAUDE_CODE_OAUTH_TOKEN"]' "\"$(printf %s '<token>' | base64)\""
+#   Mergear y: kubectl -n claude-remote rollout restart deploy/claude-remote --field-manager=reinicio-manual
+#   El token dura ~1 año: anotar la fecha y repetir antes de que venza.
+# Login, opción B: interactivo (el token queda en ~/.claude/.credentials.json del NFS). Tres procesos remote-control
+# refrescan ese mismo archivo; el 2026-11-10 quedó deslogueado y las sesiones nuevas morían con «Authentication
+# failed» / «Remote Control is only available with claude.ai subscriptions». Comprobar: claude auth status.
 kubectl -n claude-remote exec -it deploy/claude-remote -c claude -- bash -lc 'claude auth login'
 
 # Ver las ventanas de Remote Control (Ctrl-b d para salir). La primera vez cada repo pregunta

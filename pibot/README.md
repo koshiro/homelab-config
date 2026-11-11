@@ -9,7 +9,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 |---|---|
 | `boot/config.txt` | `/boot/firmware/config.txt` (reiniciar para aplicar) |
 | `boot/cmdline.txt` | `/boot/firmware/cmdline.txt` (una sola línea, sin salto final) |
-| `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml` |
+| `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml` (`sudo systemctl restart k3s` para aplicar: API caído ~2 min; sin elección de líder y métricas de etcd, ver docs/PENDIENTES.md § 4g) |
 
 ## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
 

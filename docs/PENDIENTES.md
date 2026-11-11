@@ -144,6 +144,14 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
     `systemctl set-property system.slice MemorySwapMax=0 && swapoff -a && swapon -a`; swap usado 1,1 GB → 0.
     Mitiga el aviso, no la causa. Retirar junto con el de `qemu.slice` cuando llegue un kernel de Proxmox con el fix
     (mirar `apt-get changelog proxmox-kernel-7.0` buscando «kswapd» o «vmem»; hoy está disponible el 7.0.14-28).
+- 2026-11-11: `SwapOutHostProxmox` otra vez (361 MiB/h a las 08:46, 300–500 MiB/h desde las 09:00) con 15,8 GB
+  libres, ARC en 2,0 GB de 6 y swap usado total de 49 MB: es la misma RAM fría que sale y vuelve a entrar. Con
+  `qemu.slice` y `system.slice` en `MemorySwapMax=0` (eventos `max`/`fail` en 0), solo pueden ir a swap `init.scope`
+  (systemd, 2,4 MB) y `user.slice`. Kernel instalado 7.0.14-24; disponible 7.0.14-28, sin el fix.
+  - [ ] Cerrar el hueco con `proxmox/systemd/drop-ins/init-scope-sin-swap.conf` y `user-slice-sin-swap.conf`:
+    `systemctl set-property init.scope MemorySwapMax=0 && systemctl set-property user.slice MemorySwapMax=0 &&
+    swapoff -a && swapon -a`. Con eso no queda nada que kswapd pueda mandar a swap; `SwapHostProxmox` deja de ser
+    señal de nada hasta que se retiren los cuatro drop-ins con el kernel arreglado.
 - No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
 - Descartado: el balloon con free-page-reporting y THP no son la causa (en el foro de Proxmox VMs con `balloon: 0`
   también caían a swap); `vm.swappiness` no influye; `vm.watermark_boost_factor=0` solo calla kswapd unos minutos.
@@ -223,6 +231,28 @@ sin workers.
      con `sync=disabled` y `autotrim=on`. Ojo: node-1 llega a bajar a ~95 MB/s, más que los 75 MB/s sostenidos; sirve
      si las descargas grandes caben en la caché. Baja `scratch` de 2,6 TB a ~1,4 TB.
   3. Disco de uso general en un PC (biblioteca de juegos, lectura): ahí la escritura sostenida casi no importa.
+
+## 4g. etcd de pibot: el NVMe se atasca y tumba el API (2026-11-11)
+
+El NVMe de pibot (Toshiba KBG30ZMV256G, BG3 sin DRAM, PCIe 2.0 x1) hace fsync en ~2,5 ms de media (99 % bajo 8 ms,
+`dd oflag=dsync` 4K = 7,9 ms) pero se atasca a ratos: escrituras de 0,5–2,5 s con 1 MB/s durante 30–60 s. En 30 días
+pasó 3 veces (`node_disk_write_time` > 200 ms/op): 10-29 02:50, 11-09 (incidente de minecraft en pibot) y 11-11 02:47;
+las dos «limpias» caen en la ventana de respaldos 02:40–02:50, aunque los cuatro jobs de pibot mueven < 40 MB.
+Efecto en cadena el 11-11 02:47: etcd `slow fdatasync` → API con `Handler timeout` → el cloud-controller-manager de
+k3s no renueva su lease en 10 s → `leaderelection lost` → **k3s sale** (exit 1, reinicio 42 de la unidad) → API
+caído 02:47:41–02:49 (+ ~1 min de 503) → los 4 controladores de Flux pierden su lease (30 s), salen con 1 y
+encadenan CrashLoopBackOff (`failed to get server groups: 503`) → aviso `PodReiniciando` 02:50–03:20. El 11-10 18:50
+y el 10-29 02:50 Flux reinició igual sin que k3s cayera (bastó el atasco).
+
+- [x] 2026-11-11 (PR de esta sección): sin elección de líder en k3s (`pibot/etc/k3s-config.yaml`:
+  kube-controller-manager, kube-scheduler y cloud-controller-manager con `leader-elect=false`; un solo server) y en
+  Flux (`--enable-leader-election=false`, 1 réplica y `Recreate`). Un atasco ahora solo retrasa; no mata procesos.
+  Métricas de etcd expuestas (`etcd-expose-metrics`, job `etcd`) y alertas `EtcdFsyncLento` (p99 > 100 ms 5 min) y
+  `K3sServerReiniciado`. Aplicar en pibot: copiar el config y `sudo systemctl restart k3s` (API ~2 min caído).
+- [ ] Si `EtcdFsyncLento` suena fuera de la ventana de respaldos o más de una vez por semana: cambiar el NVMe de
+  pibot por uno con DRAM (o mover etcd a un disco aparte). Diagnóstico: `hl.py io --en <hora>`; `curl -s
+  http://192.168.1.15:2381/metrics | grep etcd_disk_wal_fsync_duration_seconds_bucket` da el histograma acumulado.
+- [ ] Opcional: escalonar los `config-backup-*` de pibot (hoy 02:47 ×3 y 02:48) si la alerta confirma que es ahí.
 
 ## 5. Monitoreo — VictoriaMetrics + Grafana
 
