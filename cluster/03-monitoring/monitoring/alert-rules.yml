@@ -80,6 +80,23 @@ groups:
         annotations:
           summary: "Host Proxmox: {{ $value | printf \"%.0f\" }} MiB a swap en 1 h"
           description: "Swap-out sostenido con el bug de kswapd. Ver qué despierta kswapd (PENDIENTES § 4b3) y el ARC (node_zfs_arc_size)."
+      - alert: EtcdFsyncLento
+        # El NVMe de pibot (Toshiba BG3, sin DRAM) se atasca a ratos: fsync del WAL de 0,5–2,5 s durante 30–60 s
+        # (2026-10-29 02:50 y 2026-11-11 02:47, ambas en la ventana de respaldos 02:40–02:50). Con eso el API da
+        # timeouts y los controladores pierden sus leases. Línea base: media 2,5 ms, 99 % bajo 8 ms.
+        expr: histogram_quantile(0.99, sum by (le) (rate(etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd"}[5m]))) > 0.1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "etcd en pibot: fsync p99 de {{ $value | printf \"%.2f\" }} s"
+          description: "El disco de pibot lleva 5 min con fsync del WAL > 100 ms (p99). hl.py io --en <hora> y qué corre en pibot; si se repite fuera de los respaldos, cambiar el NVMe (PENDIENTES § 4g)."
+      - alert: K3sServerReiniciado
+        # El 2026-11-11 k3s salió con «leaderelection lost» y lo único que sonó fue PodReiniciando de Flux.
+        expr: changes(process_start_time_seconds{job="etcd"}[30m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "k3s en pibot se reinició"
+          description: "El proceso k3s server (API + etcd) arrancó de nuevo hace menos de 30 min: sudo journalctl -u k3s en pibot («leaderelection lost» = etcd lento, PENDIENTES § 4g)."
       - alert: TemperaturaPibotAlta
         expr: max by (instance) (node_thermal_zone_temp{instance="pibot"}) > 75
         for: 10m

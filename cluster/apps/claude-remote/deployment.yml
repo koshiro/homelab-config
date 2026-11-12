@@ -73,6 +73,10 @@ spec:
             - name: GH_TOKEN
               valueFrom:
                 secretKeyRef: {name: claude-remote, key: GH_TOKEN}
+            # Token de larga vida de `claude setup-token` (README § Login). Opcional: sin la clave, login interactivo.
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef: {name: claude-remote, key: CLAUDE_CODE_OAUTH_TOKEN, optional: true}
           resources:
             requests: {cpu: 200m, memory: 1Gi}
             limits: {memory: 4Gi}

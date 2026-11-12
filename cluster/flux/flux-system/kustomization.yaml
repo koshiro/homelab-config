@@ -34,3 +34,15 @@ patches:
                         - key: kubernetes.io/hostname
                           operator: In
                           values: [k3s-node-2, k3s-node-3]
+  # Sin elección de líder: cada controlador corre con 1 réplica y strategy Recreate, así que no hay a quién
+  # elegir. Con ella, un atasco de etcd en pibot (fsync de segundos, 2026-10-29 y 2026-11-11) o el reinicio de k3s
+  # les hacía perder el lease a los 30 s, salir con código 1 y encadenar CrashLoopBackOff (el arranque falla si el
+  # API aún devuelve 503). Sin ella, esperan al API y siguen. Se agrega al final de args: en pflag el último valor
+  # gana sobre el --enable-leader-election de gotk-components.yaml, y no depende de la posición del argumento.
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=flux
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --enable-leader-election=false
