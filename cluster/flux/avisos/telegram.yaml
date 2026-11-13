@@ -5,6 +5,9 @@
 # exclusionList: pasado el progressDeadlineSeconds el Deployment queda Failed y cada retryInterval (2 min) repite
 # «failed early due to stalled resources» con otra duración, que el rate limit no agrupa (fase 6: 8 de 10 avisos en
 # 21 min). El primer aviso (timeout de la health check) sí llega; lo que sigue trabado lo avisa FluxSinReconciliar.
+# Lo mismo con «unable to list remote … ssh: handshake failed»: durante las caídas de Git de GitHub (2026-11-04, 40
+# avisos en 100 min) GitHub rechaza la deploy key válida y cada reintento fallido llegaba a Telegram. Si dura, lo
+# avisa FluxSinReconciliar a los 15 min (la llave se verifica con `gh repo deploy-key list` y el secret flux-system).
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
@@ -27,6 +30,7 @@ spec:
   eventSeverity: error
   exclusionList:
     - "failed early due to stalled resources"
+    - "unable to list remote .* ssh: handshake failed"
   eventSources:
     - kind: GitRepository
       name: "*"
