@@ -94,6 +94,9 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 - Horas: el usuario está en GMT-3; APIs y logs dan UTC: convertir al reportar.
 
 ## Trampas (error → forma correcta)
+- Cambié algo en `pibot/` (`etc/k3s-config.yaml`) y mergeé, pero el host no cambió (el scrape de etcd estuvo caído 26 h)
+  → Flux no aplica archivos del host. Después del merge: `ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml`
+  (`--check --diff` muestra la deriva; reinicia k3s, API caído ~2 min, solo si el archivo cambió). (2026-11-12)
 - Flux `PodReiniciando` de los 4 controladores a la vez (exit 1, «failed to get server groups: 503» en `--previous`)
   → no es Flux: el API de pibot estuvo caído o lento. Mirar `$H vm 'changes(process_start_time_seconds{job="etcd"}[30m])'`,
   `sudo journalctl -u k3s` en pibot («leaderelection lost» = k3s salió por etcd lento) y `$H io --en <hora>`. (2026-11-11)

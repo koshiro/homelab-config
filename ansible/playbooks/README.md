@@ -20,7 +20,8 @@ ansible/
         ├── playbook_graceful_shutdown_cluster.yml  # Apagado ordenado (etcd, drain, LXC/VMs, host)
         ├── playbook_startup_cluster.yml            # Encendido: pools, NFS, uncordon, verificación
         ├── playbook_setup_gpu_node.yml             # Aplica el rol nvidia_gpu (usar --limit k3s-node-1)
-        └── playbook_configure_tailscale_ssh.yml    # Tailscale SSH en los nodos k3s
+        ├── playbook_configure_tailscale_ssh.yml    # Tailscale SSH en los nodos k3s
+        └── playbook_pibot_config.yml               # pibot/etc/k3s-config.yaml → /etc/rancher/k3s/config.yaml (+ reinicio si cambió)
 ```
 
 ## Uso
@@ -31,6 +32,10 @@ ansible-playbook ansible/playbooks/maintenance/playbook_graceful_shutdown_cluste
 
 # Encendido / verificación tras arrancar
 ansible-playbook ansible/playbooks/maintenance/playbook_startup_cluster.yml
+
+# Config de k3s en pibot (Flux no aplica archivos del host): --check --diff muestra la deriva
+ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml --check --diff
+ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml
 
 # Nodo GPU
 ansible-playbook ansible/playbooks/maintenance/playbook_setup_gpu_node.yml --limit k3s-node-1

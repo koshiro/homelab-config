@@ -1,0 +1,51 @@
+---
+# Aplica pibot/etc/k3s-config.yaml en /etc/rancher/k3s/config.yaml de pibot (master k3s).
+#
+# Flux solo aplica objetos de Kubernetes; este archivo es del sistema operativo de la Pi, así que un merge a main
+# NO lo despliega (2026-11-11: el scrape de etcd estuvo caído 26 h porque el archivo nunca se copió).
+#
+# Uso:
+#   ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml --check --diff   # ¿hay deriva?
+#   ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml                  # aplicar
+#   ... -e reiniciar_k3s=false                                                                # copiar sin reiniciar
+#
+# Reiniciar k3s deja el API caído ~2 min (un solo server); los pods siguen corriendo. Solo se reinicia si el
+# archivo cambió. Respaldo del anterior junto al archivo (config.yaml.<fecha>~).
+- name: Aplicar la config versionada de k3s en pibot
+  hosts: k3s_master
+  become: true
+  gather_facts: false
+  vars:
+    reiniciar_k3s: true
+    k3s_config_destino: /etc/rancher/k3s/config.yaml
+
+  tasks:
+    - name: Copiar pibot/etc/k3s-config.yaml
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../../pibot/etc/k3s-config.yaml"
+        dest: "{{ k3s_config_destino }}"
+        owner: root
+        group: root
+        mode: "0600"
+        backup: true
+      notify: Reiniciar k3s
+
+    - name: Forzar el handler ahora si hay cambios
+      ansible.builtin.meta: flush_handlers
+
+    - name: Comprobar que etcd expone métricas en la IP LAN (lo que scrapea VictoriaMetrics)
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:2381/metrics"
+        return_content: false
+      register: etcd_metrics
+      until: etcd_metrics.status == 200
+      retries: 30
+      delay: 10
+      when: not ansible_check_mode
+
+  handlers:
+    - name: Reiniciar k3s
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: restarted
+      when: reiniciar_k3s | bool
