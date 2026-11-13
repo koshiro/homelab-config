@@ -177,6 +177,14 @@ groups:
         annotations:
           summary: "Flux: {{ $labels.customresource_kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} sin Ready"
           description: "Sin Ready hace 15 min: main no se está aplicando ahí. flux get all -A --status-selector ready=false"
+      # CronJob backups/pibot-config-deriva (cada 30 min): falla si /etc/rancher/k3s/config.yaml de pibot difiere del de
+      # main. Flux no aplica archivos del host. >3600 s = al menos 3 corridas seguidas fallando (~1,5 h de margen).
+      - alert: PibotConfigDeriva
+        expr: kube_cronjob_status_last_schedule_time{namespace="backups", cronjob="pibot-config-deriva"} - kube_cronjob_status_last_successful_time{namespace="backups", cronjob="pibot-config-deriva"} > 3600
+        labels: {severity: warning}
+        annotations:
+          summary: "pibot: /etc/rancher/k3s/config.yaml difiere de main"
+          description: "Lleva más de 1 h en deriva. Ver el diff: kubectl -n backups logs job/<último pibot-config-deriva>. Aplicar: ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml (reinicia k3s si cambió)."
       - alert: FluxSuspendida
         expr: gotk_resource_info{suspended="true"} == 1
         for: 6h
