@@ -9,7 +9,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 |---|---|
 | `boot/config.txt` | `/boot/firmware/config.txt` (reiniciar para aplicar) |
 | `boot/cmdline.txt` | `/boot/firmware/cmdline.txt` (una sola línea, sin salto final) |
-| `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml`. **Flux no lo aplica**: tras el merge correr `ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml` (`--check --diff` para ver la deriva; reinicia k3s solo si cambió, API caído ~2 min). Sin elección de líder y métricas de etcd, ver docs/PENDIENTES.md § 4g |
+| `etc/k3s-config.yaml` | `/etc/rancher/k3s/config.yaml`. **Flux no lo aplica**: tras el merge correr `ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml` (`--check --diff` para ver la deriva; reinicia k3s solo si cambió, API caído ~2 min). El CronJob `backups/pibot-config-deriva` (cada 30 min) lo compara con `main` y la alerta `PibotConfigDeriva` avisa a Telegram si lleva >1 h distinto. Sin elección de líder y métricas de etcd, ver docs/PENDIENTES.md § 4g |
 
 ## Overclock: hoy 1500 MHz, 1800 MHz pendiente de un cable nuevo (2026-10-06)
 

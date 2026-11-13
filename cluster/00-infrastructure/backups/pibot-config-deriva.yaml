@@ -1,0 +1,58 @@
+# Detecta deriva entre pibot/etc/k3s-config.yaml (main en GitHub) y /etc/rancher/k3s/config.yaml de pibot.
+# Flux no aplica archivos del host: el 2026-11-11 el scrape de etcd estuvo caído 26 h porque el archivo se mergeó pero
+# nunca se copió. Aplicar: ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml
+#
+# Corre en pibot (hostPath de solo lectura) y compara con el archivo de main (repo público). Si hay diferencia el Job
+# falla; la alerta PibotConfigDeriva (03-monitoring) salta cuando llevan >1 h sin un Job exitoso, así un merge recién
+# hecho tiene ~1,5 h para aplicarse. Si GitHub no responde tras varios intentos se omite (exit 0): una caída de GitHub
+# no debe parecer deriva.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pibot-config-deriva
+  namespace: backups
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: pibot
+          containers:
+            - name: comparar
+              image: alpine:3.24
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  url=https://raw.githubusercontent.com/koshiro/homelab-config/main/pibot/etc/k3s-config.yaml
+                  for i in 1 2 3 4 5; do
+                    if wget -q -T 15 -O /tmp/repo.yaml "$url" && [ -s /tmp/repo.yaml ]; then ok=1; break; fi
+                    sleep 10
+                  done
+                  if [ -z "$ok" ]; then echo "GitHub no respondió: comparación omitida"; exit 0; fi
+                  if diff -u /host/config.yaml /tmp/repo.yaml; then
+                    echo "sin deriva"
+                  else
+                    echo "DERIVA: aplicar con ansible-playbook ansible/playbooks/maintenance/playbook_pibot_config.yml"
+                    exit 1
+                  fi
+              resources:
+                requests: {cpu: 10m, memory: 16Mi}
+                limits: {memory: 64Mi}
+              volumeMounts:
+                - name: k3s-config
+                  mountPath: /host
+                  readOnly: true
+          volumes:
+            - name: k3s-config
+              hostPath:
+                path: /etc/rancher/k3s
+                type: Directory
