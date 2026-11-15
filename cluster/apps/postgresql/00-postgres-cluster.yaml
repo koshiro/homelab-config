@@ -15,6 +15,13 @@ spec:
       owner: immich
       secret:
         name: homelab-postgres-superuser
+  # Lease del primario: con los 2 s por defecto cada Cluster hace 0,5 PUT/s al etcd de pibot (desgasta el NVMe).
+  # Con 10 s son 0,1/s. Tras una muerte sucia del primario la promoción espera hasta 60 s (un apagado limpio libera
+  # el lease al instante). Se lee del Cluster en caliente, sin reiniciar Postgres.
+  primaryLease:
+    leaseDurationSeconds: 60
+    renewDeadlineSeconds: 40
+    retryPeriodSeconds: 10
   enablePDB: true
   enableSuperuserAccess: false
   failoverDelay: 0
