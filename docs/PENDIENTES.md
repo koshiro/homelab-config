@@ -252,7 +252,12 @@ y el 10-29 02:50 Flux reinició igual sin que k3s cayera (bastó el atasco).
 - [ ] Si `EtcdFsyncLento` suena fuera de la ventana de respaldos o más de una vez por semana: cambiar el NVMe de
   pibot por uno con DRAM (o mover etcd a un disco aparte). Diagnóstico: `hl.py io --en <hora>`; `curl -s
   http://192.168.1.15:2381/metrics | grep etcd_disk_wal_fsync_duration_seconds_bucket` da el histograma acumulado.
-- [ ] Opcional: escalonar los `config-backup-*` de pibot (hoy 02:47 ×3 y 02:48) si la alerta confirma que es ahí.
+- [x] 2026-11-15: la alerta saltó 11-14 y 11-15 a las 02:53 (GMT-3), p99 ~425 ms, con `pibot/nvme0n1` al 87 % de uso y
+  190 ms por escritura (iowait 68 %): coincide con diez `config-backup-*` de pibot a la vez (02:45–02:48; cada uno
+  hace `apk add` + rsync sobre el mismo NVMe). Escalonados a uno cada 3 min entre 02:30 y 02:57 (PRs de esta fecha).
+  Aparte hubo picos menores fuera de la ventana (11-14 20:56 ~360 ms 4 min, sin llegar a disparar; 21:01 ~110 ms):
+  si tras el escalonado `EtcdFsyncLento` vuelve a sonar de madrugada o fuera de respaldos, ejecutar el punto anterior
+  (el NVMe tiene 37 % de desgaste y 104 881 entradas en su log de errores; `smartctl -a /dev/nvme0n1`).
 
 ## 5. Monitoreo — VictoriaMetrics + Grafana
 

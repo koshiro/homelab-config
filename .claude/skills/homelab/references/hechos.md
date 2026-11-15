@@ -57,7 +57,7 @@ Solo datos estables. Lo que cambia (pods, NodePorts libres, disco) se consulta c
 ## Convenciones
 - Series de NodePort: 3089x sitios estáticos en pibot (30890 josekast, 30891 noledigasanadie, 30892 cyano),
   30894 Syncthing de claude-remote. Siempre confirmar con `hl.py ports`.
-- Datos: `local-path` = disco de la VM, sin cuota ni respaldo (CronJob `config-backup-<app>` 02:40–02:48);
+- Datos: `local-path` = disco de la VM, sin cuota ni respaldo (CronJob `config-backup-<app>` 02:30–02:57);
   valiosos → NFS `nvme/k8s/<app>`; voluminosos reemplazables → `/mnt/homelab-storage/<app>`; pibot → hostPath.
 - Postgres compartido CNPG `homelab-postgres-rw.postgresql.svc.cluster.local:5432`.
 - Operador CNPG **1.30.1** (chart 0.29.1) desde 2026-10-27, con actualización en el lugar del instance manager;

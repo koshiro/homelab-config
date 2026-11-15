@@ -38,7 +38,7 @@ ExitWorktree `keep` → en `~/git/homelab-config`: `git pull --ff-only` → `git
 (`$H cf api GET 'accounts/{acc}/access/apps'`).
 
 ## Respaldo de un PVC local-path
-Copiar un bloque de `cluster/00-infrastructure/backups/app-config-backup.yaml`, siguiente minuto libre 02:40–02:48,
+Copiar un bloque de `cluster/00-infrastructure/backups/app-config-backup.yaml`, siguiente minuto libre 02:30–02:57 (en pibot, a 3 min del anterior),
 `APP`, `EXCLUDES`, `claimName`; agregar a `check-backups.sh`. Al mergear, Flux crea el CronJob (ks `backups`;
 `$F reconcile ks backups --with-source` para no esperar) → probar con `kubectl -n <ns> create job
 --from=cronjob/config-backup-<app> backup-prueba` → recién entonces copiar `check-backups.sh` a pve (si llega antes,

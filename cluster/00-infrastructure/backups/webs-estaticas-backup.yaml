@@ -14,7 +14,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "47 2 * * *"
+  schedule: "39 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -70,7 +70,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "47 2 * * *"
+  schedule: "42 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -126,7 +126,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "47 2 * * *"
+  schedule: "45 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1

@@ -42,7 +42,7 @@ export KUBECONFIG=~/.kube/config-homelab
 | Immich | `immich` | `immich.danielriquelme.cl` | NFS Proxmox `nvme/k8s/immich` + CNPG | ✅ |
 | Minecraft | `minecraft` | `minecraft.danielriquelme.cl` (Java 25565 / Bedrock 19132, LoadBalancer + DDNS) | NFS Proxmox `nvme/k8s/minecraft` | ✅ proxy Velocity + Geyser, servidores Paper `principal`, `spiral2`, `spiral3`, bot de whitelist ([LOBBY.md](cluster/apps/minecraft/LOBBY.md)) |
 | MQTT (Meshtastic) | `mqtt` | `mqtt.danielriquelme.cl:8883` (TLS, LoadBalancer + DDNS; router WAN 8883 → 192.168.1.15) | — (sin estado) | ✅ Mosquitto para unir mallas Meshtastic por internet ([README](cluster/apps/mqtt/README.md)) |
-| MeshMonitor | `meshmonitor` | `meshmonitor.danielriquelme.cl` (Cloudflare Access) · nodo virtual `192.168.1.15:4404` (LAN/tailnet) | local-path `meshmonitor-data` (SQLite, respaldo 02:47) | ✅ panel de la flota Meshtastic vía AcevedoRoof ([README](cluster/apps/meshmonitor/README.md)) |
+| MeshMonitor | `meshmonitor` | `meshmonitor.danielriquelme.cl` (Cloudflare Access) · nodo virtual `192.168.1.15:4404` (LAN/tailnet) | local-path `meshmonitor-data` (SQLite, respaldo 02:48) | ✅ panel de la flota Meshtastic vía AcevedoRoof ([README](cluster/apps/meshmonitor/README.md)) |
 | JobOps | `job-ops` | `jobops.danielriquelme.cl` (Cloudflare Access + login propio) | local-path `job-ops-data` (SQLite, respaldo 02:46) | 🧪 búsqueda de empleo remota, imagen oficial sin fork (skill app-dev, `casos/job-hunter.md`) |
 | Pingvin | `pingvin` | `pingvin.danielriquelme.cl` | NFS Proxmox `nvme/k8s/pingvin` | ✅ |
 | Plex | `plex` | `plex.danielriquelme.cl` · NodePort 32400 | config local-path + media NFS `homelab-storage/k8s-media-library` | ✅ |
@@ -66,7 +66,7 @@ export KUBECONFIG=~/.kube/config-homelab
 Regla: **los sitios estáticos corren en pibot con almacenamiento propio y deben seguir en línea si cae Proxmox.** El NAS solo guarda un respaldo.
 
 - **Pod:** nginx con `nodeName: pibot`, contenido en el disco NVMe de la Pi (`hostPath` `/var/lib/homelab-<sitio>`, solo lectura). Nada de NFS ni local-path de los workers.
-- **Respaldo:** CronJob `config-backup-<sitio>` (02:47, [webs-estaticas-backup.yaml](cluster/00-infrastructure/backups/webs-estaticas-backup.yaml)) copia el sitio a `nvme/k8s/backups/apps/<sitio>/data` en Proxmox (sanoid + syncoid + R2); `check-backups.sh` avisa si pasan más de 26 h. Si Proxmox está caído el job falla, pero el sitio sigue sirviéndose.
+- **Respaldo:** CronJob `config-backup-<sitio>` (02:39–02:45, [webs-estaticas-backup.yaml](cluster/00-infrastructure/backups/webs-estaticas-backup.yaml)) copia el sitio a `nvme/k8s/backups/apps/<sitio>/data` en Proxmox (sanoid + syncoid + R2); `check-backups.sh` avisa si pasan más de 26 h. Si Proxmox está caído el job falla, pero el sitio sigue sirviéndose.
 - **Exposición:** túnel propio `pibot-webs`, conector `cloudflared-webs` en pibot ([deployment-webs.yml](cluster/06-external/cloudflared/deployment-webs.yml)) con origen en el NodePort de cada sitio (`http://192.168.1.15:30890` / `30891` / `30892`). No pasa por Traefik ni CoreDNS (corren en los workers) y resuelve DNS con el router (`dnsPolicy: Default`): con Proxmox caído solo hacen falta pibot e internet. Las rutas viven en Cloudflare (Zero Trust → Tunnels → `pibot-webs` → Public hostnames). El túnel `pve` conserva sus reglas `josekast.cl` y los Ingress siguen: volver atrás = apuntar el CNAME al túnel `pve`.
 - **Publicar contenido:** `rsync -a --delete <carpeta>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/` (nginx sirve lo nuevo al instante). josekast.cl se genera con `~/git/twscrap/web/build.py` y se publica con `~/git/twscrap/web/publicar.sh`; Cyano Curve, con `~/git/cyano/scripts/publicar.sh`.
 - **Restaurar desde el NAS:** `rsync -a root@192.168.1.100:/nvme/k8s/backups/apps/<sitio>/data/ /tmp/<sitio>/ && rsync -a --delete /tmp/<sitio>/ daniel@k3s-node-0:/var/lib/homelab-<sitio>/`.
@@ -172,7 +172,7 @@ worker con drain y uncordon, moviendo antes el primario de Postgres si está en 
 `k3s_version` del playbook y el límite de `registry.k8s.io/kubectl` en `renovate.json`. Pasos exactos: skill homelab,
 `references/recetas.md` § Subir k3s.
 
-**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:40–02:48), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
+**Respaldos:** sanoid (snapshots de `nvme/k8s/*`), syncoid a `respaldo`, restic a Cloudflare R2 y verificación diaria con alertas por Telegram, todo en el host Proxmox (ver [proxmox/README.md](proxmox/README.md#tareas-programadas)). En k8s: CronJobs `config-backup-<app>` (config de cada app a `nvme/k8s/backups/apps/`, 02:30–02:57; los de pibot escalonados cada 3 min), `immich/immich-db-backup` (pg_dump) y `backups/etcd-snapshot-copy`; `check-backups.sh` en el host avisa si alguno se atrasa.
 
 **Verificación rápida:**
 
