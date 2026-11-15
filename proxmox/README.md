@@ -189,7 +189,7 @@ En `/root/.secrets/` (modo 600). Copia maestra en `ansible/vars/vault.yml`:
 | cada 5 min | `textfile-metrics.sh`: pools ZFS, datasets y SMART → `/var/lib/prometheus/node-exporter/homelab.prom` |
 | cada 15 min | sanoid: snapshots de `nvme/k8s/*` y de los discos de las VMs 102–104 y del LXC 110; poda de `respaldo/k8s/*` y `replica/*` |
 | :20 cada hora | syncoid `nvme/k8s` (sin `victoria-metrics`), `nvme/vm-10{2,3,4}-disk-0` y `nvme/subvol-110-disk-0` → pool `replica` (nvme1n1); copia las configs de las VMs/LXC a `/replica/pve-config` |
-| 02:40–02:48 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path, hostPath o en `homelab-storage` (qBittorrent, `user/` de ComfyUI) → `nvme/k8s/backups/apps/<app>` |
+| 02:30–02:57 | (k8s) `config-backup-*`: config y bases de datos de las apps con PVC local-path, hostPath o en `homelab-storage` (qBittorrent, `user/` de ComfyUI) → `nvme/k8s/backups/apps/<app>` |
 | 03:15 | (k8s) dump Postgres de Immich → `nvme/k8s/backups/postgres` (5 días) |
 | 03:30 | syncoid `nvme/k8s` → `respaldo/k8s` (excepto `victoria-metrics`: métricas, se pueden perder) y rsync de ComfyUI sin modelos (`user`, `input`, `output`, `swarmui/Data`) → `respaldo/comfyui` (snapshots sanoid) |
 | 04:30 | restic → Cloudflare R2 (`homelab/restic`): immich, minecraft, backups, webs; sin lo regenerable; retiene 3 diarios + 2 semanales (objetivo < 10 GB, nivel gratuito) |

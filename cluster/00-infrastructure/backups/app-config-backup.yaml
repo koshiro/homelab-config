@@ -661,7 +661,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "45 2 * * *"
+  schedule: "30 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -737,7 +737,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "45 2 * * *"
+  schedule: "33 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -815,7 +815,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "46 2 * * *"
+  schedule: "36 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -868,7 +868,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "48 2 * * *"
+  schedule: "51 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -934,7 +934,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "48 2 * * *"
+  schedule: "54 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -1005,7 +1005,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "48 2 * * *"
+  schedule: "57 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
@@ -1061,7 +1061,7 @@ metadata:
   labels:
     app.kubernetes.io/component: config-backup
 spec:
-  schedule: "47 2 * * *"
+  schedule: "48 2 * * *"
   timeZone: America/Santiago
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1

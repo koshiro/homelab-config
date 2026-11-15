@@ -586,7 +586,7 @@ Todo PVC `local-path` con algo que no se regenere necesita su CronJob. Lo mismo 
 (`config-backup-qbittorrent`, con `subPath`). Copiar un bloque de
 `cluster/00-infrastructure/backups/app-config-backup.yaml` (p. ej. `config-backup-pingvin`) y cambiar:
 - `metadata.name: config-backup-miapp`, `namespace: miapp`
-- `schedule`: siguiente minuto libre de la franja `2:40–2:48` (`timeZone: America/Santiago`)
+- `schedule`: siguiente minuto libre de la franja `2:30–2:57` (los jobs que caen en pibot, uno cada 3 min: pibot tiene un solo NVMe y etcd sufre si coinciden) (`timeZone: America/Santiago`)
 - `APP: miapp` y `EXCLUDES` (caches, logs, miniaturas regenerables)
 - `claimName` del PVC
 
