@@ -7,6 +7,12 @@ metadata:
   name: investigacion-pg
 spec:
   instances: 1
+  # Lease del primario: ver homelab-postgres. Con una sola instancia no hay a quién cederle el primario, así que
+  # alargar el reintento no cuesta nada en failover.
+  primaryLease:
+    leaseDurationSeconds: 60
+    renewDeadlineSeconds: 40
+    retryPeriodSeconds: 10
   imageName: ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-202610121021-standard-trixie
   primaryUpdateMethod: restart
   enableSuperuserAccess: false

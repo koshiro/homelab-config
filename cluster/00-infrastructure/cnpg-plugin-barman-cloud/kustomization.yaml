@@ -6,3 +6,17 @@ resources:
   - https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.15.1/manifest.yaml
 components:
   - ../../components/proteger-datos
+# Una réplica: la elección de líder del plugin solo cuesta un PUT al Lease cada 2 s (0,5/s) en el etcd del NVMe de
+# pibot. El manifiesto upstream pasa --leader-elect en args[5]; el `test` falla el build si el índice cambia al subir
+# de versión.
+patches:
+  - target:
+      kind: Deployment
+      name: barman-cloud
+    patch: |-
+      - op: test
+        path: /spec/template/spec/containers/0/args/5
+        value: --leader-elect
+      - op: replace
+        path: /spec/template/spec/containers/0/args/5
+        value: --leader-elect=false
