@@ -1,5 +1,5 @@
 # Servidores de mapas detrás del proxy Velocity (ver ../LOBBY.md, sección Proxy):
-# Parkour Spiral 2 y 3 de Hielke (https://hielkemaps.com), mapas 26.2 con datapacks propios, que
+# Parkour Spiral 2 y 3 de Hielke (https://hielkemaps.com), mapas 26.3 con datapacks propios, que
 # por eso necesitan ser el mundo principal de su propio Paper. No se exponen fuera del cluster:
 # solo se llega a ellos desde el proxy (NPC del lobby). El mundo se descarga en el primer arranque
 # (WORLD); el progreso (ranking, cronómetros) queda en el PVC. Para reiniciar un mapa: vaciar el dataset.
@@ -98,7 +98,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.2"  # mapa de Hielke con datapacks 26.2: fallan en 26.3 (registry loading); subir cuando el autor actualice
+              value: "26.3"
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
@@ -207,7 +207,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.2"
+              value: "26.3"
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
