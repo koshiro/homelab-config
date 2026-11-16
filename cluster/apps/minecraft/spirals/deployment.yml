@@ -98,7 +98,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.3"
+              value: "26.2"  # mapa de Hielke con datapacks 26.2: fallan en 26.3 (registry loading); subir cuando el autor actualice
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
@@ -207,7 +207,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.3"
+              value: "26.2"
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
