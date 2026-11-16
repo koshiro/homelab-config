@@ -109,6 +109,8 @@ spec:
             - name: PLUGINS
               value: |
                 https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+                # Sin build que declare 26.3 en Modrinth (1.2.3 llega a 26.2): fijada por URL; quitar al salir una versión 26.3
+                https://cdn.modrinth.com/data/GcEeF0z5/versions/weUjq5rx/MinigamesWithFriends-1.2.3.jar
             - name: PATCH_DEFINITIONS
               value: /patches/velocity-patch.json
             - name: CFG_VELOCITY_SECRET
@@ -132,7 +134,6 @@ spec:
                 multiverse-netherportals
                 multiverse-commanddestination
                 bentobox
-                minigames-with-friends
                 worldedit
                 fancynpcs
                 chunky
