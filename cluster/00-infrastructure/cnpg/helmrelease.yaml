@@ -40,6 +40,11 @@ spec:
     remediation:
       retries: 0
   values:
+    # Una sola réplica del operador: la elección de líder solo cuesta un PUT al Lease cada 2 s (0,5/s) en el etcd del
+    # NVMe de pibot. El chart ya pasa --leader-elect; el último valor gana (misma técnica que Flux). Al actualizar,
+    # RollingUpdate puede dejar dos pods reconciliando unos segundos: es idempotente.
+    additionalArgs:
+      - --leader-elect=false
     config:
       data:
         # Al subir el operador, cambiar el binario del instance manager dentro del pod en vez de un rolling update con
