@@ -96,13 +96,13 @@ spec:
                 https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/velocity
             # Skins en modo offline: en una red con proxy SkinsRestorer debe estar en el proxy
             # (el del Paper principal queda en proxyMode AUTO)
-            # + ViaVersion: deja entrar clientes Java más nuevos (26.3) a los backends 26.2
+            # + ViaVersion: deja entrar clientes Java de otras versiones a los backends
             - name: MODRINTH_PROJECTS
               value: |
                 skinsrestorer
                 viaversion
             - name: MINECRAFT_VERSION
-              value: "26.2"
+              value: "26.3"
             # Hostnames aceptados en el handshake (plugin/HostnameFilter.java): el resto (escáneres
             # que entran por IP) se descarta sin respuesta al ping y sin llegar al whitelist
             - name: ALLOWED_HOSTS

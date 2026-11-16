@@ -98,7 +98,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.2"
+              value: "26.3"
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
@@ -207,7 +207,7 @@ spec:
             - name: TYPE
               value: PAPER
             - name: VERSION
-              value: "26.2"
+              value: "26.3"
             - name: ONLINE_MODE
               value: "FALSE"
             - name: ENABLE_WHITELIST
