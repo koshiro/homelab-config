@@ -17,7 +17,8 @@ spec:
         name: homelab-postgres-superuser
   # Lease del primario: con los 2 s por defecto cada Cluster hace 0,5 PUT/s al etcd de pibot (desgasta el NVMe).
   # Con 10 s son 0,1/s. Tras una muerte sucia del primario la promoción espera hasta 60 s (un apagado limpio libera
-  # el lease al instante). Se lee del Cluster en caliente, sin reiniciar Postgres.
+  # el lease al instante). El instance manager fija estos tiempos en su primer Acquire (runnable.go de CNPG 1.30): un
+  # primario ya en marcha sigue a 2 s hasta que su pod reinicie (switchover o rollout); no se aplican en caliente.
   primaryLease:
     leaseDurationSeconds: 60
     renewDeadlineSeconds: 40

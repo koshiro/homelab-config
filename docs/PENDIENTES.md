@@ -274,11 +274,16 @@ origen son los `PUT leases`: **3,6/s ≈ 313 mil/día**, y seis leases hacen 3,0
 journald (en RAM), logs de pods, meshmonitor (SQLite de 173 MB, 0,5–3 GB/día) y el journal de ext4.
 
 - [x] 2026-11-15 21:20 GMT-3: PR #205 (mergeado): sin elección de líder en el operador CNPG y en el plugin barman-cloud
-  (−1,0/s) y `primaryLease` 60/40/10 s en `homelab-postgres` e `investigacion-pg` (−0,8/s; CNPG 1.30 lo lee en
-  caliente, sin reiniciar Postgres). Costo: tras una muerte sucia del primario de `homelab-postgres` la promoción
-  espera hasta 60 s. `k3s` y `k3s-etcd` no son configurables.
+  (−1,0/s) y `primaryLease` 60/40/10 s en `homelab-postgres` e `investigacion-pg` (−0,8/s). Costo: tras una muerte sucia
+  del primario de `homelab-postgres` la promoción espera hasta 60 s. `k3s` y `k3s-etcd` no son configurables.
+  **Verificado 21:50: el operador y el plugin ya no renuevan (−1,0/s, quedan ~2,6/s), pero el `primaryLease` NO se
+  aplicó en caliente**: el instance manager fija los tiempos en su primer `Acquire`, así que los dos primarios siguen
+  renovando cada 2 s hasta que su pod reinicie.
+- [ ] ⏰ 2026-11-16 09:00 Aplicar el `primaryLease`: reiniciar los primarios en un momento tranquilo
+  (`investigacion-pg`: una instancia, unos segundos sin base; `homelab-postgres`: `kubectl cnpg restart` hace
+  switchover por réplica, Immich pierde conexiones un instante). Se aplicará solo en el siguiente rollout si no.
 - [ ] ⏰ 2026-11-16 09:00 Verificar el efecto del PR #205: `kubectl get --raw /metrics | grep
-  'resource="leases".*verb="PUT"'` dos veces con 60 s de diferencia; debe bajar de 3,6/s a ~1,4/s. Confirmar con
+  'resource="leases".*verb="PUT"'` dos veces con 60 s de diferencia; debe estar en ~2,6/s (era 3,6/s) y bajar a ~1,4/s cuando se reinicien los primarios (punto siguiente). Confirmar con
   `flux get ks cnpg cnpg-plugin-barman-cloud postgresql investigacion` que Flux lo aplicó y que el operador y el
   plugin siguen `Running` con `--leader-elect=false`.
 - [ ] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
