@@ -138,7 +138,7 @@ python3 build_npcs.py    | kubectl -n minecraft exec -i deploy/minecraft -c mine
 - **26.x:** gamerules con nombres nuevos (`minecraft:keep_inventory`, `advance_time`…); tiempo por
   mundo; `setworldspawn`/`spawnpoint` piden dos ángulos; textos NBT en SNBT.
 - **Checkpoints:** `enforce-respawn-at-world-spawn: false` en `Multiverse-Core/config.yml`.
-- **Bedrock:** Geyser (en el proxy) soporta Bedrock 26.30–26.51 (2026-10-02). Si la tablet no
+- **Bedrock:** Geyser (en el proxy) soporta Bedrock 26.30–26.51 (2026-10-02; Geyser 2.12.1 en 26.3, 2026-11-16). Si la tablet no
   entra tras actualizar la app: `kubectl -n minecraft rollout restart deploy/minecraft-proxy`.
 - **Minecraft 26.3:** cuando Geyser lo soporte (ver `docs/PENDIENTES.md`), actualizar también los
   Spiral y revisar Velocity.
