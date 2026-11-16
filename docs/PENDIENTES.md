@@ -279,13 +279,14 @@ journald (en RAM), logs de pods, meshmonitor (SQLite de 173 MB, 0,5–3 GB/día)
   **Verificado 21:50: el operador y el plugin ya no renuevan (−1,0/s, quedan ~2,6/s), pero el `primaryLease` NO se
   aplicó en caliente**: el instance manager fija los tiempos en su primer `Acquire`, así que los dos primarios siguen
   renovando cada 2 s hasta que su pod reinicie.
-- [ ] ⏰ 2026-11-16 09:00 Aplicar el `primaryLease`: reiniciar los primarios en un momento tranquilo
-  (`investigacion-pg`: una instancia, unos segundos sin base; `homelab-postgres`: `kubectl cnpg restart` hace
-  switchover por réplica, Immich pierde conexiones un instante). Se aplicará solo en el siguiente rollout si no.
-- [ ] ⏰ 2026-11-16 09:00 Verificar el efecto del PR #205: `kubectl get --raw /metrics | grep
-  'resource="leases".*verb="PUT"'` dos veces con 60 s de diferencia; debe estar en ~2,6/s (era 3,6/s) y bajar a ~1,4/s cuando se reinicien los primarios (punto siguiente). Confirmar con
-  `flux get ks cnpg cnpg-plugin-barman-cloud postgresql investigacion` que Flux lo aplicó y que el operador y el
-  plugin siguen `Running` con `--leader-elect=false`.
+- [x] 2026-11-15 21:31–21:41 GMT-3: `primaryLease` aplicado reiniciando los primarios (anotación
+  `kubectl.kubernetes.io/restartedAt` con `--field-manager=reinicio-manual`; no hay plugin `kubectl cnpg`).
+  `investigacion-pg`: ~5 min de reinicio (Postgres tardó en apagarse). `homelab-postgres`: rolling de las réplicas y
+  switchover `-1` → `-4` en ~1,5 min; sano 3/3. Los dos leases quedaron con `leaseDurationSeconds: 60`.
+- [x] 2026-11-15 21:43 GMT-3: verificado el efecto del PR #205. `PUT leases`: **1,83/s** (era 3,62/s, −49 %), que
+  coincide con lo que queda: `k3s` y `k3s-etcd` 0,5/s cada uno, 4 node leases 0,4/s, apiserver 0,1/s, cert-manager
+  0,14/s y los dos Postgres 0,1/s cada uno. Flux aplicó las 4 Kustomizations; operador y plugin `Running` con
+  `--leader-elect=false`. Más no se puede bajar sin tocar k3s.
 - [ ] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
   anota las escrituras por proceso y por cgroup cada 30 s en `~/iosample.log` (unos 3 MB/día). Resumen: `ssh
   daniel@k3s-node-0 'awk -F"|" "{s[\$2\"|\"\$3\"|\"\$4]+=\$5} END{for(k in s) printf \"%.0f MB %s\n\", s[k]/1e6,
