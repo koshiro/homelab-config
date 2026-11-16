@@ -1,6 +1,11 @@
 # Pendientes del homelab
 
-Última revisión: 2026-10-14. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-11-15. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+
+**Avisos por Telegram:** el CronJob `avisar-pendientes` (namespace `monitoring`) lee este archivo desde `main` y avisa
+de los `- [ ]` abiertos. Un pendiente con fecha lleva `⏰ AAAA-MM-DD HH:MM` (GMT-3, hora opcional; sin hora = 09:00):
+avisa en la primera hora en punto desde su hora (el Job corre cada hora) y cada día a las 09:00 mientras siga abierto y vencido. Los lunes a las 09:00 llega el resumen de
+todos los abiertos. Marcar `[x]` los silencia. Detalle en `cluster/03-monitoring/monitoring/avisar-pendientes.py`.
 
 Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este archivo detalla las tareas.
 
@@ -258,6 +263,41 @@ y el 10-29 02:50 Flux reinició igual sin que k3s cayera (bastó el atasco).
   Aparte hubo picos menores fuera de la ventana (11-14 20:56 ~360 ms 4 min, sin llegar a disparar; 21:01 ~110 ms):
   si tras el escalonado `EtcdFsyncLento` vuelve a sonar de madrugada o fuera de respaldos, ejecutar el punto anterior
   (el NVMe tiene 37 % de desgaste y 104 881 entradas en su log de errores; `smartctl -a /dev/nvme0n1`).
+
+## 4h. Desgaste del NVMe de pibot (2026-11-15 21:19 GMT-3)
+
+Diagnóstico del 2026-11-15: Toshiba KBG30 256 GB al **37 % de vida usada**, 17,7 TB escritos en 15 458 h, 1 431 apagados
+inesperados; hoy recibe ~20 GB/día (VictoriaMetrics, media de 7 días). `k3s-server` (etcd embebido) escribe ~8 GB/día
+(~45 %): el WAL son solo 1,3 GB, pero hay 2,8 commits/s al backend (bbolt reescribe páginas de 4 KB en cada uno). Su
+origen son los `PUT leases`: **3,6/s ≈ 313 mil/día**, y seis leases hacen 3,0/s (operador CNPG, plugin barman-cloud,
+`homelab-postgres`, `investigacion-pg`, `k3s` y `k3s-etcd`, 0,5/s cada uno). Descartados: Flux (34 reconciles/10 min),
+journald (en RAM), logs de pods, meshmonitor (SQLite de 173 MB, 0,5–3 GB/día) y el journal de ext4.
+
+- [x] 2026-11-15 21:20 GMT-3: PR #205 (mergeado): sin elección de líder en el operador CNPG y en el plugin barman-cloud
+  (−1,0/s) y `primaryLease` 60/40/10 s en `homelab-postgres` e `investigacion-pg` (−0,8/s). Costo: tras una muerte sucia
+  del primario de `homelab-postgres` la promoción espera hasta 60 s. `k3s` y `k3s-etcd` no son configurables.
+  **Verificado 21:50: el operador y el plugin ya no renuevan (−1,0/s, quedan ~2,6/s), pero el `primaryLease` NO se
+  aplicó en caliente**: el instance manager fija los tiempos en su primer `Acquire`, así que los dos primarios siguen
+  renovando cada 2 s hasta que su pod reinicie.
+- [ ] ⏰ 2026-11-16 09:00 Aplicar el `primaryLease`: reiniciar los primarios en un momento tranquilo
+  (`investigacion-pg`: una instancia, unos segundos sin base; `homelab-postgres`: `kubectl cnpg restart` hace
+  switchover por réplica, Immich pierde conexiones un instante). Se aplicará solo en el siguiente rollout si no.
+- [ ] ⏰ 2026-11-16 09:00 Verificar el efecto del PR #205: `kubectl get --raw /metrics | grep
+  'resource="leases".*verb="PUT"'` dos veces con 60 s de diferencia; debe estar en ~2,6/s (era 3,6/s) y bajar a ~1,4/s cuando se reinicien los primarios (punto siguiente). Confirmar con
+  `flux get ks cnpg cnpg-plugin-barman-cloud postgresql investigacion` que Flux lo aplicó y que el operador y el
+  plugin siguen `Running` con `--leader-elect=false`.
+- [ ] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
+  anota las escrituras por proceso y por cgroup cada 30 s en `~/iosample.log` (unos 3 MB/día). Resumen: `ssh
+  daniel@k3s-node-0 'awk -F"|" "{s[\$2\"|\"\$3\"|\"\$4]+=\$5} END{for(k in s) printf \"%.0f MB %s\n\", s[k]/1e6,
+  k}" iosample.log | sort -rn | head -15'`. Objetivo: atribuir los ~12 GB/día que no son etcd (el muestreo de 60 s
+  solo explicó ~7 GB/día de 20). Después detenerlo: `ssh daniel@k3s-node-0 'sudo kill 455970'`.
+- [ ] Con esa medición, decidir qué escritura sale de pibot. Candidatos: meshmonitor (SQLite; **no a NFS**: el WAL y los
+  bloqueos corrompen la base sobre NFS) → PostgreSQL si su versión lo soporta, recortar la retención de telemetría o
+  moverlo a un worker. Para datos desechables, el destino del NAS es el pool `scratch` (2 HDD sin redundancia,
+  `sync=disabled` en `scratch/qbittorrent`), no `homelab-storage`. Ojo: mover escrituras a un worker solo traslada el
+  desgaste al NVMe sin espejo de pve, que ya recibe ~111 GB/día.
+- [ ] Si tras el PR #205 y el escalonado de respaldos el desgaste sigue alto: mover el datastore de k3s a Postgres en pve
+  (`--datastore-endpoint`) o etcd a otro disco; es el único cambio que lo resuelve de raíz (cambio grande).
 
 ## 5. Monitoreo — VictoriaMetrics + Grafana
 
