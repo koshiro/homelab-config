@@ -54,7 +54,7 @@ Arquitectura objetivo y plan por fases: [ARQUITECTURA.md](ARQUITECTURA.md). Este
 - [x] Snapshots locales con **sanoid** en Proxmox (`/etc/sanoid/sanoid.conf`): horarios 24, diarios 14, semanales 4, mensuales 6 para `nvme/k8s/*` (2026-10-01).
 - [x] Copia fuera del mirror NVMe: resuelto de otra forma. `syncoid-respaldo` replica `nvme/k8s` a `respaldo/k8s` cada noche y `restic-offsite` lo sube a R2.
 - [x] Minecraft actualizado a 26.2 + plugins y datapacks al día + terreno sin cambios regenerado (detalle en `cluster/apps/minecraft/DATA-SAFETY.md`).
-- [x] Minecraft → 26.3 (2026-11-16): Paper 26.3 STABLE b253 y Geyser 2.12.1 (mcprotocollib 26.3). Snapshot `nvme/k8s/minecraft@pre-26.3`. Pendiente: probar clientes Java/Bedrock, datapacks Vanilla Tweaks 26.3 y MinigamesWithFriends (su 1.2.3 declara hasta 26.2).
+- [x] Minecraft → 26.3 (2026-11-16): Paper 26.3 b253 y Geyser 2.12.1 en el principal y el proxy; datapacks Vanilla Tweaks a 26.3; MinigamesWithFriends fijado por URL (1.2.3, sin build 26.3 en Modrinth). Snapshot `nvme/k8s/minecraft@pre-26.3`. Pendiente: probar clientes Java/Bedrock; spirals de Hielke siguen en 26.2 (sus datapacks no cargan en 26.3); revisar en Modrinth si sale MinigamesWithFriends con 26.3 para volver a `MODRINTH_PROJECTS`.
 - [x] Base de datos de Immich en CloudNative-PG (`local-path`). `homelab-postgres-2` (k3s-node-3) divergió tras el apagado del 2026-10-01 (`pg_rewind` fallaba); recreada el 2026-10-02 borrando PVC + pod → `homelab-postgres-5`. Cluster 3/3 (primario `-4`, réplicas `-1` y `-5` en streaming).
 
 ## 3. Limpieza del cluster ✅ (2026-10-01)
