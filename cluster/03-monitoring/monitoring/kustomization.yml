@@ -14,8 +14,13 @@ resources:
   - alerting.yml
   - grafana.yml
   - ingress.yml
+  - avisar-pendientes.yml
 
 configMapGenerator:
+  - name: avisar-pendientes
+    namespace: monitoring
+    files:
+      - avisar-pendientes.py
   - name: victoria-metrics-scrape
     namespace: monitoring
     files:

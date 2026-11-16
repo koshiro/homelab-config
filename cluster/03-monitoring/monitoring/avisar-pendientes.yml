@@ -1,0 +1,62 @@
+# Avisos de docs/PENDIENTES.md por Telegram. Lee el archivo de main en GitHub (repo público), así que agregar o cerrar un
+# pendiente no requiere tocar el cluster. Reglas en avisar-pendientes.py (ConfigMap avisar-pendientes): `⏰ AAAA-MM-DD
+# HH:MM` avisa al vencer y cada día a las 09:00; los lunes a las 09:00, resumen de todos los abiertos.
+# Mismo bot y chat que Alertmanager (secret alertmanager-telegram). No corre en pibot: evita escribir en su NVMe.
+# Si GitHub no responde el Job termina bien sin avisar (una caída de GitHub no es un fallo del cluster).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: avisar-pendientes
+  namespace: monitoring
+spec:
+  schedule: "0 * * * *"
+  timeZone: America/Santiago
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 240
+      template:
+        spec:
+          restartPolicy: Never
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: NotIn
+                        values: [pibot]
+          containers:
+            - name: avisar
+              image: python:3.14-slim
+              command: ["python", "/scripts/avisar-pendientes.py"]
+              env:
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+                - name: BOT_TOKEN
+                  valueFrom:
+                    secretKeyRef: {name: alertmanager-telegram, key: bot_token}
+                - name: CHAT_ID
+                  valueFrom:
+                    secretKeyRef: {name: alertmanager-telegram, key: chat_id}
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 65534
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities: {drop: [ALL]}
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: avisar-pendientes
