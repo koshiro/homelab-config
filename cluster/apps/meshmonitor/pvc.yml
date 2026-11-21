@@ -1,7 +1,10 @@
+# SQLite de MeshMonitor en el disco de un worker (local-path ata el pod al nodo donde se creó el PVC).
+# Desde 2026-11-21 fuera de pibot: escribía ~5,5 GB/día en su NVMe (docs/PENDIENTES.md § 4h). El PVC viejo
+# `meshmonitor-data` quedó en pibot sin uso; se borra a mano (Flux no poda PVC).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: meshmonitor-data
+  name: meshmonitor-data-worker
   namespace: meshmonitor
 spec:
   accessModes: [ReadWriteOnce]

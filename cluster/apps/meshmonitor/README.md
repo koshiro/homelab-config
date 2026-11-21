@@ -9,7 +9,7 @@ decisiones: skill `meshtastic` (`flota.yaml`, `references/arquitectura.md`).
 | Web | `https://meshmonitor.danielriquelme.cl`, detrás de la app de Cloudflare Access «Homelab admin» |
 | Fuente | TCP a AcevedoRoof `192.168.1.105:4403` (sembrada por `MESHTASTIC_NODE_IP` solo en el primer arranque) |
 | Nodo virtual | `k3s-node-0:4404` por Tailscale (en la LAN también `192.168.1.15:4404`), solo LAN/tailnet; **se activa en la UI** (abajo) |
-| Datos | PVC local-path `meshmonitor-data` en `/data` (SQLite); respaldo `config-backup-meshmonitor` 02:47 |
+| Datos | PVC local-path `meshmonitor-data-worker` en `/data` (SQLite) en un worker, **nunca en pibot** (escribe ~5,5 GB/día); respaldo `config-backup-meshmonitor` 02:48 |
 | Secreto | `secret.sops.yaml`: `SESSION_SECRET` |
 
 El firmware del nodo atiende **un solo cliente TCP**: con MeshMonitor arriba, el CLI y las apps van al nodo virtual

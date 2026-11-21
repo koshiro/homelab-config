@@ -17,6 +17,14 @@ spec:
       labels:
         app: meshmonitor
     spec:
+      # Nunca en pibot: su NVMe sin DRAM ya carga con etcd (docs/PENDIENTES.md § 4h)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       securityContext:
         runAsUser: 1000         # con usuario fijo el entrypoint no intenta chown/su-exec
         runAsGroup: 1000
@@ -80,4 +88,4 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: meshmonitor-data
+            claimName: meshmonitor-data-worker
