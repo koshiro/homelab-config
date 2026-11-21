@@ -150,3 +150,7 @@
   `aplicar --dest` ya reemplaza la lista completa. (2026-11-21)
 - `aplicar --dest` por el vnode `k3s-node-0:4404` → «Timed out waiting for an acknowledgment» en todos los nodos
   (2026-11-21): admin remoto desde un admin por USB (Dnto_L1) o reintentar con los nodos despiertos. (2026-11-21)
+- Buzzer del T1000-E (fw fad52bb, `ExternalNotificationModule`): suena con todo texto recibido (`alert_message_buzzer`).
+  Broadcast → se calla con `module_settings.is_muted` de ESE canal; DM → solo con el mute del nodo emisor
+  (`isMutedForPacket`). Canal 0 silenciado en remoto por la API (`getNode(dest, requestChannels=True)` →
+  `channels[0].settings.module_settings.is_muted = True` → `writeChannel(0)`); PSK y nombre intactos. (2026-11-21)

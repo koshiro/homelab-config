@@ -13,6 +13,9 @@ canales:
   - nombre: ""                   # primario público: frecuencia de la malla pública (slot 20 en ANZ)
     psk: default                 # AQ==
     precision: 0
+    # module_settings.is_muted: el buzzer no suena con broadcasts del público (gente fuera de la flota). Los DM y el
+    # canal privado siguen sonando; un DM de un extraño solo se calla silenciando ese nodo. (2026-11-21)
+    silenciado_en: [tracker]
   - nombre: secreto:canal_privado_nombre
     psk: secreto:canal_privado_psk   # 32 B en base64
     aead: true
