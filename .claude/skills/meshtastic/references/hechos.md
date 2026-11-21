@@ -53,6 +53,15 @@
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
+- XIAO S3 + L76K apilado: en el L76K anterior a 2024-12 el RESET va en D10 (= MOSI del SPI de la radio) y la
+  SX1262 no inicia; hay que quitar ese pin (la variante lo advierte). Rev. nueva: RESET en D2. El firmware usa del L76K
+  solo D6/D7 (UART, GPIO43/44) y D0 (standby, GPIO1). (2026-11-21)
+- XIAO S3: sin divisor de batería (log «battery hardware absent (USB-only)»); A0/GPIO1 es el standby del GPS. Para
+  medir batería: MAX17048 por I2C (SDA GPIO5/D4, SCL GPIO6/D5), el firmware ya lo sondea al arrancar. (2026-11-21)
+- LED de la Wio-SX1262 = heartbeat (GPIO48 por el B2B): encendido/parpadeo ≠ radio viva. (2026-11-21)
+- Wio-SX1262 original del Laptop muerta (`SX126x init result -2` con y sin GPS, tras recalzar); el XIAO S3 funciona
+  con la radio de PapoRelay. Pendiente reemplazo. (2026-11-21)
+
 ## Trampas (`error → forma correcta`)
 - `flashear` falla con «Device not configured» → el S3 re-enumeró en bootloader con otro nombre: `$T puertos` y repetir con el puerto nuevo.
 - `aplicar` con `network.*` + `admin_key` corta la transacción (el nodo reinicia): esperar 40 s y repetir `aplicar --apply`; converge en 2–3 pasadas. (2026-10-26)
@@ -123,3 +132,8 @@
   Meshtastic conectada (Mac/iPhone/Android) lo hace por él. El CLI no hace de proxy. Usuarios del broker: `laptop`,
   `dnto`. Uplink/downlink del canal 1 por radio: `meshtastic --dest '!id' --ch-index 1 --ch-set uplink_enabled true
   --ch-set downlink_enabled true` (verificado: la PSK queda intacta). (2026-10-24)
+- Log de arranque de un ESP32 → `meshtastic --reboot` se cuelga en el XIAO S3; usar `esptool --after hard-reset
+  chip-id` y leer el puerto con pyserial sin API (antes de que un cliente se conecte sale el log en texto). Con un
+  cliente API conectado, el log solo llega con `security.debug_log_api_enabled true` (apagarlo después). (2026-11-21)
+- `SX126x init result -2` = chip no encontrado por SPI: probar sin accesorios apilados, tras corte de energía, y
+  cruzar la radio con otro XIAO antes de pensar en firmware. (2026-11-21)

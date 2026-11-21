@@ -1,7 +1,22 @@
 # Firmware: qué cambió y qué significa para esta flota
 
-Revisado: 2026-10-18 (`mt.py upstream --marcar` registra la fecha en `versiones.json`). Al leer una release nueva:
+Revisado: 2026-11-21 (`mt.py upstream --marcar` registra la fecha en `versiones.json`). Al leer una release nueva:
 agregar arriba una sección con *qué cambia para esta flota*, no copiar el changelog.
+
+## Release 2.8.2.d5f1619 (2026-11-04): candidata a reemplazar el nightly (revisión 2026-11-21)
+
+Es fad52bb + 29 commits (0 atrás): todo lo del nightly fijado está dentro. La 2.8.2.4c89b69 (2026-11-02) se revocó por
+un desborde de stack en la telemetría ambiental. Qué cambia para la flota:
+- **#12191 firma**: en `COMPATIBLE` los nodos **dejan de firmar**; nunca se firma en canales AEAD ni traceroutes;
+  BALANCED/STRICT firman broadcasts y NodeInfo/posición. → Tras actualizar, pasar a BALANCED (fase 5) si se quiere firma.
+- #12167: sleep del GPS Airoha según la secuencia documentada (T1000-E: CatTracker, AkiraGPS → batería).
+- #12159: apagado de ESP32 (RTCIO y pull-up del botón): Heltec tracker, XIAO S3. #12220: OTA BLE.
+- #12270: descarta paquetes con nuestro propio número (spoofing). #12194: verificación de llave crea la entrada.
+- #12110 (uplink MQTT de DMs PKI ajenos) ya venía en fad52bb.
+- `develop` va +81 (TCXO en standby #12119, PPS del GPS #12324, SPI con buffer #12310, DMShell opt-in): capa de
+  radio sin release → no.
+Decisión propuesta: fijar d5f1619 (release, archivo estable), canario en un nodo 24–48 h, luego la flota.
+Pendiente aún sin merge: #12180 (CLIENT_BASE rellena broadcasts para favoritos).
 
 ## Build fijado: nightly 2.8.2.fad52bb (decisión 2026-10-18)
 
