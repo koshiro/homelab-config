@@ -1114,7 +1114,7 @@ spec:
           volumes:
             - name: src
               persistentVolumeClaim:
-                claimName: meshmonitor-data
+                claimName: meshmonitor-data-worker
             - name: backups
               nfs:
                 server: 192.168.1.100
