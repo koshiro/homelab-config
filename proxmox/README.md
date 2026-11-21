@@ -12,6 +12,7 @@ Copia versionada de lo que vive en el host. Fuente de verdad: este directorio; a
 | `systemd/drop-ins/syncoid-replica-notify.conf` | `/etc/systemd/system/syncoid-replica.service.d/notify.conf` |
 | `systemd/drop-ins/qemu-slice-sin-swap.conf` | `/etc/systemd/system.control/qemu.slice.d/50-MemorySwapMax.conf` (lo escribe `systemctl set-property qemu.slice MemorySwapMax=0`; en caliente) |
 | `systemd/drop-ins/system-slice-sin-swap.conf`, `init-scope-sin-swap.conf`, `user-slice-sin-swap.conf` | `/etc/systemd/system.control/<unidad>.d/50-MemorySwapMax.conf` (ídem, `systemctl set-property <unidad> MemorySwapMax=0`) |
+| `systemd/init-scope-sin-swap.service` | `/etc/systemd/system/init-scope-sin-swap.service` (habilitado): reaplica `MemorySwapMax=0` a `init.scope` en cada arranque, porque esa unidad es transitoria y su `set-property` vive en `/run` |
 | `etc/sanoid.conf` | `/etc/sanoid/sanoid.conf` |
 | `etc/k8s.exports` | `/etc/exports.d/k8s.exports` (`exportfs -ra`) |
 | `etc/sysctl-99-swappiness.conf` | `/etc/sysctl.d/99-swappiness.conf` (`sysctl -p <archivo>`) |
@@ -135,7 +136,8 @@ escrituras de los txg de ZFS. Los umbrales térmicos que declara el firmware (11
 **`autotrim=on` en `nvme` desde el 2026-10-17** (antes solo el TRIM mensual del cron `zfsutils-linux`, que sigue
 activo): los SSD sin DRAM pierden la caché SLC si no se les avisa del espacio libre. El disco que se agregue al
 espejo hereda la propiedad.
-Mientras no haya reemplazo, **los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica
+No se compra reemplazo (decidido 2026-11-21; `nvme1n1` queda como disco de respaldo del pool `replica`), así que
+**los discos de las VMs y `nvme/k8s/*` no tienen redundancia**: los protege la réplica horaria a `replica`, la
 nocturna de syncoid a `respaldo` y restic a R2. Volver a espejo: `zpool attach nvme nvme-NXM-512_2242_0007134003512
 /dev/disk/by-id/nvme-<nuevo>` (resilver de ~192 GB) y después `zpool scrub nvme`.
 

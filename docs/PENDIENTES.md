@@ -1,6 +1,6 @@
 # Pendientes del homelab
 
-Última revisión: 2026-11-15. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
+Última revisión: 2026-11-21. Orden sugerido: **1 → 2 → 3**; el resto cuando el cluster esté estable.
 
 **Avisos por Telegram:** el CronJob `avisar-pendientes` (namespace `monitoring`) lee este archivo desde `main` y avisa
 de los `- [ ]` abiertos. Un pendiente con fecha lleva `⏰ AAAA-MM-DD HH:MM` (GMT-3, hora opcional; sin hora = 09:00):
@@ -134,7 +134,7 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
   - **Aplicado 2026-10-15 14:34 (reinicio de pve):** `spl_kmem_cache_obj_per_slab=1` en `proxmox/etc/zfs.conf`
     (copiado a `/etc/modprobe.d/`, dentro del initramfs) y kernel **7.0.14-24** (tampoco trae el fix). Tras arrancar
     `spl_kmem_cache_obj_per_slab` = 1.
-    - [ ] Repetir el histograma de `mm_vmscan_wakeup_kswapd` y mirar `SwapOutHostProxmox` y el ARC unos días
+    - [x] Repetir el histograma de `mm_vmscan_wakeup_kswapd` y mirar `SwapOutHostProxmox` y el ARC unos días
       (~2026-10-18). Plan original: probar
     `spl_kmem_cache_obj_per_slab=1` en
     `proxmox/etc/zfs.conf` (baja esas peticiones de orden 10 a orden ≤8) y, si el ARC sigue desplomándose,
@@ -153,10 +153,16 @@ Mismo cuadro que [openzfs#18893](https://github.com/openzfs/zfs/issues/18893) (P
   libres, ARC en 2,0 GB de 6 y swap usado total de 49 MB: es la misma RAM fría que sale y vuelve a entrar. Con
   `qemu.slice` y `system.slice` en `MemorySwapMax=0` (eventos `max`/`fail` en 0), solo pueden ir a swap `init.scope`
   (systemd, 2,4 MB) y `user.slice`. Kernel instalado 7.0.14-24; disponible 7.0.14-28, sin el fix.
-  - [ ] Cerrar el hueco con `proxmox/systemd/drop-ins/init-scope-sin-swap.conf` y `user-slice-sin-swap.conf`:
+  - [x] Cerrar el hueco con `proxmox/systemd/drop-ins/init-scope-sin-swap.conf` y `user-slice-sin-swap.conf`:
     `systemctl set-property init.scope MemorySwapMax=0 && systemctl set-property user.slice MemorySwapMax=0 &&
     swapoff -a && swapon -a`. Con eso no queda nada que kswapd pueda mandar a swap; `SwapHostProxmox` deja de ser
     señal de nada hasta que se retiren los cuatro drop-ins con el kernel arreglado.
+  - 2026-11-21: aplicado (estaban versionados desde el 11-11 pero no en el host). Los cuatro en `MemorySwapMax=0`, swap
+    usado 0. `init.scope` es transitoria: `set-property` la guarda en `/run` y systemd no lee drop-ins de `/etc` para
+    ella, así que la reaplica en cada arranque `proxmox/systemd/init-scope-sin-swap.service` (habilitado).
+- Revisión 2026-11-21: `SwapOutHostProxmox` no sonó en 6 días; el **ARC volvió a 6,1 GB de 6,4** (estuvo en ~2 GB
+  desde octubre) con 12 GB libres. kswapd sigue despertando (90 s: 270 de orden 0, 14 de orden 8), ya sin efecto
+  visible. Kernel instalado 7.0.14-24; disponible 7.0.14-30, cuyo changelog (‑29 y ‑30) tampoco trae el fix #19276.
 - No ejecutar `zpool upgrade` mientras tanto: cada feature nueva cierra la vuelta a versiones anteriores de ZFS.
 - Descartado: el balloon con free-page-reporting y THP no son la causa (en el foro de Proxmox VMs con `balloon: 0`
   también caían a swap); `vm.swappiness` no influye; `vm.watermark_boost_factor=0` solo calla kswapd unos minutos.
@@ -182,7 +188,9 @@ de 4–7 min contra 1–3 ms de `nvme0n1`. Se sacó del espejo el 2026-10-17 09:
 no la temperatura, APST ni la ranura (detalle, cifras y cómo volver a espejo en `proxmox/README.md` § Discos y pools). Hasta reemplazarlo, los discos de las VMs y `nvme/k8s/*` dependen de la
 réplica nocturna a `respaldo` y de restic a R2: una falla de `nvme0n1` pierde hasta un día de datos y deja el cluster
 sin workers.
-- [ ] **Comprar el reemplazo.** M.2 **2280** (es la ranura que queda libre), NVMe ≥512 GB, **con DRAM** y TLC (p. ej.
+- [x] ~~**Comprar el reemplazo.**~~ Decidido 2026-11-21: **no se compra otro NVMe para pve**; `nvme1n1` sigue como
+  disco de respaldo (pool `replica`, réplica horaria) y `nvme/` queda sin espejo. Lo que sigue es la ficha que se
+  había pensado: M.2 **2280** (es la ranura que queda libre), NVMe ≥512 GB, **con DRAM** y TLC (p. ej.
   Samsung 970 EVO Plus, WD Red SN700, Kingston KC3000). La cifra que importa es la **escritura sostenida tras la caché**
   (buscarla en reseñas, no en la ficha): ≥500 MB/s; el NE-512 da ~75 MB/s y su ficha dice 1700–1800. La ranura negocia
   PCIe Gen3 x4, así que un Gen4 no rinde más. Al instalarlo, correr `scripts/ssd/prueba.sh` antes del `zpool attach`.
@@ -192,7 +200,9 @@ sin workers.
   (10:55–11:00) con `nvme0n1` al 97 % de uso, pero escribiendo en 1 ms y con los workers en ≤5 % de iowait. El cron mensual de Debian sigue como red de seguridad.
 - [x] Revisión del 2026-10-18 (24 h desde el 17-oct 11:48): `pve/nvme0n1` con escritura máxima de 1 ms y los discos de
   los workers con ≤16 ms (antes, 0,6–7,4 s). Sin ráfagas de iowait salvo la de node-1 descrita abajo, que no es del NVMe.
-- [ ] Repetir `hl.py io --ventana 24h` el 2026-10-25 con los mismos umbrales (`pve/nvme0n1` ≤5 ms, workers <50 ms).
+- [x] Repetir `hl.py io --ventana 24h` el 2026-10-25 con los mismos umbrales (`pve/nvme0n1` ≤5 ms, workers <50 ms).
+  Hecho 2026-11-21 (24 h y 7 d): `pve/nvme0n1` 5 ms, workers ≤31 ms (node-1), `pve/nvme1n1` 0 ms con ~41 MB/s de
+  réplica. Cumple.
 - [ ] **Pico nocturno de node-1** (2026-10-18 04:40–05:20): 30 % de iowait con su disco en 7 ms. Lo causaron ~200 MB/s
   de lectura NFS desde `sdb` (HDD de `homelab-storage`, al 98 % de uso), justo después de una importación (escritura de
   ~20 GB a las 04:30) y del aviso de Plex «Library section … (Programas de TV) will be updated». Plex no registró
@@ -204,11 +214,14 @@ sin workers.
     `TMPDIR=/run/plex-temp` y funcionaba; la detección de voz y otras tareas de fondo fallaban (1 069 errores en el
     log del día). Preferencia vaciada por la API → Plex usa `/config/…/Cache/Transcode` (excluido del respaldo).
     `media.py transcode`: HEVC 4K → H.264 720p con nvdec/nvenc y pipeline completo en GPU a ~9×, sin errores nuevos.
-  - [ ] 2026-10-19: `hl.py io --en 2026-10-19T08:00:00Z --ventana 1h` y el log de Plex: ¿volvió el pico sin el fallo?
-- [ ] Instalarlo con apagado ordenado (`playbook_graceful_shutdown_cluster.yml`), `zpool attach` sobre
+  - [x] 2026-10-19: `hl.py io --en 2026-10-19T08:00:00Z --ventana 1h` y el log de Plex: ¿volvió el pico sin el fallo?
+    Revisado 2026-11-21: esa noche volvió (node-1 31 % de iowait con su disco en 4 ms; `pve/sdb` al 99 %), pero las
+    noches del 20 y 21 de noviembre en la misma hora quedan en 2 % y los logs actuales de Plex no tienen ningún
+    `Permission denied`. Cerrado: era lectura NFS del HDD, no el disco del worker.
+- [x] ~~Instalarlo con apagado ordenado~~ (no se compra; ver arriba). Era: `playbook_graceful_shutdown_cluster.yml`, `zpool attach` sobre
   `nvme-NXM-512_2242_0007134003512`, esperar el resilver y `zpool scrub nvme`. Comparar la latencia de escritura de
   los dos discos en una ráfaga (consulta `node_disk_write_time_seconds_total / node_disk_writes_completed_total`).
-- [ ] Más adelante: `nvme0n1` también es sin DRAM (MAXIO MAP1202) y registra 2398 transiciones de estrangulamiento
+- [x] ~~Más adelante~~ (descartado con la compra): `nvme0n1` también es sin DRAM (MAXIO MAP1202) y registra 2398 transiciones de estrangulamiento
   térmico. Si el disco nuevo rinde mucho mejor, cambiar este también por uno igual.
 - [x] **Decidido (2026-10-18): pool `replica`**, réplica horaria por syncoid de `nvme/k8s`, los discos de las VMs
   102–104 y el LXC 110 (`proxmox/README.md` § Discos y pools). Volver al espejo se descartó: tras la caché SLC
@@ -251,6 +264,15 @@ y el 10-29 02:50 Flux reinició igual sin que k3s cayera (bastó el atasco).
   Aparte hubo picos menores fuera de la ventana (11-14 20:56 ~360 ms 4 min, sin llegar a disparar; 21:01 ~110 ms):
   si tras el escalonado `EtcdFsyncLento` vuelve a sonar de madrugada o fuera de respaldos, ejecutar el punto anterior
   (el NVMe tiene 37 % de desgaste y 104 881 entradas en su log de errores; `smartctl -a /dev/nvme0n1`).
+- 2026-11-21: **se cumple la condición.** `EtcdFsyncLento` sonó 6 veces desde el 15, y el 21 fuera de la ventana de
+  respaldos (p99 255 ms a las 13:15, 128 ms a las 15:45 y 169 ms a las 17:25 GMT-3) con la latencia media de
+  escritura del disco bajo 25 ms: son atascos cortos del propio NVMe. Falta decidir el cambio (punto de arriba).
+- 2026-11-18 ~21:29 → 2026-11-20 ~13:09 (GMT-3): **pibot estuvo caído ~40 h** sin apagado registrado (`last` sin
+  `shutdown`; el reloj volvió con fake-hwclock al 18-nov 21:17). Causa desconocida: el journal es volátil.
+  `throttled=0x0` al volver. Sonaron `NodoCaido`, `TargetCaido` (kubelet de los 4 nodos, que se raspa por el API) y
+  `K3sServerReiniciado`.
+  - [ ] Hacer persistente el journal de pibot (`Storage=persistent`, con tope bajo, p. ej. `SystemMaxUse=200M`) para
+    poder diagnosticar la próxima caída; pesa poco frente a los ~14 GB/día que escribe hoy.
 
 ## 4h. Desgaste del NVMe de pibot (2026-11-15 21:19 GMT-3)
 
@@ -275,16 +297,27 @@ journald (en RAM), logs de pods, meshmonitor (SQLite de 173 MB, 0,5–3 GB/día)
   coincide con lo que queda: `k3s` y `k3s-etcd` 0,5/s cada uno, 4 node leases 0,4/s, apiserver 0,1/s, cert-manager
   0,14/s y los dos Postgres 0,1/s cada uno. Flux aplicó las 4 Kustomizations; operador y plugin `Running` con
   `--leader-elect=false`. Más no se puede bajar sin tocar k3s.
-- [ ] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
+- [x] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
   anota las escrituras por proceso y por cgroup cada 30 s en `~/iosample.log` (unos 3 MB/día). Resumen: `ssh
   daniel@k3s-node-0 'awk -F"|" "{s[\$2\"|\"\$3\"|\"\$4]+=\$5} END{for(k in s) printf \"%.0f MB %s\n\", s[k]/1e6,
   k}" iosample.log | sort -rn | head -15'`. Objetivo: atribuir los ~12 GB/día que no son etcd (el muestreo de 60 s
   solo explicó ~7 GB/día de 20). Después detenerlo: `ssh daniel@k3s-node-0 'sudo kill 455970'`.
-- [ ] Con esa medición, decidir qué escritura sale de pibot. Candidatos: meshmonitor (SQLite; **no a NFS**: el WAL y los
+  - Leído 2026-11-21. El script murió con la caída de pibot del 18; midió 3 días (15-nov 20:54 → 18-nov 21:29):
+    `k3s.service` **6,4 GB/día**, **meshmonitor 5,5 GB/día** (su SQLite de 165 MB con WAL de 70 MB; mucho más que el
+    0,5–3 estimado), `systemd` 1,6 GB/día, jbd2 0,5, containerd 0,3, sqlite3 del respaldo de una web 0,2. El
+    `~/iosample.log` (5,8 MB) queda en pibot.
+- [x] Con esa medición, decidir qué escritura sale de pibot. Candidatos: meshmonitor (SQLite; **no a NFS**: el WAL y los
   bloqueos corrompen la base sobre NFS) → PostgreSQL si su versión lo soporta, recortar la retención de telemetría o
   moverlo a un worker. Para datos desechables, el destino del NAS es el pool `scratch` (2 HDD sin redundancia,
   `sync=disabled` en `scratch/qbittorrent`), no `homelab-storage`. Ojo: mover escrituras a un worker solo traslada el
   desgaste al NVMe sin espejo de pve, que ya recibe ~111 GB/día.
+  - 2026-11-21 (PR #218): **meshmonitor a k3s-node-3**. Había caído en pibot por accidente (sin afinidad). Ahora
+    tiene afinidad requerida fuera del control-plane y PVC nuevo `meshmonitor-data-worker`, copiado con la app
+    detenida (sha256 idéntico, `integrity_check` ok). En pve suma ~5 % a lo que ya recibe. El bot y el admin
+    siguen en pibot (no escriben).
+  - [ ] ⏰ 2026-11-28 Borrar el PVC viejo `meshmonitor-data` (queda en pibot sin uso; Flux no poda PVC):
+    `kubectl -n meshmonitor delete pvc meshmonitor-data`. Antes confirmar que el respaldo nocturno del PVC nuevo
+    funciona (`/nvme/k8s/backups/apps/meshmonitor`).
 - [ ] Si tras el PR #205 y el escalonado de respaldos el desgaste sigue alto: mover el datastore de k3s a Postgres en pve
   (`--datastore-endpoint`) o etcd a otro disco; es el único cambio que lo resuelve de raíz (cambio grande).
 
