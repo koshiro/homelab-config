@@ -12,11 +12,16 @@ resources:
   - middleware.yml
   - networkpolicy.yml
   - bot/deployment.yml
+  - admin/deployment.yml
 configMapGenerator:
   # Bot de Telegram de la flota (/donde, /flota)
   - name: meshmonitor-bot
     files:
       - bot/bot.py
+  # Administrador automático de la flota (admin_key al oír cada nodo)
+  - name: meshmonitor-admin
+    files:
+      - admin/admin.py
 components:
   - ../../components/proteger-datos
 # secret.sops.yaml (SESSION_SECRET) y bot/secret.sops.yaml entran por solo-flux/ y los descifra Flux.

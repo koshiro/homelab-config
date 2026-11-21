@@ -53,6 +53,22 @@
 - Respaldo CarTracker 2026-10-18: `bluetooth.fixed_pin 123456` (modo RANDOM_PIN), store&forward cliente activo,
   `canned_messages` Hi|Bye|Yes|No|Ok, MQTT apagado.
 
+- XIAO S3 + L76K apilado: en el L76K anterior a 2024-12 el RESET va en D10 (= MOSI del SPI de la radio) y la
+  SX1262 no inicia; hay que quitar ese pin (la variante lo advierte). Rev. nueva: RESET en D2. El firmware usa del L76K
+  solo D6/D7 (UART, GPIO43/44) y D0 (standby, GPIO1). (2026-11-21)
+- XIAO S3: sin divisor de batería (log «battery hardware absent (USB-only)»); A0/GPIO1 es el standby del GPS. Para
+  medir batería: MAX17048 por I2C (SDA GPIO5/D4, SCL GPIO6/D5), el firmware ya lo sondea al arrancar. (2026-11-21)
+- LED de la Wio-SX1262 = heartbeat (GPIO48 por el B2B): encendido/parpadeo ≠ radio viva. (2026-11-21)
+- Wio-SX1262 original del Laptop muerta (`SX126x init result -2` con y sin GPS, tras recalzar); el XIAO S3 funciona
+  con la radio de PapoRelay. Pendiente reemplazo. (2026-11-21)
+  Causa probable: daño eléctrico (conexión en caliente del B2B o del módulo, ESD o latch-up) o falla propia, **no** el
+  L76K: su RESET pasa por un diodo Schottky RB521 (solo puede bajar la línea), así que en D10 resetea el GPS pero no
+  daña la SX1262. Un -2 descarta el TCXO, que daría -707. Revisar con el multímetro: 3V3 en la Wio, la resistencia de
+  3V3 a GND frente a una placa buena, NRST (GPIO42) en alto y BUSY (GPIO40) en bajo. Regla: no conectar nada con USB
+  ni batería puestos, y siempre con antena LoRa. (2026-11-21)
+- Laptop `!0404f6d2` reinstalado como LYZC60 `!acff6687` (tracker del auto, fw 2.8.2.d5f1619 de canario) y fuera de
+  `admins`. (2026-11-21)
+
 ## Trampas (`error → forma correcta`)
 - `flashear` falla con «Device not configured» → el S3 re-enumeró en bootloader con otro nombre: `$T puertos` y repetir con el puerto nuevo.
 - `aplicar` con `network.*` + `admin_key` corta la transacción (el nodo reinicia): esperar 40 s y repetir `aplicar --apply`; converge en 2–3 pasadas. (2026-10-26)
@@ -123,3 +139,14 @@
   Meshtastic conectada (Mac/iPhone/Android) lo hace por él. El CLI no hace de proxy. Usuarios del broker: `laptop`,
   `dnto`. Uplink/downlink del canal 1 por radio: `meshtastic --dest '!id' --ch-index 1 --ch-set uplink_enabled true
   --ch-set downlink_enabled true` (verificado: la PSK queda intacta). (2026-10-24)
+- Log de arranque de un ESP32 → `meshtastic --reboot` se cuelga en el XIAO S3; usar `esptool --after hard-reset
+  chip-id` y leer el puerto con pyserial sin API (antes de que un cliente se conecte sale el log en texto). Con un
+  cliente API conectado, el log solo llega con `security.debug_log_api_enabled true` (apagarlo después). (2026-11-21)
+- `SX126x init result -2` = chip no encontrado por SPI: probar sin accesorios apilados, tras corte de energía, y
+  cruzar la radio con otro XIAO antes de pensar en firmware. (2026-11-21)
+- Quitar una llave de `admin_key` en local → `meshtastic --set security.admin_key 0 --set security.admin_key base64:…`
+  no vacía la lista en el CLI 2.7.x/master (solo agrega). Forma correcta: por la API, `del sec.admin_key[:]`, se agregan
+  las válidas y `writeConfig('security')`. El nodo se reinicia; por el vnode hay que esperar ~1–2 min. En remoto,
+  `aplicar --dest` ya reemplaza la lista completa. (2026-11-21)
+- `aplicar --dest` por el vnode `k3s-node-0:4404` → «Timed out waiting for an acknowledgment» en todos los nodos
+  (2026-11-21): admin remoto desde un admin por USB (Dnto_L1) o reintentar con los nodos despiertos. (2026-11-21)
