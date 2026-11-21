@@ -36,3 +36,15 @@ el nodo. Solo responde al chat de `TELEGRAM_CHAT_ID`.
 
 Secreto `bot/secret.sops.yaml`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `MM_TOKEN` (token de API creado en la UI de
 MeshMonitor). Nodo nuevo en la flota → agregarlo a `NODOS`.
+
+## Administrador automático (`admin/`)
+
+`meshmonitor-admin` revisa la API cada 60 s. Cuando el techo oye **por radio** (`transportLastRf`) a un nodo de `FLOTA`,
+le lee `security` por admin remoto (PKC, vía el nodo virtual) y deja `admin_key` igual a `ADMINS` (menos su propia
+llave). Si ya coincide, no lo vuelve a tocar en 7 días; si lo corrige, lo relee la próxima vez que lo oiga y avisa por
+Telegram. Sin respuesta → reintento en 30 min. Estado en memoria (tras un reinicio relee cada nodo una vez).
+
+- Requiere que el techo esté en el `admin_key` del nodo (si no, nunca responde: arreglarlo una vez por USB).
+- `FLOTA` y `ADMINS` copian `flota.yaml` de la skill meshtastic: actualizarlos juntos.
+- La librería `meshtastic` se instala en un initContainer desde el commit del CLI de la Mac (protobufs 2.8).
+- Logs: `kubectl -n meshmonitor logs deploy/meshmonitor-admin`.

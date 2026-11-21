@@ -1,0 +1,106 @@
+# Administrador automático de la flota (ver admin.py): cuando el techo oye por radio a un nodo de la flota, le deja
+# security.admin_key igual a `admins` de flota.yaml (skill meshtastic) por admin remoto a través del nodo virtual.
+# Al cambiar admins o un nodo en flota.yaml, actualizar FLOTA/ADMINS aquí.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meshmonitor-admin
+  namespace: meshmonitor
+  labels:
+    app: meshmonitor-admin
+spec:
+  replicas: 1   # una sola: dos instancias pedirían lo mismo por radio
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: meshmonitor-admin
+  template:
+    metadata:
+      labels:
+        app: meshmonitor-admin
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Librería meshtastic del mismo commit que usa el CLI de la Mac (protobufs 2.8: escribir security con
+        # protobufs 2.7 borraría packet_signature_policy). Sin bleak: solo se usa la interfaz TCP.
+        - name: deps
+          image: python:3.14-slim
+          command:
+            - sh
+            - -c
+            - >-
+              pip install --no-cache-dir --target /deps
+              protobuf==7.36.2 pypubsub==4.0.7 pyserial==3.5 tabulate==0.9.0 requests==2.34.2 pyyaml==6.0.3
+              packaging==26.3 &&
+              pip install --no-cache-dir --no-deps --target /deps
+              https://github.com/meshtastic/python/archive/0a1835760c2437314a2d3544bbdd8b6fead559bc.zip
+          env:
+            - {name: HOME, value: /tmp}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: deps, mountPath: /deps}
+            - {name: tmp, mountPath: /tmp}
+      containers:
+        - name: admin
+          image: python:3.14-slim
+          command: ["python3", "-u", "/app/admin.py"]
+          env:
+            - {name: PYTHONPATH, value: /deps}
+            - {name: HOME, value: /tmp}
+            - name: MM_URL
+              value: http://meshmonitor:3001
+            - name: VNODE
+              value: meshmonitor-vnode:4404
+            # Igual a `admins` de flota.yaml (Laptop fuera desde 2026-11-21).
+            - name: ADMINS
+              value: '["Dnto_L1", "AcevedoRoof"]'
+            # Nodos de flota.yaml (id y pubkey). local: true = el techo, que no se administra por radio.
+            - name: FLOTA
+              value: >-
+                [{"id": "!185e9038", "nombre": "Dnto_L1", "pubkey": "itL0Olq6ahmKafz5ZhnAeRndFaHqLOXrJ4RIQ7fQAgg="},
+                 {"id": "!acff6687", "nombre": "LYZC60", "pubkey": "50KhN2fFfY9n6v8EzFXzauTp7iT5blTB9w4zttIlDBI="},
+                 {"id": "!918d5bf9", "nombre": "AcevedoRoof", "pubkey": "TXOhwzLpnv4zJif1sRHxnsKmyrFlK4je7VSiNgPhajk=", "local": true},
+                 {"id": "!de7ae27e", "nombre": "CarTracker", "pubkey": "lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc="},
+                 {"id": "!1e945bee", "nombre": "CatTracker", "pubkey": "tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM="},
+                 {"id": "!66f2bcce", "nombre": "AkiraGPS", "pubkey": "c7xvNwWSgvjkxR9AK/M0QVB6xRadldUJKRnGgrb2HmM="},
+                 {"id": "!ba6e56de", "nombre": "SolarT114", "pubkey": "gvFbAZi3c+9LPzF9DC/FmppkByMn3SLkB+xXXsjIm1s="},
+                 {"id": "!6de158c2", "nombre": "BlackHeltecV3", "pubkey": "5urJZ4Jx3P/jlVzyRRFA43pA1qM8YUqU7Ak/eys8YFg="},
+                 {"id": "!583acc8e", "nombre": "OrangeHeltecV3", "pubkey": "e7gErtxZXiAHDuLDKiMapSo1b+fnYsWxlQUmisnLbiU="},
+                 {"id": "!d4ac0a05", "nombre": "XiaoNRF", "pubkey": "quehtSpFE6TSD95iZ/wFjYxJjfGdrYtKAsE4r8xvcx8="},
+                 {"id": "!561b1920", "nombre": "PapoRelay", "pubkey": "0DGnr1HB7RL6peiXCiHhFbWNoIHSNvW7+sRq7qMu4xQ="}]
+          envFrom:
+            - secretRef:
+                name: meshmonitor-bot   # MM_TOKEN y TELEGRAM_* (sendMessage no choca con el getUpdates del bot)
+          resources:
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: app, mountPath: /app, readOnly: true}
+            - {name: deps, mountPath: /deps, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: app
+          configMap:
+            name: meshmonitor-admin
+        - name: deps
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
