@@ -6,7 +6,7 @@
 firmware: 2.8.2.fad52bb          # nightly de develop (2026-10-17) fijado; archivo en ~/.cache/meshtastic-fw
 
 # Nodos cuya llave pública va en security.admin_key de todos (máx. 3). Se provisionan primero.
-admins: [Dnto_L1, Laptop, AcevedoRoof]
+admins: [Dnto_L1, AcevedoRoof]   # Laptop fuera desde 2026-11-21: pasó a tracker del auto (LYZC60)
 
 # Canales en orden de índice. La posición sale por el de índice más bajo con precision > 0.
 canales:
@@ -88,18 +88,21 @@ nodos:
       mqtt.password: secreto:mqtt_pass_dnto
     owner: Dnto_L1
     owner_short: "🤓"
-  Laptop:
-    id: "!0404f6d2"
-    pubkey: 2cccCt7uFl5yd9degLIQGwahrT7inJ3skswVoEhjc18=
+  LYZC60:                        # tracker del auto (patente); ex «Laptop» (mismo XIAO S3), reemplaza a CarTracker
+    id: "!acff6687"
+    pubkey: 50KhN2fFfY9n6v8EzFXzauTp7iT5blTB9w4zttIlDBI=
+    # 2026-11-21: Wio-SX1262 original muerta (SX126x -2) → lleva la radio de PapoRelay. GPS L76K apilado sin el pin
+    # RESET (chocaba con MOSI). USB del auto + batería de respaldo; sin medición de batería hasta sumar un MAX17048.
     hw: SEEED_XIAO_S3
     pio: seeed-xiao-s3
-    perfil: cliente_proxy
-    gateway: true                # uplink/downlink del canal privado por el proxy de la app
+    firmware: 2.8.2.d5f1619      # canario de la release 2.8.2 (resto de la flota en el nightly fad52bb)
+    perfil: tracker
+    owner: LYZC60
+    owner_short: "🚗"
     set:
-      mqtt.username: laptop
-      mqtt.password: secreto:mqtt_pass_laptop
-    owner: LoraLaptop
-    owner_short: "💻"
+      bluetooth.enabled: false           # mismo ahorro que CarTracker; se administra por USB/radio
+      position.gps_update_interval: 120
+      display.screen_on_secs: 10
   AcevedoRoof:
     id: "!918d5bf9"
     pubkey: TXOhwzLpnv4zJif1sRHxnsKmyrFlK4je7VSiNgPhajk=
@@ -113,7 +116,7 @@ nodos:
       mqtt.password: secreto:mqtt_pass_roof
     owner: AcevedoRoof
     owner_short: "🏡"
-  CarTracker:
+  CarTracker:                    # retirado del auto por LYZC60; pasará a ser PapoRelay (Heltec Wireless Tracker)
     id: "!de7ae27e"
     pubkey: lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc=
     hw: HELTEC_WIRELESS_TRACKER

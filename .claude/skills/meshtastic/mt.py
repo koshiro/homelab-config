@@ -493,8 +493,9 @@ def cmd_provisionar(a):
     iface = conectar(a)
     try:
         fw = getattr(iface.metadata, "firmware_version", "?")
-        if not fw.startswith(f["firmware"]):
-            print(f"AVISO: el nodo tiene fw {fw}; flota.yaml fija {f['firmware']} (`$T fw {a.nodo}`)")
+        quiero_fw = n.get("firmware") or f["firmware"]
+        if not fw.startswith(quiero_fw):
+            print(f"AVISO: el nodo tiene fw {fw}; flota.yaml fija {quiero_fw} (`$T fw {a.nodo}`)")
         lc = iface.localNode.localConfig
         region = leer_campo(lc, iface.localNode.moduleConfig, "lora.region")
         if region == "UNSET":
@@ -570,8 +571,8 @@ def cmd_fw(a):
     """Descarga y archiva (md5 verificado) los archivos de flasheo de un nodo e imprime los pasos. No flashea."""
     import hashlib
     f = yaml_load(FLOTA)
-    ver = a.version or f["firmware"]
     n = f["nodos"].get(a.nodo) or sys.exit(f"Nodo '{a.nodo}' no está en flota.yaml")
+    ver = a.version or n.get("firmware") or f["firmware"]   # `firmware` por nodo = canario de un build nuevo
     pio = n.get("pio") or sys.exit(f"{a.nodo} no tiene `pio` en flota.yaml (sale como pioEnv en `estado`)")
     base = Path.home() / ".cache" / "meshtastic-fw" / ver
     out = base / pio
@@ -695,7 +696,7 @@ def cmd_flashear(a):
     a.solo_bajar, a.version = True, None
     cmd_fw(a)   # asegura archivos verificados
     f = yaml_load(FLOTA)
-    ver, pio = f["firmware"], f["nodos"][a.nodo]["pio"]
+    ver, pio = f["nodos"][a.nodo].get("firmware") or f["firmware"], f["nodos"][a.nodo]["pio"]
     out = Path.home() / ".cache" / "meshtastic-fw" / ver / pio
     puerto = resolver_puerto(a)
     esp32 = (out / "device-install.sh").exists()
