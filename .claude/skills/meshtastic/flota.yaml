@@ -175,7 +175,11 @@ nodos:
     pubkey: quehtSpFE6TSD95iZ/wFjYxJjfGdrYtKAsE4r8xvcx8=
     hw: XIAO_NRF52_KIT
     pio: seeed_xiao_nrf52840_kit
-    perfil: cliente
+    perfil: cliente_proxy        # sin WiFi: MQTT por Client Proxy, solo con una app conectada
+    gateway: true
+    set:
+      mqtt.username: xiaonrf
+      mqtt.password: secreto:mqtt_pass_xiaonrf
     owner: XiaoNRF
     owner_short: "XNR"
   PapoRelay:                     # relay MQTT en otra ciudad (WiFi de ahí); entra al broker por internet
