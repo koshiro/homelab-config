@@ -275,12 +275,25 @@ journald (en RAM), logs de pods, meshmonitor (SQLite de 173 MB, 0,5–3 GB/día)
   coincide con lo que queda: `k3s` y `k3s-etcd` 0,5/s cada uno, 4 node leases 0,4/s, apiserver 0,1/s, cert-manager
   0,14/s y los dos Postgres 0,1/s cada uno. Flux aplicó las 4 Kustomizations; operador y plugin `Running` con
   `--leader-elect=false`. Más no se puede bajar sin tocar k3s.
-- [ ] ⏰ 2026-11-16 21:00 Leer la medición de 24 h: `~/iosample.sh` (PID 455970) corre en pibot desde 2026-11-15 20:54 y
-  anota las escrituras por proceso y por cgroup cada 30 s en `~/iosample.log` (unos 3 MB/día). Resumen: `ssh
-  daniel@k3s-node-0 'awk -F"|" "{s[\$2\"|\"\$3\"|\"\$4]+=\$5} END{for(k in s) printf \"%.0f MB %s\n\", s[k]/1e6,
-  k}" iosample.log | sort -rn | head -15'`. Objetivo: atribuir los ~12 GB/día que no son etcd (el muestreo de 60 s
-  solo explicó ~7 GB/día de 20). Después detenerlo: `ssh daniel@k3s-node-0 'sudo kill 455970'`.
-- [ ] Con esa medición, decidir qué escritura sale de pibot. Candidatos: meshmonitor (SQLite; **no a NFS**: el WAL y los
+- [x] 2026-11-21: leída la medición de `~/iosample.sh` en pibot. Cubrió **72,6 h continuas** (2026-11-15 20:54 →
+  2026-11-18 21:29 GMT-3, 7744 muestras de 30 s, sin huecos); el sampler ya no corre (pibot se reinició el 20-11, el
+  PID 455970 no existe) y `~/iosample.log` (5,8 MB, dueño root) quedó en pibot. Escrituras promedio por día:
+
+  | Origen | GB/día |
+  |--------|--------|
+  | cgroup `system.slice/k3s.service` (proceso `k3s-server`: 5,7) | 6,4 |
+  | cgroup `kubepods-burstable.slice` (todos los pods) | 6,1 |
+  | **pod `meshmonitor`** (hilo `MainThread`, uid `f96bda22…`) | **5,45** |
+  | `systemd` / `jbd2` (journal ext4) / `containerd` | 1,6 / 0,5 / 0,3 |
+  | cada uno de los demás pods (bungeecord, java, sqlite3…) | < 0,1 |
+
+  Conclusión: **meshmonitor es casi el único escritor de pods en pibot** (~89 % de lo que escriben los pods), por el
+  WAL de SQLite (`meshmonitor.db` 173 MB + `-wal` 73 MB en el PVC `meshmonitor-data`, imagen `yeraze/meshmonitor`
+  4.17.0). ~2 TB/año: bajo para el NVMe, pero desproporcionado para una app de monitoreo. Lo de k3s es el datastore.
+  Reproducir: `awk -F'|' '{s[$2"|"$3"|"$4]+=$5} END{for(k in s) printf "%.0f MB %s\n", s[k]/1e6, k}' iosample.log |
+  sort -rn | head`. Ojo: cada línea del log ya es un delta de 30 s (no un contador acumulado).
+- [ ] Con esa medición, decidir qué escritura sale de pibot (primer candidato confirmado: meshmonitor, 5,45 GB/día;
+  recortar su retención de telemetría es lo más barato). Candidatos: meshmonitor (SQLite; **no a NFS**: el WAL y los
   bloqueos corrompen la base sobre NFS) → PostgreSQL si su versión lo soporta, recortar la retención de telemetría o
   moverlo a un worker. Para datos desechables, el destino del NAS es el pool `scratch` (2 HDD sin redundancia,
   `sync=disabled` en `scratch/qbittorrent`), no `homelab-storage`. Ojo: mover escrituras a un worker solo traslada el
