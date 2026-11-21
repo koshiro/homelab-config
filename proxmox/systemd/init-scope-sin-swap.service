@@ -1,0 +1,15 @@
+# init.scope es una unidad transitoria: `systemctl set-property init.scope …` se guarda en /run y se pierde al
+# reiniciar, y systemd no lee drop-ins de /etc para ella. Este oneshot lo reaplica en cada arranque.
+# Ver proxmox/systemd/drop-ins/init-scope-sin-swap.conf y docs/PENDIENTES.md § 4b3.
+# Instalar: cp a /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now init-scope-sin-swap
+[Unit]
+Description=init.scope sin swap (bug openzfs#18893)
+After=swap.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl set-property --runtime init.scope MemorySwapMax=0
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
