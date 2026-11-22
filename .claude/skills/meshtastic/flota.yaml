@@ -145,6 +145,7 @@ nodos:
     owner_short: "🐕"
     set:
       position.position_broadcast_secs: 900   # quieto: cada 15 min (en movimiento manda el smart broadcast)
+      display.wake_on_tap_or_motion: true     # activa el parche de GPS según movimiento (build de prueba, ver gps-movimiento.md)
   SolarT114:                     # nodo fijo solar remoto, sin MQTT (oído directo por el techo 2026-10-20)
     id: "!ba6e56de"
     pubkey: gvFbAZi3c+9LPzF9DC/FmppkByMn3SLkB+xXXsjIm1s=

@@ -43,6 +43,16 @@ Estado (2026-11-22): rama local `feat/gps-motion-aware-scheduling` en `~/git/mes
   `position_broadcast_secs: 900` → en movimiento GPS cada 15 s, quieto cada 15 min.
 - Airtime: en movimiento hasta ~4 posiciones/min por el canal privado; vigilar `channel_utilization`.
 
+## Prueba en AkiraGPS (2026-11-22)
+
+- Build `2.8.3.f584291` + parche (`.pio/build/tracker-t1000-e/firmware-tracker-t1000-e-2.8.3.f584291.uf2`) copiado sin borrar.
+  Arranca bien: ID, llaves y config intactos, responde admin remoto por el techo.
+- **Con este build el USB no enumera** (ni serie ni disco DFU, tampoco con botón al conectar; "reiniciar en DFU" desde la
+  app vuelve a la 2.8.3 sin montar disco). Sin aislar si es `develop` o el parche. Volver atrás: OTA por BLE desde la app.
+- `display.wake_on_tap_or_motion: true` activado desde la app (en flota.yaml). Verificación pendiente: frecuencia de
+  posiciones en MeshMonitor paseando (~15–30 s) vs quieto (~15 min).
+- Bluetooth desde la Mac imposible: macOS mata al Python de Homebrew (TCC, falta `NSBluetoothAlwaysUsageDescription`).
+
 ## Pendiente
 
 1. Probar en un T1000-E (UF2 sin borrar): log por USB de `GPS: moving/stationary` y conteo de movimientos.
