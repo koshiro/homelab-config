@@ -51,9 +51,17 @@ Estado (2026-11-22): rama local `feat/gps-motion-aware-scheduling` en `~/git/mes
   app vuelve a la 2.8.3 sin montar disco). Volver atrás: OTA por BLE desde la app.
   Análisis: el **bootloader** (que el UF2 no toca) tampoco aparece, y entre d5f1619 y develop solo cambió el drenado
   de la consola USB antes de un reset por assert (#12294, #12376), nada del arranque del USB. Apunta a la conexión
-  física (cable magnético o el hub USB-C donde estaba, `usbmodem11201`), no al firmware. Sin confirmar.
+  física, no al firmware. El hub y los cables se descartan: es el mismo hub de siempre (su "USB Storage" es su lector
+  de tarjetas) y fallan dos cables magnéticos distintos. El Mac no registra ni un intento de enumeración
+  (`log show`, `ioreg`) y una vez alcanzó a aparecer como serial: contacto intermitente en los pads del T1000-E.
+  Siguiente paso: limpiar los pads con alcohol isopropílico. Sin confirmar.
 - `display.wake_on_tap_or_motion: true` activado desde la app (en flota.yaml). Verificación pendiente: frecuencia de
   posiciones en MeshMonitor paseando (~15–30 s) vs quieto (~15 min).
+- **Paseo (12:22–14:33): ninguna posición nueva.** El techo lo oyó (último 14:31), pero desde el flasheo solo llegó una
+  posición (13:14) con el fix de las 12:23:55; `--request-position` y `--get position` remotos sin respuesta. El día
+  anterior, en 2.8.2 oficial, llegaban 7–16 posiciones/h por la tarde. Sospecha: el parche espacia o bloquea las
+  búsquedas de GPS (o el recorrido quedó fuera del alcance del techo). Prueba: volver a 2.8.2 por OTA y comparar.
+  Consulta usada: tabla `telemetry` (`telemetryType='latitude'`, `nodeNum`) de `/data/meshmonitor.db`.
 - Bluetooth desde la Mac imposible: macOS mata al Python de Homebrew (TCC, falta `NSBluetoothAlwaysUsageDescription`).
 
 ## Pendiente
