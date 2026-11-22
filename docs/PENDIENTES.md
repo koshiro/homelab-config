@@ -268,11 +268,11 @@ y el 10-29 02:50 Flux reinició igual sin que k3s cayera (bastó el atasco).
   respaldos (p99 255 ms a las 13:15, 128 ms a las 15:45 y 169 ms a las 17:25 GMT-3) con la latencia media de
   escritura del disco bajo 25 ms: son atascos cortos del propio NVMe. Falta decidir el cambio (punto de arriba).
 - 2026-11-18 ~21:29 → 2026-11-20 ~13:09 (GMT-3): **pibot estuvo caído ~40 h** sin apagado registrado (`last` sin
-  `shutdown`; el reloj volvió con fake-hwclock al 18-nov 21:17). Causa desconocida: el journal es volátil.
-  `throttled=0x0` al volver. Sonaron `NodoCaido`, `TargetCaido` (kubelet de los 4 nodos, que se raspa por el API) y
+  `shutdown`; el reloj volvió con fake-hwclock al 18-nov 21:17). **Causa: corte eléctrico en la oficina donde está
+  pibot** (confirmado por Daniel 2026-11-21), no una falla de la Pi. `throttled=0x0` al volver. Sonaron `NodoCaido`, `TargetCaido` (kubelet de los 4 nodos, que se raspa por el API) y
   `K3sServerReiniciado`.
-  - [ ] Hacer persistente el journal de pibot (`Storage=persistent`, con tope bajo, p. ej. `SystemMaxUse=200M`) para
-    poder diagnosticar la próxima caída; pesa poco frente a los ~14 GB/día que escribe hoy.
+  - [ ] Opcional (sin urgencia; esta caída ya tiene causa): hacer persistente el journal de pibot
+    (`Storage=persistent`, con tope bajo, p. ej. `SystemMaxUse=200M`) para diagnosticar una caída futura.
 
 ## 4h. Desgaste del NVMe de pibot (2026-11-15 21:19 GMT-3)
 
