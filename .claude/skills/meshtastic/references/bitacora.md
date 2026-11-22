@@ -18,4 +18,4 @@
 | 2026-11-21 | d5f1619 fijada para la flota; favoritos: fuera CarTracker/Laptop/PapoRelay viejo, dentro LYZC60 y PapoRelay nuevo | ~20 | `favoritos` no quitaba nodos retirados | `retirados:` en flota.yaml + removeFavorite en mt.py; intervalo de posición en `hechos.md` |
 | 2026-11-22 | Estudio de GPS según movimiento: issue #8383, PR GPS Profile #8515; parche en rama local de meshtastic/firmware con tests | ~40 | driver QMA6100P del T1000-E no limpia la interrupción con latch (sin verificar) | `references/gps-movimiento.md`, fila 11 del plan |
 | 2026-11-22 | AkiraGPS con build de prueba 2.8.3 + parche GPS movimiento; wake_on_tap_or_motion desde la app | ~25 | USB no enumera con el build; BLE desde la Mac lo mata TCC | `gps-movimiento.md` § Prueba |
-| 2026-11-22 | AkiraGPS rescatado: DFU por USB, UF2 2.8.2.d5f1619 y `--configure` del respaldo → `!66f2bcce`, diff limpio; parche de GPS sin fixes en el paseo |
+| 2026-11-22 | AkiraGPS rescatado: DFU por USB, UF2 2.8.2.d5f1619 y `--configure` del respaldo → `!66f2bcce`, diff limpio; parche de GPS sin fixes en el paseo | ~30 | `--configure` imprime el PSK en la URL del canal | `gps-movimiento.md`, `hechos.md` |
