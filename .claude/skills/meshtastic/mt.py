@@ -254,14 +254,15 @@ def comparar(a, nombre):
         if a.dest:
             print("(canales: no se comparan en remoto; solo por USB/TCP directo)", file=sys.stderr)
         else:
-            canal = comparar_canales(node, claves, sec, diffs, bool(n.get("gateway")))
+            canal = comparar_canales(node, claves, sec, diffs, bool(n.get("gateway")), n.get("perfil"))
         return diffs, sets, owner, canal
     finally:
         iface.close()
 
 
-def canales_deseados(sec, gateway=False):
-    """ChannelSettings de flota.yaml:canales, con secretos resueltos; uplink/downlink solo en gateways MQTT."""
+def canales_deseados(sec, gateway=False, perfil=None):
+    """ChannelSettings de flota.yaml:canales, con secretos resueltos; uplink/downlink solo en gateways MQTT y
+    module_settings.is_muted en los perfiles de `silenciado_en` (el buzzer no suena con los broadcasts de ese canal)."""
     from meshtastic.protobuf import channel_pb2
     out = []
     for c in yaml_load(FLOTA).get("canales", []):
@@ -271,6 +272,7 @@ def canales_deseados(sec, gateway=False):
         s.psk = b"\x01" if psk == "default" else base64.b64decode(psk)
         s.use_aead = bool(c.get("aead", False))
         s.module_settings.position_precision = int(c.get("precision", 0))
+        s.module_settings.is_muted = perfil in (c.get("silenciado_en") or [])
         s.uplink_enabled = s.downlink_enabled = bool(c.get("mqtt") and gateway)
         out.append(s)
     return out
@@ -283,10 +285,10 @@ def poner_campo(msg, campo, valor):
     setattr(msg, campo, valor)
 
 
-def comparar_canales(node, claves, sec, diffs, gateway=False):
+def comparar_canales(node, claves, sec, diffs, gateway=False, perfil=None):
     """Agrega a diffs lo que difiere y devuelve los grupos de argumentos del CLI que lo corrigen."""
     from meshtastic.protobuf import apponly_pb2
-    quiero = canales_deseados(sec, gateway)
+    quiero = canales_deseados(sec, gateway, perfil)
     if not quiero:
         return []
     tengo = {c.index: c for c in (node.channels or []) if c.role}
@@ -306,6 +308,7 @@ def comparar_canales(node, claves, sec, diffs, gateway=False):
                               ("downlink", c.settings.downlink_enabled, s.downlink_enabled),
                               ("precision", c.settings.module_settings.position_precision,
                                s.module_settings.position_precision),
+                              ("silenciado", c.settings.module_settings.is_muted, s.module_settings.is_muted),
                               ("rol", c.role, 1 if i == 0 else 2)):
             if a_ != b_:
                 ver = (lambda v: "***") if campo == "psk" or (campo == "nombre" and i > 0) else repr
