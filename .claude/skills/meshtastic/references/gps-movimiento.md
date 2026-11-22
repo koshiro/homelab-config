@@ -48,7 +48,10 @@ Estado (2026-11-22): rama local `feat/gps-motion-aware-scheduling` en `~/git/mes
 - Build `2.8.3.f584291` + parche (`.pio/build/tracker-t1000-e/firmware-tracker-t1000-e-2.8.3.f584291.uf2`) copiado sin borrar.
   Arranca bien: ID, llaves y config intactos, responde admin remoto por el techo.
 - **Con este build el USB no enumera** (ni serie ni disco DFU, tampoco con botón al conectar; "reiniciar en DFU" desde la
-  app vuelve a la 2.8.3 sin montar disco). Sin aislar si es `develop` o el parche. Volver atrás: OTA por BLE desde la app.
+  app vuelve a la 2.8.3 sin montar disco). Volver atrás: OTA por BLE desde la app.
+  Análisis: el **bootloader** (que el UF2 no toca) tampoco aparece, y entre d5f1619 y develop solo cambió el drenado
+  de la consola USB antes de un reset por assert (#12294, #12376), nada del arranque del USB. Apunta a la conexión
+  física (cable magnético o el hub USB-C donde estaba, `usbmodem11201`), no al firmware. Sin confirmar.
 - `display.wake_on_tap_or_motion: true` activado desde la app (en flota.yaml). Verificación pendiente: frecuencia de
   posiciones en MeshMonitor paseando (~15–30 s) vs quieto (~15 min).
 - Bluetooth desde la Mac imposible: macOS mata al Python de Homebrew (TCC, falta `NSBluetoothAlwaysUsageDescription`).
