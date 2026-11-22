@@ -38,7 +38,7 @@ spec:
                 [{"id": "!66f2bcce", "alias": ["akira", "perro", "AkiraGPS"], "tracker": true},
                  {"id": "!1e945bee", "alias": ["gato", "cat", "CatTracker"], "tracker": true},
                  {"id": "!acff6687", "alias": ["auto", "car", "LYZC60"], "tracker": true},
-                 {"id": "!de7ae27e", "alias": ["cartracker", "CarTracker"]},
+                 {"id": "!06c19e45", "alias": ["papo", "relay", "PapoRelay"]},
                  {"id": "!185e9038", "alias": ["dnto", "l1", "Dnto_L1"]},
                  {"id": "!918d5bf9", "alias": ["techo", "roof", "AcevedoRoof"]},
                  {"id": "!6de158c2", "alias": ["black", "BlackHeltecV3"]},

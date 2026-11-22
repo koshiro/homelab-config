@@ -154,3 +154,6 @@
   Broadcast → se calla con `module_settings.is_muted` de ESE canal; DM → solo con el mute del nodo emisor
   (`isMutedForPacket`). Canal 0 silenciado en remoto por la API (`getNode(dest, requestChannels=True)` →
   `channels[0].settings.module_settings.is_muted = True` → `writeChannel(0)`); PSK y nombre intactos. (2026-11-21)
+- Actualizar un nRF52 **sin borrar** (conserva ID, llaves y config): `meshtastic --port <p> --enter-dfu` → copiar solo
+  `firmware-<pio>-<ver>.uf2` a la unidad (T1000-E: `/Volumes/T1000-E`). `cp` puede decir «fchmod failed»: inofensivo.
+  `mt.py flashear` en cambio hace full erase. (2026-11-21)

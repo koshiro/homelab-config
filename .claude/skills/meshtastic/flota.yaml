@@ -119,25 +119,12 @@ nodos:
       mqtt.password: secreto:mqtt_pass_roof
     owner: AcevedoRoof
     owner_short: "🏡"
-  CarTracker:                    # retirado del auto por LYZC60; pasará a ser PapoRelay (Heltec Wireless Tracker)
-    id: "!de7ae27e"
-    pubkey: lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc=
-    hw: HELTEC_WIRELESS_TRACKER
-    pio: heltec-wireless-tracker   # V1.1 (confirmado por pioEnv)
-    perfil: tracker
-    owner: CarTracker
-    owner_short: "🚗"
-    set:
-      # 12 V solo con contacto: con el auto apagado vive de la batería (~10 h con la config base). Ahorro sin perder
-      # el seguimiento en movimiento (is_power_saving dormiría también en marcha y lo dejaría sordo). (2026-10-19)
-      bluetooth.enabled: false           # se administra por USB/radio; el BLE anunciando gasta todo el tiempo
-      position.gps_update_interval: 120  # GPS cada 2 min (smart broadcast sigue mandando al moverse)
-      display.screen_on_secs: 10
   CatTracker:
     id: "!1e945bee"
     pubkey: tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM=
     hw: TRACKER_T1000_E
     pio: tracker-t1000-e
+    firmware: 2.8.2.d5f1619      # actualizado sin borrar (UF2) 2026-11-21
     perfil: tracker
     owner: CatTracker
     owner_short: "😺"
@@ -146,6 +133,7 @@ nodos:
     pubkey: c7xvNwWSgvjkxR9AK/M0QVB6xRadldUJKRnGgrb2HmM=
     hw: TRACKER_T1000_E
     pio: tracker-t1000-e
+    firmware: 2.8.2.d5f1619      # actualizado sin borrar (UF2) 2026-11-21
     perfil: tracker
     owner: AkiraGPS
     owner_short: "🐕"
@@ -186,10 +174,12 @@ nodos:
     owner: XiaoNRF
     owner_short: "XNR"
   PapoRelay:                     # relay MQTT en otra ciudad (WiFi de ahí); entra al broker por internet
-    id: "!561b1920"
-    pubkey: 0DGnr1HB7RL6peiXCiHhFbWNoIHSNvW7+sRq7qMu4xQ=
-    hw: SEEED_XIAO_S3
-    pio: seeed-xiao-s3
+    id: "!06c19e45"
+    pubkey: vofDY5bX4Vu19s2Io1D8rXr81r2up/8xaCqPjsf82jQ=
+    # 2026-11-21: ex CarTracker (Heltec Wireless Tracker V1.1); el XIAO S3 anterior (!561b1920) cedió su radio a LYZC60
+    hw: HELTEC_WIRELESS_TRACKER
+    pio: heltec-wireless-tracker
+    firmware: 2.8.2.d5f1619      # release candidata (canario junto a LYZC60)
     perfil: base
     gateway: true
     set:
@@ -198,5 +188,6 @@ nodos:
       mqtt.address: mqtt.danielriquelme.cl:8883
       mqtt.username: papo
       mqtt.password: secreto:mqtt_pass_papo
+      position.gps_mode: DISABLED        # fijo: el GPS solo gastaría
     owner: papoRelay
     owner_short: papo
