@@ -157,3 +157,9 @@
 - Actualizar un nRF52 **sin borrar** (conserva ID, llaves y config): `meshtastic --port <p> --enter-dfu` → copiar solo
   `firmware-<pio>-<ver>.uf2` a la unidad (T1000-E: `/Volumes/T1000-E`). `cp` puede decir «fchmod failed»: inofensivo.
   `mt.py flashear` en cambio hace full erase. (2026-11-21)
+- Posición de un TRACKER (fw d5f1619, `PositionModule`): `position_broadcast_secs` es el envío periódico (sirve quieto);
+  en movimiento manda el smart broadcast al recorrer `broadcast_smart_minimum_distance` (10 m) y pasar
+  `broadcast_smart_minimum_interval_secs` (15 s), pero solo con un fix nuevo, que llega cada `gps_update_interval`
+  (60 s): ese es el ritmo real en movimiento. El mínimo de 1 h / 5 min solo se fuerza si la posición sale por un canal
+  por defecto (aquí sale por el privado). (2026-11-21)
+- `mt.py favoritos <nodo>` también quita de favoritos los IDs de `flota.yaml:retirados`. (2026-11-21)
