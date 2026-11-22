@@ -70,6 +70,8 @@
   `admins`. (2026-11-21)
 
 ## Trampas (`error → forma correcta`)
+
+- `--configure <respaldo>.yaml` imprime «Setting channel url to …» con el PSK → filtrar también `-e 'e/#' -e key`. Restaurar así un nodo reseteado (llaves nuevas) le devuelve su ID, llaves, admin keys, canales y dueño (AkiraGPS 2026-11-22).
 - `flashear` falla con «Device not configured» → el S3 re-enumeró en bootloader con otro nombre: `$T puertos` y repetir con el puerto nuevo.
 - `aplicar` con `network.*` + `admin_key` corta la transacción (el nodo reinicia): esperar 40 s y repetir `aplicar --apply`; converge en 2–3 pasadas. (2026-10-26)
 

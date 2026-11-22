@@ -62,6 +62,11 @@ Estado (2026-11-22): rama local `feat/gps-motion-aware-scheduling` en `~/git/mes
   anterior, en 2.8.2 oficial, llegaban 7–16 posiciones/h por la tarde. Sospecha: el parche espacia o bloquea las
   búsquedas de GPS (o el recorrido quedó fuera del alcance del techo). Prueba: volver a 2.8.2 por OTA y comparar.
   Consulta usada: tabla `telemetry` (`telemetryType='latitude'`, `nodeNum`) de `/data/meshmonitor.db`.
+- **Rescate (14:50)**: tras un reset quedó en 2.8.3 con llaves nuevas (`!1878ca01`). Daniel logró el disco DFU por USB
+  (mismo hub y cable) → UF2 2.8.2.d5f1619 → `--configure` con el `.yaml` de la mañana → `!66f2bcce` y `diff` limpio.
+  El USB (bootloader y serial) volvió a funcionar; que antes fallara también en el bootloader queda sin explicar
+  (¿contacto?). `wake_on_tap_or_motion` sacado de flota.yaml. Antes de otra prueba: build con logs por USB y
+  revisar por qué el parche no dio fixes nuevos.
 - Bluetooth desde la Mac imposible: macOS mata al Python de Homebrew (TCC, falta `NSBluetoothAlwaysUsageDescription`).
 
 ## Pendiente
