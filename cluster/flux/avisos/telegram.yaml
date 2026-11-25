@@ -8,6 +8,11 @@
 # Lo mismo con «unable to list remote … ssh: handshake failed»: durante las caídas de Git de GitHub (2026-11-04, 40
 # avisos en 100 min) GitHub rechaza la deploy key válida y cada reintento fallido llegaba a Telegram. Si dura, lo
 # avisa FluxSinReconciliar a los 15 min (la llave se verifica con `gh repo deploy-key list` y el secret flux-system).
+# Y con «kustomize build failed: … net/http: TLS handshake timeout» (2026-11-24/25: ~43 avisos en 12 h de cert-manager
+# y cnpg-plugin-barman-cloud, que bajan su manifiesto de github.com en cada build). La causa es el enlace de salida
+# (VTR): ~8 % de los flujos TCP nuevos pierden el primer paquete con datos tras el handshake, medido desde pibot y
+# pve a Google y GitHub por igual (captura, tcpdump). El texto lleva una ruta /tmp aleatoria, así que el rate limit no
+# lo agrupa. Mitigación, no arreglo: si el fallo se sostiene, FluxSinReconciliar avisa a los 15 min.
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
@@ -31,6 +36,7 @@ spec:
   exclusionList:
     - "failed early due to stalled resources"
     - "unable to list remote .* ssh: handshake failed"
+    - "kustomize build failed: .*net/http: TLS handshake timeout"
   eventSources:
     - kind: GitRepository
       name: "*"
