@@ -70,6 +70,8 @@
   `admins`. (2026-11-21)
 
 ## Trampas (`error → forma correcta`)
+
+- `--configure <respaldo>.yaml` imprime «Setting channel url to …» con el PSK → filtrar también `-e 'e/#' -e key`. Restaurar así un nodo reseteado (llaves nuevas) le devuelve su ID, llaves, admin keys, canales y dueño (AkiraGPS 2026-11-22).
 - `flashear` falla con «Device not configured» → el S3 re-enumeró en bootloader con otro nombre: `$T puertos` y repetir con el puerto nuevo.
 - `aplicar` con `network.*` + `admin_key` corta la transacción (el nodo reinicia): esperar 40 s y repetir `aplicar --apply`; converge en 2–3 pasadas. (2026-10-26)
 
@@ -154,3 +156,12 @@
   Broadcast → se calla con `module_settings.is_muted` de ESE canal; DM → solo con el mute del nodo emisor
   (`isMutedForPacket`). Canal 0 silenciado en remoto por la API (`getNode(dest, requestChannels=True)` →
   `channels[0].settings.module_settings.is_muted = True` → `writeChannel(0)`); PSK y nombre intactos. (2026-11-21)
+- Actualizar un nRF52 **sin borrar** (conserva ID, llaves y config): `meshtastic --port <p> --enter-dfu` → copiar solo
+  `firmware-<pio>-<ver>.uf2` a la unidad (T1000-E: `/Volumes/T1000-E`). `cp` puede decir «fchmod failed»: inofensivo.
+  `mt.py flashear` en cambio hace full erase. (2026-11-21)
+- Posición de un TRACKER (fw d5f1619, `PositionModule`): `position_broadcast_secs` es el envío periódico (sirve quieto);
+  en movimiento manda el smart broadcast al recorrer `broadcast_smart_minimum_distance` (10 m) y pasar
+  `broadcast_smart_minimum_interval_secs` (15 s), pero solo con un fix nuevo, que llega cada `gps_update_interval`
+  (60 s): ese es el ritmo real en movimiento. El mínimo de 1 h / 5 min solo se fuerza si la posición sale por un canal
+  por defecto (aquí sale por el privado). (2026-11-21)
+- `mt.py favoritos <nodo>` también quita de favoritos los IDs de `flota.yaml:retirados`. (2026-11-21)

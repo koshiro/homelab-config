@@ -15,7 +15,7 @@ un desborde de stack en la telemetría ambiental. Qué cambia para la flota:
 - #12110 (uplink MQTT de DMs PKI ajenos) ya venía en fad52bb.
 - `develop` va +81 (TCXO en standby #12119, PPS del GPS #12324, SPI con buffer #12310, DMShell opt-in): capa de
   radio sin release → no.
-Decisión propuesta: fijar d5f1619 (release, archivo estable), canario en un nodo 24–48 h, luego la flota.
+Decisión (2026-11-21, Daniel): d5f1619 es el firmware de la flota (`flota.yaml:firmware`); el canario no se extendió.
 Pendiente aún sin merge: #12180 (CLIENT_BASE rellena broadcasts para favoritos).
 
 ## Build fijado: nightly 2.8.2.fad52bb (decisión 2026-10-18)

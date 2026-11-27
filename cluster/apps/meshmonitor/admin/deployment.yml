@@ -73,14 +73,13 @@ spec:
                 [{"id": "!185e9038", "nombre": "Dnto_L1", "pubkey": "itL0Olq6ahmKafz5ZhnAeRndFaHqLOXrJ4RIQ7fQAgg="},
                  {"id": "!acff6687", "nombre": "LYZC60", "pubkey": "50KhN2fFfY9n6v8EzFXzauTp7iT5blTB9w4zttIlDBI="},
                  {"id": "!918d5bf9", "nombre": "AcevedoRoof", "pubkey": "TXOhwzLpnv4zJif1sRHxnsKmyrFlK4je7VSiNgPhajk=", "local": true},
-                 {"id": "!de7ae27e", "nombre": "CarTracker", "pubkey": "lG+/RpWo0lX7N+42TnfP6hBwjfz+XvaE48q4U/pqNAc="},
                  {"id": "!1e945bee", "nombre": "CatTracker", "pubkey": "tFRoOyBIPOJfHsf8oX1e1EnsRzQ+/XzutmpBECRybkM="},
                  {"id": "!66f2bcce", "nombre": "AkiraGPS", "pubkey": "c7xvNwWSgvjkxR9AK/M0QVB6xRadldUJKRnGgrb2HmM="},
                  {"id": "!ba6e56de", "nombre": "SolarT114", "pubkey": "gvFbAZi3c+9LPzF9DC/FmppkByMn3SLkB+xXXsjIm1s="},
                  {"id": "!6de158c2", "nombre": "BlackHeltecV3", "pubkey": "5urJZ4Jx3P/jlVzyRRFA43pA1qM8YUqU7Ak/eys8YFg="},
                  {"id": "!583acc8e", "nombre": "OrangeHeltecV3", "pubkey": "e7gErtxZXiAHDuLDKiMapSo1b+fnYsWxlQUmisnLbiU="},
                  {"id": "!d4ac0a05", "nombre": "XiaoNRF", "pubkey": "quehtSpFE6TSD95iZ/wFjYxJjfGdrYtKAsE4r8xvcx8="},
-                 {"id": "!561b1920", "nombre": "PapoRelay", "pubkey": "0DGnr1HB7RL6peiXCiHhFbWNoIHSNvW7+sRq7qMu4xQ="}]
+                 {"id": "!06c19e45", "nombre": "PapoRelay", "pubkey": "vofDY5bX4Vu19s2Io1D8rXr81r2up/8xaCqPjsf82jQ="}]
           envFrom:
             - secretRef:
                 name: meshmonitor-bot   # MM_TOKEN y TELEGRAM_* (sendMessage no choca con el getUpdates del bot)

@@ -36,6 +36,7 @@ meshtastic --port X --info | --get lora | --set k v | --dest !id --set k v | --e
 | Flags del CLI, admin remoto, sesión PKC | `references/cli.md` |
 | Por qué está armado así (roles, canales, admin, homelab) | `references/arquitectura.md` |
 | MeshMonitor / nodo del techo en el homelab | `references/arquitectura.md` § Homelab + skill **homelab** |
+| GPS según movimiento (parche propio, PR upstream) | `references/gps-movimiento.md` |
 | ¿Salió algo nuevo? | `$T upstream`; leer las notas de lo NUEVO, anotar en `firmware.md`, `--marcar` |
 
 ## Reglas que evitan romper la malla

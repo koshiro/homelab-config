@@ -646,9 +646,12 @@ def cmd_favoritos(a):
     import time
     f = yaml_load(FLOTA)
     otros = {k: v for k, v in f["nodos"].items() if k != a.nodo and v.get("id") and v.get("pubkey")}
-    print(f"{a.nodo}: {len(otros)} contactos + favoritos{' por radio vía ' + a.dest if a.dest else ''}")
+    retirados = f.get("retirados") or {}
+    print(f"{a.nodo}: {len(otros)} contactos + favoritos, quita {len(retirados)} retirados"
+          f"{' por radio vía ' + a.dest if a.dest else ''}")
     if not a.apply:
-        print("  " + ", ".join(otros) + "\n(dry-run: agrega --apply)")
+        print("  + " + ", ".join(otros) + "\n  - " + ", ".join(f"{v} {k}" for k, v in retirados.items())
+              + "\n(dry-run: agrega --apply)")
         return
 
     def con_limite(fn, *args, t=60):
@@ -666,6 +669,12 @@ def cmd_favoritos(a):
             if not ok:
                 return
             time.sleep(2 if a.dest else 0.5)   # no saturar el aire ni el nodo
+        for nid, nombre in retirados.items():   # removeFavorite de un nodo que no está en su NodeDB es inofensivo
+            ok = con_limite(node.removeFavorite, nid)
+            print(f"  - {nombre:13} {nid} {'ok' if ok else 'SIN RESPUESTA (se detiene)'}")
+            if not ok:
+                return
+            time.sleep(2 if a.dest else 0.5)
     finally:
         iface.close()
 
